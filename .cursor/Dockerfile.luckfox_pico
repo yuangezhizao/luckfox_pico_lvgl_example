@@ -1,0 +1,50 @@
+# Luckfox Pico LVGL Example — Cloud Agent 环境镜像（官方镜像方案 / 备选；environment.json 默认引用自建 Dockerfile）
+#
+# 目标：把开发环境「代码化」，不依赖任何人的个人快照（Personal snapshot）；提供一个基于 Luckfox 官方镜像的备选环境。启用方式：把 .cursor/environment.json 的 build.dockerfile 从 "Dockerfile" 改为 "Dockerfile.luckfox_pico" 即可。
+#
+# 说明：
+# - Cloud Agent 本身就运行在「一个容器」里；本 Dockerfile 只是「声明这个容器长什么样」，并非 docker-in-docker。
+# - 基于 Luckfox 官方镜像 luckfoxtech/luckfox_pico:1.0（Ubuntu 22.04）：官方《Docker 环境下编译镜像》即用此镜像，已内置 SDK 编译所需 apt 依赖（cmake / gcc-g++ multilib / bison / flex / device-tree-compiler / python3 等）并已含 git。
+# - ⚠️ 与参考 SDK 仓库不同：本仓是单个 LVGL 应用（非 SDK），交叉编译用 glibc 工具链 gcc-arm-linux-gnueabihf（CMakeLists 走 $GLIBC_COMPILER 前缀）；而 SDK 的 uClibc 工具链 arm-rockchip830 随 SDK 仓库内置（本镜像与本仓中均无）——故本仓在官方镜像上【仍需】apt 补装 glibc 交叉工具链 + native 渲染库（libdrm-dev/libcjson-dev/libsdl2-dev）；官方预装的 SDK host 依赖对本仓多数用不上。结论：本备选镜像相对自建 ubuntu:24.04 并无实质构建收益，仅为「与参考项目对齐 + 提供可切换选项」而备。
+# - 本仓【无 build.sh】，构建直接用 cmake；不存在参考里的「build.sh 选板 / 加入 PATH」流程。
+# - 不要 COPY 项目源码：Cursor 会自行 checkout 正确的 commit 到工作区。
+# - FROM 同时锁定 tag 与 digest：tag（1.0）便于人读，digest 保证镜像内容字节级不可变（同一 tag 可被重推、digest 不会）。获取/更新 digest：docker buildx imagetools inspect luckfoxtech/luckfox_pico:1.0（Docker Hub 该仓库目前仅 1.0 一个 tag、2023-11-11 后未更新）。
+FROM luckfoxtech/luckfox_pico:1.0@sha256:915d44588085826cbeda4b969dbbe7d5e54bf779ba36cda3c5072ee9533e0417
+
+# DEBIAN_FRONTEND=noninteractive：无人值守安装，避免 tzdata/keyboard 交互卡住构建。仅构建期需要，用 ARG（不持久化到运行期）。
+ARG DEBIAN_FRONTEND=noninteractive
+# 刻意不设 ENV TZ（与自建 Dockerfile 的差异点、非遗漏）：官方镜像已把时区写进镜像本身（实测 tzdata 2023c 已装、/etc/localtime 与 /etc/timezone 均为 Asia/Hong_Kong），本就是 UTC+8，无需再用环境变量纠偏。自建版走的是另一条路：裸 ubuntu:24.04 连 tzdata 都没有（无 /etc/localtime），apt 把 tzdata 作为依赖拉进来后默认落到 Etc/UTC，故需靠 ENV TZ 在运行期指定。
+
+# ┌─ 平台会「自动安装」的包（无需在本文件重复安装）──────────────────────────────
+# │ Cursor 每次启动都会跑桌面初始化脚本；该脚本比对 Aptfile 的 sha256，首次（或清单变化）才按容器内 /usr/local/share/vnc-desktop.Aptfile 用 `apt-get install --no-install-recommends` 安装下列，已装过则跳过（实测 sha256=819987b7…，本环境 2026-07-26 核验，与参考项目一致）：
+# │   VNC     : tigervnc-standalone-server tigervnc-common tigervnc-tools
+# │   XFCE    : xfce4 xfce4-terminal xfce4-settings thunar
+# │   X11     : x11-utils x11-xserver-utils xdg-utils xdotool xclip procps
+# │   D-Bus   : dbus-x11 at-spi2-core
+# │   应用    : mousepad seahorse sudo ffmpeg
+# │   主题    : adwaita-icon-theme gnome-themes-extra gnome-keyring plank sassc libglib2.0-dev-bin libxml2-utils dconf-cli xz-utils
+# │   locale  : locales
+# │   字体    : xfonts-base xfonts-terminus fonts-noto fonts-wqy-microhei fonts-droid-fallback fonts-noto-color-emoji fonts-liberation fonts-croscore fonts-cantarell fonts-jetbrains-mono
+# │   桌面库  : libx11-dev libxkbfile-dev libsecret-1-dev libgbm-dev libnotify4 libnss3 libxss1
+# │   Mesa    : libgl1-mesa-dri libglx-mesa0 libgl1
+# │   Python  : python3-minimal python3-numpy
+# │   资产依赖: bash ca-certificates coreutils curl findutils gzip tar
+# │ 另外平台还会：把 gh 软链到 /usr/local/bin/gh、配置 git 身份与 SSH 提交签名、准备 /opt/cursor/artifacts（以上本环境实测属实；参考项目另称每次启动会 git clean -fd，本环境未找到对应脚本、故不采信）。
+# │ ⚠️ 本仓用于交叉编译 + native 渲染验证、不用桌面 computer use，但平台仍会装上述包；其中 ffmpeg 与 X/VNC 桌面恰是 spec §6.1 所述 SDL 桌面渲染/录屏路径的依赖，并非纯冗余、勿当无用。
+# │   维护提示（清单实测 2026-07-26）：若平台不再自动装致编译/工具异常，把缺的项补进下面 apt。
+# └──────────────────────────────────────────────────────────────────────────────
+
+# 在官方镜像上补装本仓「构建 + 验证」依赖（实测该镜像已预装 git 2.34.1 / cmake 3.22.1 / ca-certificates / pkg-config 0.29.2；下面 apt 只列本仓用得到的，已预装项仍列出以保证存在性——注意 apt 会顺带把它们升到当前版本，并非无操作）：
+# - 基础工具    : sudo（实测官方镜像未预装、必补）。git 刻意【不】列入下面的 apt —— 官方镜像已自带，本文件末尾的 git config 即依赖它；ca-certificates 虽已预装仍列出，作运行期 https（git clone / curl / gh）保底——与自建版一致地把能力固化进镜像层，不依赖平台运行期行为。参考项目在同一类亦仅补 sudo，其另装的 curl（服务于 buildroot 镜像测速）与 vim/less/file/htop 等开发 CLI 与本仓无关。
+# - ARM 交叉工具链: gcc-arm-linux-gnueabihf、g++-arm-linux-gnueabihf（glibc；官方镜像未预装、必补）。
+# - 构建系统    : cmake（实测已预装 3.22.1）、build-essential（实测元包未装，但其依赖中只差 dpkg-dev —— gcc/g++/make/libc6-dev/binutils 本就齐全；装元包只为补齐这一项并与自建版口径一致）。
+# - native 验证 : libdrm-dev、libcjson-dev（x86 版，供 custom/*.c 链接期符号）；libsdl2-dev（SDL 驱动桌面开窗渲染 + ffmpeg 录制演示）；pkg-config（实测已预装，便利工具、非硬需）。
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      sudo ca-certificates \
+      gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf \
+      cmake build-essential \
+      libdrm-dev libcjson-dev libsdl2-dev pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# 允许对检出的工作区执行 git（避免 "detected dubious ownership" 报错）。
+RUN git config --system --add safe.directory '*'
