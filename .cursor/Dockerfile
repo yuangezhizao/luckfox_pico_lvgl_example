@@ -19,7 +19,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 # TZ：设运行期时区环境变量，glibc 据此让 date/localtime() 走 CST，影响容器内时间与渲染产物时间戳（注：它并不改镜像的 /etc/localtime，该文件仍是 tzdata 默认的 Etc/UTC；让 tzdata 免交互安装的是上面的 DEBIAN_FRONTEND）。
 ENV TZ=Asia/Shanghai
 
-# ┌─ 平台会「自动安装」的包（无需在本文件重复安装）──────────────────────────────
+# ┌─ 平台会「自动安装」的包（多数无需在本文件重复安装；例外见各行 ⚠️ 与下方 apt）──────
 # │ Cursor 每次启动都会跑桌面初始化脚本；该脚本比对 Aptfile 的 sha256，首次（或清单变化）才按容器内 /usr/local/share/vnc-desktop.Aptfile 用 `apt-get install --no-install-recommends` 安装下列，已装过则跳过（实测 sha256=819987b7…，本环境 2026-07-26 核验，与参考项目一致）：
 # │   VNC     : tigervnc-standalone-server tigervnc-common tigervnc-tools
 # │   XFCE    : xfce4 xfce4-terminal xfce4-settings thunar
