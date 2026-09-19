@@ -53,6 +53,7 @@
 | 类别 | 安装包 | 用途 |
 |---|---|---|
 | 基础工具 | `git` `sudo` `ca-certificates` | `git` 构建期硬需（结尾的 `git config` 依赖它；备选版由官方镜像自带、不列入 apt）/ `sudo` 提权 / `ca-certificates` 运行期 https 保底（Ubuntu apt 源走 http，apt 本身并不需要它） |
+| 平台引导 | `curl` | Cursor 安装 exec-daemon（从 S3 拉 tar.gz）用它，且早于会补装 curl 的平台桌面初始化脚本；两个 base 镜像均不含 curl，必须自装，否则环境启动即 `curl: command not found` / exit 127 |
 | ARM 交叉工具链 | `gcc-arm-linux-gnueabihf` `g++-arm-linux-gnueabihf` | 编 32-bit ARM 目标（CMakeLists 走 `$GLIBC_COMPILER` 前缀） |
 | 构建系统 | `cmake` `build-essential` | CMake 构建；`build-essential` 同时提供 native x86 `gcc/g++/make`（harness 需要） |
 | native 渲染（硬需） | `libdrm-dev` `libcjson-dev` | x86 版；`custom/*.c` 源码调用 DRM/cJSON API，链接期需其符号，但运行时不触达该路径、无需真实 DRM 设备 |
@@ -86,7 +87,7 @@
 
 形式对齐参考项目同名文件，依赖适配本仓。基础镜像 `luckfoxtech/luckfox_pico:1.0`（tag+digest 双锁定，digest 与参考一致；Docker Hub 该仓库仅此一个 tag、2023-11-11 后未更新），基于 Ubuntu 22.04、已预装 SDK 的 host 依赖。
 
-**⚠️ 关键取舍（诚实红线）**：官方镜像面向 **SDK**，预装的是编译 SDK 所需的 host 依赖；SDK 的 uClibc 工具链 `arm-rockchip830` 随 SDK 仓库内置，本镜像与本仓中均无。本仓用的是 glibc 工具链 `gcc-arm-linux-gnueabihf` + native 渲染库，官方镜像未预装，故仍需 apt 补装——真差额为交叉工具链、`libdrm-dev`/`libcjson-dev`/`libsdl2-dev`、`sudo` 与 `build-essential` 元包；而 `cmake`/`ca-certificates`/`pkg-config` 已预装、仍列入 apt 只为保证存在性并与自建版口径一致（apt 会顺带升级它们，并非无操作），`git` 则完全不列、直接用镜像自带。因此**本备选相对自建版无实质构建收益**，仅为「与参考对齐 + 提供可切换选项」而备。格式上保留与自建版逐字一致的 ASCII 框，但**不设 `ENV TZ`**（官方镜像已把时区写进镜像本身）。
+**⚠️ 关键取舍（诚实红线）**：官方镜像面向 **SDK**，预装的是编译 SDK 所需的 host 依赖；SDK 的 uClibc 工具链 `arm-rockchip830` 随 SDK 仓库内置，本镜像与本仓中均无。本仓用的是 glibc 工具链 `gcc-arm-linux-gnueabihf` + native 渲染库，官方镜像未预装，故仍需 apt 补装——真差额为交叉工具链、`libdrm-dev`/`libcjson-dev`/`libsdl2-dev`、`curl`（exec-daemon 引导需其自装，见 §5.1）、`sudo` 与 `build-essential` 元包；而 `cmake`/`ca-certificates`/`pkg-config` 已预装、仍列入 apt 只为保证存在性并与自建版口径一致（apt 会顺带升级它们，并非无操作），`git` 则完全不列、直接用镜像自带。因此**本备选相对自建版无实质构建收益**，仅为「与参考对齐 + 提供可切换选项」而备。格式上保留与自建版逐字一致的 ASCII 框，但**不设 `ENV TZ`**（官方镜像已把时区写进镜像本身）。
 
 ## 6. 构建与验证策略
 
