@@ -32,7 +32,7 @@ ENV TZ=Asia/Shanghai
 # │   桌面库  : libx11-dev libxkbfile-dev libsecret-1-dev libgbm-dev libnotify4 libnss3 libxss1
 # │   Mesa    : libgl1-mesa-dri libglx-mesa0 libgl1
 # │   Python  : python3-minimal python3-numpy
-# │   资产依赖: bash ca-certificates coreutils curl findutils gzip tar
+# │   资产依赖: bash ca-certificates coreutils curl findutils gzip tar  —— ⚠️ curl 虽在此平台清单里，但 Cursor 安装 exec-daemon（从 S3 拉取 tar.gz）发生在桌面初始化脚本之前，那一刻它尚未被装上；故 curl 必须在下方镜像层自装，不能依赖本清单（否则 exec-daemon 引导会以 `curl: command not found` / exit 127 失败）。
 # │ 另外平台还会：把 gh 软链到 /usr/local/bin/gh、配置 git 身份与 SSH 提交签名、准备 /opt/cursor/artifacts（以上本环境实测属实；参考项目另称每次启动会 git clean -fd，本环境未找到对应脚本、故不采信）。
 # │ ⚠️ 本仓用于交叉编译 + native 渲染验证、不用桌面 computer use，但平台仍会装上述包；其中 ffmpeg 与 X/VNC 桌面恰是 spec §6.1 所述 SDL 桌面渲染/录屏路径的依赖，并非纯冗余、勿当无用。
 # │   维护提示（清单实测 2026-07-26）：若平台不再自动装致编译/工具异常，把缺的项补进下面 apt。
@@ -40,11 +40,12 @@ ENV TZ=Asia/Shanghai
 
 # 从裸 Ubuntu 24.04 自装本项目「构建 + 验证」依赖（base 镜像 digest 锁定 + 依赖清单固化；apt 版本随上游漂移）：
 # - 基础工具    : git（构建期即需——本文件末尾的 git config 依赖它，且它并不在上方平台清单里）、sudo（容器内提权）、ca-certificates（运行期 https：git clone / curl / gh；注意 Ubuntu 官方 apt 源走 http，本行 apt 自身并不需要它）。sudo 与 ca-certificates 虽也在上方平台清单里，仍于镜像层自装：目的是不依赖平台运行期行为、把能力固化进镜像以保证可复现，apt 幂等无副作用。
+# - 平台引导    : curl（Cursor 安装 exec-daemon 时用它从 S3 拉取 tar.gz；该步早于会补装 curl 的桌面初始化脚本，故必须镜像内自带——ubuntu:24.04 基础镜像默认不含 curl）。
 # - ARM 交叉工具链: gcc-arm-linux-gnueabihf、g++-arm-linux-gnueabihf（编 32-bit ARM 目标；本仓工具链在此安装）。
 # - 构建系统    : cmake；build-essential 提供 native x86 gcc/g++/make（native 渲染 harness 需要）。
 # - native 验证 : libdrm-dev、libcjson-dev（x86 版，供 custom/*.c 链接期符号）；libsdl2-dev（SDL 驱动桌面开窗渲染 + ffmpeg 录制演示）；pkg-config 便利工具（可选）。
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      git sudo ca-certificates \
+      git sudo ca-certificates curl \
       gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf \
       cmake build-essential \
       libdrm-dev libcjson-dev libsdl2-dev pkg-config \
