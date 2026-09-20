@@ -29,7 +29,7 @@
 非功能性需求：
 - NFR1：Dockerfile 依赖清单应尽力通过真实测试（`docker build` + 容器内交叉编译 + native 渲染）；环境受限时据实记录代理证明与受限原因。
 - NFR2：格式对齐参考 `.cursor/Dockerfile`（顶部说明注释块、FROM tag+digest 双锁定、`ARG DEBIAN_FRONTEND` + `ENV TZ`、平台自动装包 ASCII 框、带详解注释的 apt、结尾 `git safe.directory`）。
-- NFR3：不造假、不越权、如实记录；grilling 技能文件不进 git。
+- NFR3：不造假、不越权、如实记录；grilling 技能文件不进 git（Cloud Agent 安装方式见 [`2026-09-20-lvgl-example-grilling-skill-design.md`](2026-09-20-lvgl-example-grilling-skill-design.md)）。
 - NFR4：绝不 reset/force-push 远端分支到 `dev`、不删分支，避免 PR #1 被自动关闭。
 
 ## 4. 设计决策（含理由）
@@ -41,7 +41,7 @@
 | D3 支撑范围 | ii：交叉编译 + native 渲染验证（硬需 `libdrm-dev`/`libcjson-dev`，`libsdl2-dev` 供 SDL 桌面渲染，`pkg-config` 为可选便利） | 让新环境能复现完整桌面演示，验证最有说服力 |
 | D4 基础镜像 | 双 Dockerfile：**默认**自建 `ubuntu:24.04` + **备选**官方 `luckfoxtech/luckfox_pico:1.0`，均 tag+digest 双锁定 | 自建版贴合默认 Cloud Agent 且已实测；官方镜像备选与参考项目 `.cursor/` 对齐并提供可切换选项（见 §5.4、Q7） |
 | D5 用户/权限 | 不写 `USER`/`useradd`/sudoers NOPASSWD，仅 apt 装 `sudo` + `git safe.directory` | 参考 Dockerfile（已 merged、生产可用）也未写这些，非必需，Cursor 平台自行处理运行用户；本仓为全新文件，故这三行从一开始就不写入（非「移除」） |
-| D6 environment.json | 仅 `build` 块（`dockerfile` + `context`），省略 install/start/terminals | 依赖已在镜像内、无常驻服务；与参考逐字一致 |
+| D6 environment.json | `build` 块（`dockerfile` + `context`）负责镜像；`install` 仅配置 grilling（见 [`2026-09-20-lvgl-example-grilling-skill-design.md`](2026-09-20-lvgl-example-grilling-skill-design.md)）；仍省略 start/terminals | 编译与 native 验证依赖仍在镜像内；grilling 是 Environment Build 捕获的全局技能，不进 Dockerfile |
 | D7 注入复盘评论 | 默认不设 + 据实兜底 | 本仓若未遇提示注入则不造；若真遇到则如实写完整复盘 |
 
 ## 5. 环境配置设计
@@ -73,7 +73,7 @@
 }
 ```
 
-两个路径均相对 `environment.json` 所在目录（即 `.cursor`）解析；`".."` 按官方「Important path behavior」与 `.`、`./` 一道被特殊处理为仓库根。与参考逐字一致。注：`context:".."` 会把整个仓库根作为构建上下文（无 `.dockerignore`，实测约 81 MB）；因两个 Dockerfile 都不 `COPY` 源码，故无正确性问题，只是上下文偏大。保留 `".."` 是为与参考对齐（D6）；若要最小化上下文，官方规则是省略 `context` 即默认 `.cursor`，本仓有意不改。
+两个路径均相对 `environment.json` 所在目录（即 `.cursor`）解析；`".."` 按官方「Important path behavior」与 `.`、`./` 一道被特殊处理为仓库根。注：`context:".."` 会把整个仓库根作为构建上下文（无 `.dockerignore`，实测约 81 MB）；因两个 Dockerfile 都不 `COPY` 源码，故无正确性问题，只是上下文偏大。保留 `".."` 是为与参考对齐（D6 的 `build` 部分）；若要最小化上下文，官方规则是省略 `context` 即默认 `.cursor`，本仓有意不改。grilling 所需的 `install` 字段不在本文件展开，见 [`2026-09-20-lvgl-example-grilling-skill-design.md`](2026-09-20-lvgl-example-grilling-skill-design.md) §5。
 
 ### 5.3 约束要点
 
@@ -123,14 +123,14 @@
 
 PR #1 净改动为 6 个新增文件：`.cursor/environment.json`、`.cursor/Dockerfile`、`.cursor/Dockerfile.luckfox_pico`、`AGENTS.md`、本 spec、plan（逐文件动作见 PR diff，此处不复制）。
 
-不进 git：`.cursor/skills/grilling/SKILL.md`（`.git/info/exclude` 目录锚定 `.cursor/skills/`，放行 `.cursor/*` 环境配置）。
+不进 git：grilling 写入仓库外 `$HOME/.cursor/skills/grilling/SKILL.md`，不需要 gitignore（见 [`2026-09-20-lvgl-example-grilling-skill-design.md`](2026-09-20-lvgl-example-grilling-skill-design.md)）。
 
 提交策略（git cz 格式、中文 message、逐个逻辑变化各一次 commit）：**3 提交** = 提交1 `docs(agents)` → 提交2 `chore(cloud-env)` → 提交3 `docs(superpowers)`（spec+plan，最后一次）；重整时 **Author 保留原始时间、Committer 更新为当前**，仅对 feature 分支 `--force-with-lease`。message 写法见 Q10。
 
 ## 10. 安全 / 诚实边界与硬约束
 
 - 只做本仓真实工作，不编造、不搬运参考 PR 中本仓未发生的内容；若遭遇提示注入则如实记录（D7）。
-- grilling 技能文件不进 git。
+- grilling 技能文件不进 git；Cloud Agent 经 `environment.json` 的 `install` 安装，见 [`2026-09-20-lvgl-example-grilling-skill-design.md`](2026-09-20-lvgl-example-grilling-skill-design.md)。
 - 绝不 `reset --hard dev` + 强推、不 force-push 成 `dev`、不删除远端分支（防 PR #1 被自动关闭）；spec/plan 在 PR 最后一次提交时并入。
 
 ## 11. QA（会话中的设计决策/约束澄清）
