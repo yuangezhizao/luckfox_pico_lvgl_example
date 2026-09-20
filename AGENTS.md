@@ -31,6 +31,13 @@ mkdir -p build && cd build && cmake .. && make -j && make install
 
 交叉工具链由 `.cursor/Dockerfile` 安装（不再依赖 snapshot）；如需本地补装可 `sudo apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf`。
 
+### GitHub Actions（交叉编译门禁）
+- CI 编两条：glibc（只设 `GLIBC_COMPILER=/usr/bin/arm-linux-gnueabihf-`，`make install` 整包 `install/luckfox_lvgl_demo/`）与 uClibc（只设 `LUCKFOX_SDK_PATH` 指向 CI 内 `yuangezhizao/luckfox-pico` 检出根，只出可执行文件）。
+- 作者当前系统是 SDK 编的 Buildroot，板上使用 **uClibc** 产物；glibc 产物 ABI 不兼容（`libc.so.6` vs `libc.so.0`），不能在这块板上运行。
+- CI 成功只证明交叉编译与 ABI 门禁通过，不能代替真机点亮；权威验证仍是物理 Luckfox Pico Ultra / Ultra W。
+- uClibc gcc 不在 `.cursor/Dockerfile` 里；CI 从 `yuangezhizao/luckfox-pico@dev` sparse checkout `tools/linux/toolchain/`，不引入 submodule。
+- CI 镜像只在 `dev` 上构建并 attest；`pull_request` 只复用 dest-lock（signer/source=`dev`）通过的 digest，失败即退出，不覆盖 GHCR。不把 `container:` 换成 `luckfox-pico-ci`（其中无 `gcc-arm-linux-gnueabihf`，uClibc gcc 也不在镜像层）。
+
 ### Lint（代码检查）
 没有独立的 linter，也**没有生效的编译告警关卡**——注意这是个容易踩的坑：`CMakeLists.txt` 虽声明了 `-Wall -Wextra` 等一长串 `-W...` 标志，但两处 `add_compile_options()` 都写在 `add_executable()` **之后**，而它只对其后创建的 target 生效，故实测这些标志根本没进编译命令行（`build/**/flags.make` 的 `C_FLAGS` 为空；同一批里的 `-O3`/`-fPIC`/`-std=c99` 一并失效）。当前构建只有 gcc 默认级别的少量既存告警、没有错误；若要恢复告警关卡，需把这两处 `add_compile_options()` 上移到 `add_executable()` 之前。
 
