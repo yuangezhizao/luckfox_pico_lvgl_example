@@ -18,6 +18,9 @@
 /*********************
  *      DEFINES
  *********************/
+#define LUCKFOX_SDIO_BUS_DIR "/sys/bus/sdio/devices"
+/* AIC8800DC WLAN function 2; keep in sync with SDK insmod_wifi.sh */
+#define LUCKFOX_ULTRA_W_SDIO_ID "SDIO_ID=C8A1:C18D"
 /**********************
  *      TYPEDEFS
  **********************/
@@ -165,6 +168,46 @@ static int contains_mp3_files(const char *path) {
 
     closedir(dp);
     return 0;
+}
+
+static int luckfox_sdio_has_id(const char *bus_dir, const char *uevent_line)
+{
+    char path[512];
+    char line[256];
+    struct dirent *entry;
+    DIR *dp;
+    FILE *fp;
+    int n;
+    int found = 0;
+
+    dp = opendir(bus_dir);
+    if (dp == NULL)
+        return 0;
+
+    while (!found && (entry = readdir(dp)) != NULL) {
+        if (entry->d_name[0] == '.')
+            continue;
+
+        n = snprintf(path, sizeof(path), "%s/%s/uevent", bus_dir, entry->d_name);
+        if (n < 0 || (size_t)n >= sizeof(path))
+            continue;
+
+        fp = fopen(path, "r");
+        if (fp == NULL)
+            continue;
+
+        while (fgets(line, sizeof(line), fp) != NULL) {
+            line[strcspn(line, "\n")] = '\0';
+            if (strcmp(line, uevent_line) == 0) {
+                found = 1;
+                break;
+            }
+        }
+        fclose(fp);
+    }
+
+    closedir(dp);
+    return found;
 }
 
 /**********************
@@ -335,7 +378,7 @@ void luckfox_get_wifi_enable_info()
             WIFI_ENABLE = 1;
         } 
         else if (strcmp(buffer, "Luckfox Pico Ultra") == 0) {
-            WIFI_ENABLE = 0;
+            WIFI_ENABLE = luckfox_sdio_has_id(LUCKFOX_SDIO_BUS_DIR, LUCKFOX_ULTRA_W_SDIO_ID);
         }
         else{
             perror("This Luckfox Pico model is not supported yet.\n");
@@ -343,7 +386,6 @@ void luckfox_get_wifi_enable_info()
         }            
     } else {
         perror("Error reading file");
-        fclose(file);
     }
 
     fclose(file);
