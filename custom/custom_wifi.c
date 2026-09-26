@@ -372,5 +372,8 @@ void wifi_backend_init()
 
 void wifi_backend_release()
 {
-    lv_timer_del(wifi_update_timer);
+    if (wifi_update_timer != NULL) {
+        lv_timer_del(wifi_update_timer);
+        wifi_update_timer = NULL;
+    }
 }
