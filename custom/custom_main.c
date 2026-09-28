@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include "lvgl.h"
 #include "custom.h"
+#include "custom_brightness.h"
 
 /*********************
  *      DEFINES
@@ -273,6 +274,7 @@ void main_app_init()
 {
     lv_obj_add_flag(guider_ui.Main_win_music, LV_OBJ_FLAG_HIDDEN);;
     _time_update();
+    brightness_ui_create(guider_ui.Main);
 }
 
 void main_backend_init()
