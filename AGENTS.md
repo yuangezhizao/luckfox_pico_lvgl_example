@@ -20,7 +20,7 @@
 ### 构建（标准开发流程）
 这是一个仅支持交叉编译的项目：产出的二进制是 32 位 ARM。`CMakeLists.txt` 会提前调用 `return()`，除非你先导出下列变量之一，否则不会产生任何构建目标：
 - `GLIBC_COMPILER` -> Ubuntu/glibc 目标（可在本环境 / Cloud Agent 容器中使用），或
-- `LUCKFOX_SDK_PATH` -> Buildroot/uClibc 目标（需要数 GB 的 Luckfox SDK，本环境 / Cloud Agent 容器中没有）。
+- `LUCKFOX_SDK_PATH` -> Buildroot/uClibc 目标（板上实际运行的产物）。无需完整 SDK：按 CI 做法稀疏检出 `yuangezhizao/luckfox-pico@dev` 的 `tools/linux/toolchain`（约 233 MB）即可，`git clone --depth 1 --filter=blob:none --sparse -b dev https://github.com/yuangezhizao/luckfox-pico.git /tmp/luckfox-pico && git -C /tmp/luckfox-pico sparse-checkout set tools/linux/toolchain`，再 `env -u GLIBC_COMPILER LUCKFOX_SDK_PATH=/tmp/luckfox-pico cmake -S . -B /tmp/build-uclibc && make -C /tmp/build-uclibc -j`；构建目录放仓库外（`.gitignore` 只忽略 `build/`、`install/`）。
 
 走 glibc 路径（工具链由 `.cursor/Dockerfile` 配置即代码提供）：
 ```
@@ -45,7 +45,7 @@ mkdir -p build && cd build && cmake .. && make -j && make install
 本仓库没有自动化测试套件。
 
 ### 运行 / 验证 GUI（重要陷阱）
-构建出的二进制无法在本 x86 云端 VM 上运行——它是 32 位 ARM ELF，在没有 binfmt_misc/qemu 的环境里直接执行会得到 `Exec format error`，连 `main()` 都进不去。即便架构可执行，它也面向真实硬件：启动时 `luckfox_get_drm_info()` 打开 `/dev/dri/card0`，打开失败或 `drmModeGetResources()` 失败即 `exit()`（本 VM 无该设备节点）；且只支持正方形屏，已连接显示器的首个 mode 非正方形同样 `exit()`。它还需要 `/dev/fb0` 和一个 evdev 触摸屏。请部署到物理 Luckfox Pico Ultra 上运行。
+构建出的二进制无法在本 x86 云端 VM 上运行——它是 32 位 ARM ELF，在没有 binfmt_misc/qemu 的环境里直接执行会得到 `Exec format error`，连 `main()` 都进不去。即便架构可执行，它也面向真实硬件：启动时 `luckfox_get_drm_info()` 打开 `/dev/dri/card0`，打开失败或 `drmModeGetResources()` 失败即 `exit()`（本 VM 无该设备节点）；且只支持正方形屏，已连接显示器的首个 mode 非正方形同样 `exit()`。它还需要 `/dev/fb0` 和一个 evdev 触摸屏。请部署到物理 Luckfox Pico Ultra 上运行。uClibc 产物可用 `qemu-user` 冒烟（不在 `.cursor/Dockerfile` 中，需 `sudo apt-get update && sudo apt-get install -y qemu-user`）：在仓库根目录执行 `qemu-arm -L "$(<uClibc gcc> -print-sysroot)" -E LD_LIBRARY_PATH=$PWD/lib/uclibc/libdrm:$PWD/lib/uclibc/libcjson <产物>`（`LD_LIBRARY_PATH` 须为绝对路径，相对路径会报 `can't load library 'libdrm.so.2'`）能加载 uClibc 与 vendored 库，输出含 `cannot open /dev/dri/card0`、`exit=1`，只证明 ABI 与动态库可用，看不到界面。
 
 没有硬件时可以选做 native 渲染验证：LVGL 是可移植的（`LV_COLOR_DEPTH` 为 32 / ARGB8888），把 `lib/lvgl/src` + `generated/` + `custom/` 在本机原生编译即可渲染 GUI-Guider 屏幕，headless 出图或 SDL 开窗都行。**最容易踩空的前提**：这批源文件里没有 `main()`，且 `custom/*.c`、`generated/*.c` 还 `extern` 引用了仅在 `src/main.c` 定义的 5 个全局量，所以必须自写 harness 提供 `main()` 与这 5 个定义，否则链接期必报 undefined reference；直接改编 `src/main.c` 也不行——它会拉入 `lv_drivers` 的 DRM/fbdev/evdev 硬件驱动。完整配方（编译单元、include 路径、显示后端选型、链接期依赖）见 [`docs/superpowers/specs/2026-07-24-lvgl-example-cloudagent-env-design.md`](docs/superpowers/specs/2026-07-24-lvgl-example-cloudagent-env-design.md) §6.1。此为**可选的临时手段、非标准流程**，权威验证仍以部署到物理 Luckfox Pico Ultra 为准。
 
