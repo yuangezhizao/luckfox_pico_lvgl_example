@@ -14,6 +14,26 @@ add_link_options(${LUCKFOX_SANITIZE})
 
 enable_testing()
 
+# 32 位测试：ARM 交叉 gcc 编译、qemu-arm 运行（spec §5.3）。
+set(LUCKFOX_ARM32_ENABLED OFF)
+if(NOT LUCKFOX_TESTS_ARM32 STREQUAL "OFF")
+    find_program(LUCKFOX_ARM32_CC arm-linux-gnueabihf-gcc)
+    find_program(LUCKFOX_QEMU_ARM qemu-arm)
+    if(EXISTS "${LUCKFOX_ARM32_CC}" AND EXISTS "${LUCKFOX_QEMU_ARM}")
+        set(LUCKFOX_ARM32_ENABLED ON)
+    elseif(LUCKFOX_TESTS_ARM32 STREQUAL "ON")
+        message(FATAL_ERROR "LUCKFOX_TESTS_ARM32=ON，但未找到 arm-linux-gnueabihf-gcc 或 qemu-arm（sudo apt-get install -y qemu-user）")
+    else()
+        message(STATUS "未找到 arm-linux-gnueabihf-gcc 或 qemu-arm，跳过 32 位测试")
+    endif()
+endif()
+set(LUCKFOX_ARM32_INCLUDE_FLAGS
+    -I${LUCKFOX_ROOT}/src -I${LUCKFOX_ROOT}/include
+    -I${LUCKFOX_ROOT}/include/glibc/drm -I${LUCKFOX_ROOT}/include/glibc/drm/libdrm -I${LUCKFOX_ROOT}/include/glibc/cjson
+    -I${LUCKFOX_ROOT}/lib -I${LUCKFOX_ROOT}/lib/lvgl -I${LUCKFOX_ROOT}/lib/lvgl/src
+    -I${LUCKFOX_ROOT}/custom -I${LUCKFOX_ROOT}/generated -I${LUCKFOX_ROOT}/generated/guider_customer_fonts
+    -I${LUCKFOX_ROOT}/generated/guider_fonts -I${LUCKFOX_ROOT}/generated/images)
+
 set(LUCKFOX_INCLUDE_DIRS
     ${LUCKFOX_ROOT}/src
     ${LUCKFOX_ROOT}/include
