@@ -1,0 +1,1 @@
+luckfox_add_test(backend_release CASES without_timer twice)

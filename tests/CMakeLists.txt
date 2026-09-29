@@ -84,3 +84,4 @@ function(luckfox_add_test name)
 endfunction()
 
 add_subdirectory(cases/main)
+add_subdirectory(cases/wifi)
