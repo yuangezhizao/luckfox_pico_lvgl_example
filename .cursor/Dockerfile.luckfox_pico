@@ -40,11 +40,13 @@ ARG DEBIAN_FRONTEND=noninteractive
 # - ARM 交叉工具链: gcc-arm-linux-gnueabihf、g++-arm-linux-gnueabihf（glibc；官方镜像未预装、必补）。
 # - 构建系统    : cmake（实测已预装 3.22.1）、build-essential（实测元包未装，但其依赖中只差 dpkg-dev —— gcc/g++/make/libc6-dev/binutils 本就齐全；装元包只为补齐这一项并与自建版口径一致）。
 # - native 验证 : libdrm-dev、libcjson-dev（x86 版，供 custom/*.c 链接期符号）；libsdl2-dev（SDL 驱动桌面开窗渲染 + ffmpeg 录制演示）；pkg-config（实测已预装，便利工具、非硬需）。
+# - 32 位运行 : qemu-user（qemu-arm 用户态运行 32 位 ARM 程序：tests/ 的 32 位换算测试 main.brightness_arm32.conversion 与 uClibc 产物冒烟）。
 RUN apt-get update && apt-get install -y --no-install-recommends \
       sudo ca-certificates curl \
       gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf \
       cmake build-essential \
       libdrm-dev libcjson-dev libsdl2-dev pkg-config \
+      qemu-user \
     && rm -rf /var/lib/apt/lists/*
 
 # 允许对检出的工作区执行 git（避免 "detected dubious ownership" 报错）。

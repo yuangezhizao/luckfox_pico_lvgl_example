@@ -2,4 +2,5 @@
 .vscode
 build/
 install/
+build-tests/
 

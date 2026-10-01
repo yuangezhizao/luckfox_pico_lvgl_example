@@ -25,7 +25,7 @@
 
 `src/main.c` 在非 Ubuntu 系统上调用 `luckfox_get_wifi_enable_info()`（`custom/custom_main.c`），其逻辑为：读 `/proc/device-tree/model`，等于 `"Luckfox Pico Ultra W"` 置 `WIFI_ENABLE=1`，等于 `"Luckfox Pico Ultra"` 置 0，其他型号 `exit(EXIT_FAILURE)`。`WIFI_ENABLE` 决定三件事：`generated/setup_scr_Main.c` 是否隐藏 `Main_Wifi_btn` 并重排按键；进入 WIFI 页时 `wifi_backend_init()`；退出时 `src/main.c` 是否 `wifi_backend_release()`。该函数另有一处既存缺陷：`fgets` 失败分支先 `fclose(file)`，随后函数末尾再次 `fclose(file)`，重复关闭同一 `FILE*` 属未定义行为。
 
-创建与释放不对称：`custom/custom_wifi.c` 的全局 `wifi_update_timer`（零初始化）只在首次进入 WIFI 页时由 `wifi_backend_init()` 创建（`generated/setup_scr_WIFI.c` 调用；`gui_guider.c` 初始 `WIFI_del = true`，离开 WIFI 页时置 `false`，故最多创建一次），而 `src/main.c` 只要 `WIFI_ENABLE == 1` 就在主循环结束后调用 `wifi_backend_release()` 并无条件 `lv_timer_del(wifi_update_timer)`。启动后不进 WIFI 页直接点 OFF 即 `lv_timer_del(NULL)`：LVGL 8.3 `_lv_ll_remove()` 对非头非尾的 `NULL` 走 else 分支，`_lv_ll_get_prev(ll, NULL)` 解引用空指针段错误（`lib/lvgl/src/misc/lv_timer.c`、`lv_ll.c`；host 编译 vendored `lv_ll.c` 在 2 节点链表上调用 `_lv_ll_remove(&ll, NULL)` 实测触发 SIGSEGV，由信号处理函数捕获，复现程序见 plan Task 2），`cat /dev/zero > /dev/fb0` 清屏随之被跳过。统一设备树固件上 `WIFI_ENABLE` 恒为 0，此路径原本不可达；按 SDIO ID 恢复 WIFI 键后在 Luckfox Pico Ultra W 上可达：只去掉 FR7 判空的对照程序在作者板子上实测，不进 WIFI 页直接 OFF 输出 `Segmentation fault (core dumped)`、`exit=139`、屏幕停在最后一帧不清屏；先进 WIFI 页再 OFF 则正常清屏、`exit=0`（plan Task 7）。
+创建与释放不对称：`custom/custom_wifi.c` 的全局 `wifi_update_timer`（零初始化）只在首次进入 WIFI 页时由 `wifi_backend_init()` 创建（`generated/setup_scr_WIFI.c` 调用；`gui_guider.c` 初始 `WIFI_del = true`，离开 WIFI 页时置 `false`，故最多创建一次），而 `src/main.c` 只要 `WIFI_ENABLE == 1` 就在主循环结束后调用 `wifi_backend_release()` 并无条件 `lv_timer_del(wifi_update_timer)`。启动后不进 WIFI 页直接点 OFF 即 `lv_timer_del(NULL)`：LVGL 8.3 `_lv_ll_remove()` 对非头非尾的 `NULL` 走 else 分支，`_lv_ll_get_prev(ll, NULL)` 解引用空指针段错误（`lib/lvgl/src/misc/lv_timer.c`、`lv_ll.c`；host 编译 vendored `lv_ll.c` 在 2 节点链表上调用 `_lv_ll_remove(&ll, NULL)` 实测触发 SIGSEGV，由信号处理函数捕获；回归测试见 `tests/cases/wifi/test_backend_release.c`，换回 PR #5 之前的实现即失败，见 `tests/cases/wifi/backend_release.mutants` 的 W1），`cat /dev/zero > /dev/fb0` 清屏随之被跳过。统一设备树固件上 `WIFI_ENABLE` 恒为 0，此路径原本不可达；按 SDIO ID 恢复 WIFI 键后在 Luckfox Pico Ultra W 上可达：只去掉 FR7 判空的对照程序在作者板子上实测，不进 WIFI 页直接 OFF 输出 `Segmentation fault (core dumped)`、`exit=139`、屏幕停在最后一帧不清屏；先进 WIFI 页再 OFF 则正常清屏、`exit=0`（plan Task 7）。
 
 上游 `LuckfoxTECH/luckfox_pico_lvgl_example` 最后一次提交是 2024-11-28，早于 SDK 的设备树合并，判据从未随之更新。
 
@@ -138,7 +138,7 @@
 
 ## 6. 验证（plan 执行时落地，此处只定判据）
 
-1. 本机逻辑验证：从 `custom/custom_main.c` 抽出 `luckfox_sdio_has_id()`，用临时 harness（不入库）以 host gcc `-Wall -Wextra -Werror` 编译，在临时目录模拟 sysfs，覆盖：目录不存在→0；目录为空→0；仅有 `SDIO_ID=C8A1:C08D`→0；某 function 含 `SDIO_ID=C8A1:C18D`→1；匹配行位于 `.` 开头的项内→0；匹配行无末尾换行→1；`SDIO_ID=C8A1:C18DX` 这类前缀相同的行→0。
+1. 本机逻辑验证：经 `unit_sdio_detect.c` 引入 `custom_main.c` 并调用 `luckfox_sdio_has_id()`，用 harness（以仓库 `tests/` 为准）以 host gcc `-Wall -Wextra -Werror` 编译，在临时目录模拟 sysfs，覆盖：目录不存在→0；目录为空→0；仅有 `SDIO_ID=C8A1:C08D`→0；某 function 含 `SDIO_ID=C8A1:C18D`→1；匹配行位于 `.` 开头的项内→0；匹配行无末尾换行→1；`SDIO_ID=C8A1:C18DX` 这类前缀相同的行→0。
 2. 本机交叉编译：Cloud Agent 容器内走 glibc 路径 `cmake && make && make install` 成功，产物为 ELF32 ARM。
 3. CI：PR 上 `构建 Luckfox Pico LVGL 例程` 的 glibc 与 uClibc 两行均绿，ABI 门禁通过。
 4. 真机前置采集（Luckfox Pico Ultra W，刷 run 35115207257 固件）：`cat /proc/device-tree/model`、`ls /sys/bus/sdio/devices`、`grep -H SDIO_ /sys/bus/sdio/devices/*/uevent`、`which wpa_cli wpa_supplicant udhcpc`、`ls -l /etc/wpa_supplicant.conf`、`pidof wpa_supplicant`、`ls /var/run/wpa_supplicant`，结果回填 plan。**判据门槛**：必须有一个 function 显示 `SDIO_ID=C8A1:C18D`；若没有，停止实施并按实测值修订 D2，不得带着未证实的 ID 合并。实测结果见 §2.3。

@@ -1,0 +1,7 @@
+# test_brightness_arm32 的改坏变体：中间值按 32 位 long 计算即溢出，主机 64 位测不出；格式见 tests/README.md「改坏检验」。
+
+id: M12
+file: custom/custom_brightness.c
+old:     pct = (long)(((long long)raw * 100 + backlight_max / 2) / backlight_max);
+new:     pct = (raw * 100 + backlight_max / 2) / backlight_max;
+tests: ^main\.brightness_arm32\.

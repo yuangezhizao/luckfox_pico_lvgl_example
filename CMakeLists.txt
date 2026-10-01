@@ -71,11 +71,6 @@ file(GLOB SRC ${CMAKE_SOURCE_DIR}/src/*.c
             ${CMAKE_SOURCE_DIR}/generated/guider_fonts/*.c
 )
 
-add_executable(${PROJECT_NAME} 
-            ${SRC}
-    )
-# debug
-add_compile_options(-fPIC -Wall -O3 -g0)
 # warnning
 add_compile_options(
     -Wall -Wshadow -Wundef -Wmissing-prototypes -Wno-discarded-qualifiers -Wall -Wextra -Wno-unused-function -Wno-error=strict-prototypes -Wpointer-arith 
@@ -84,8 +79,14 @@ add_compile_options(
     -Wno-sign-compare -Wno-error=missing-prototypes -Wdouble-promotion -Wclobbered -Wdeprecated -Wempty-body -Wtype-limits -Wshift-negative-value -Wstack-usage=2048 
     -Wno-unused-value -Wno-unused-parameter -Wno-missing-field-initializers -Wuninitialized -Wmaybe-uninitialized -Wall -Wextra -Wno-unused-parameter 
     -Wno-missing-field-initializers -Wtype-limits -Wsizeof-pointer-memaccess -Wno-format-nonliteral -Wpointer-arith -Wno-cast-qual -Wmissing-prototypes 
-    -Wunreachable-code -Wno-switch-default -Wreturn-type -Wmultichar -Wno-discarded-qualifiers -Wformat-security -Wno-ignored-qualifiers -Wno-sign-compare -std=c99
+    -Wunreachable-code -Wno-switch-default -Wreturn-type -Wmultichar -Wno-discarded-qualifiers -Wformat-security -Wno-ignored-qualifiers -Wno-sign-compare -std=gnu99
 )
+
+add_executable(${PROJECT_NAME} 
+            ${SRC}
+    )
+# debug
+add_compile_options(-fPIC -Wall -O3 -g0)
 
 if(SYSTEM_UBUNTU)
     target_include_directories(${PROJECT_NAME} PRIVATE
