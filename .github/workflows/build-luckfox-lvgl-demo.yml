@@ -291,3 +291,36 @@ jobs:
           path: |
             build/luckfox_lvgl_demo
             build/SHA256SUMS
+
+  native-tests:
+    name: 🧪 原生测试
+    needs: build-image
+    # schedule（月度）只重建 CI 镜像、跳过测试
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ${{ needs.build-image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: 📤 检出本仓
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: 🛠️ 构建原生测试
+        shell: bash
+        run: |
+          set -euo pipefail
+          # qemu-user 与 arm-linux-gnueabihf-gcc 均在 CI 镜像（.cursor/Dockerfile）中；ON 使缺工具时直接失败而不是静默跳过 32 位测试
+          cmake -S tests -B build-tests -DLUCKFOX_TESTS_ARM32=ON
+          cmake --build build-tests -j"$(nproc)"
+
+      - name: 🧪 运行原生测试
+        shell: bash
+        run: ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
