@@ -4,7 +4,7 @@
 
 **Goal:** 在 SDK 统一设备树固件（`model = "Luckfox Pico Ultra"`）上，按 SDIO ID `C8A1:C18D` 判定 Luckfox Pico Ultra W 板载 WiFi，恢复例程主界面的 WIFI 按键。
 
-**Architecture:** `custom/custom_main.c` 新增只依赖 libc 的 `luckfox_sdio_has_id()`，遍历 `/sys/bus/sdio/devices/*/uevent` 精确匹配 `SDIO_ID=C8A1:C18D`；`luckfox_get_wifi_enable_info()` 的 `"Luckfox Pico Ultra"` 分支改为调用它，旧固件 `"Luckfox Pico Ultra W"` 行为不变，并修掉同函数的重复 `fclose`；`custom/custom_wifi.c` 的 `wifi_backend_release()` 判空，消除 WIFI 键恢复后可达的退出段错误。逻辑用临时 host harness 验证，交叉编译由本机 glibc 与 PR CI 两行验证，功能由作者 Luckfox Pico Ultra W 真机验证。
+**Architecture:** `custom/custom_main.c` 新增只依赖 libc 的 `luckfox_sdio_has_id()`，遍历 `/sys/bus/sdio/devices/*/uevent` 精确匹配 `SDIO_ID=C8A1:C18D`；`luckfox_get_wifi_enable_info()` 的 `"Luckfox Pico Ultra"` 分支改为调用它，旧固件 `"Luckfox Pico Ultra W"` 行为不变，并修掉同函数的重复 `fclose`；`custom/custom_wifi.c` 的 `wifi_backend_release()` 判空，消除 WIFI 键恢复后可达的退出段错误。逻辑用 host 测试（以仓库 `tests/` 为准）验证，交叉编译由本机 glibc 与 PR CI 两行验证，功能由作者 Luckfox Pico Ultra W 真机验证。
 
 **Tech Stack:** C（GUI-Guider + LVGL 8.3）、CMake、`arm-linux-gnueabihf-`（本机与 CI glibc 行）、Rockchip `arm-rockchip830-linux-uclibcgnueabihf-`（CI uClibc 行）、host `gcc`（harness）。
 
@@ -22,7 +22,7 @@
 - 非 W 板与旧固件无法实测，只做代码走查并标「未实测」
 - 提交序：`fix(custom)` → `docs(agents)` → `docs(superpowers)`（最后单个提交）；评审发现的问题直接合并进对应提交，改写历史后用 `--force-with-lease` 推送，不 force-push `dev`
 - 分支仅 `cursor/ultra-w-wifi-detect-7dfe`；不另开 PR
-- 已完成 Task 只保留落地文件与勾选步骤，不重复已入库的代码与提交说明（以 git 为准）；不入库的 harness 与复现程序保留全文以便复现
+- 已完成 Task 只保留落地文件与勾选步骤，不重复已入库的代码与提交说明（以 git 为准）；未入库的双重 `fclose` 演示与修复前对照程序保留全文以便复现
 
 ## File Structure
 
@@ -31,8 +31,8 @@
 | `custom/custom_main.c` | `DEFINES` 区 `LUCKFOX_SDIO_BUS_DIR`/`LUCKFOX_ULTRA_W_SDIO_ID`；`STATIC FUNCTIONS` 区 `luckfox_sdio_has_id()`；`luckfox_get_wifi_enable_info()` 改判据与修 `fclose` |
 | `custom/custom_wifi.c` | `wifi_backend_release()` 判空并置 `NULL` |
 | `AGENTS.md` | `### 运行 / 验证 GUI（重要陷阱）` 末尾一段板型判据 gotcha |
-| `/tmp/sdio-test/`（不入库） | host harness：`harness.c`、`run.sh`、从源文件抽出的 `helper.inc` |
-| `/tmp/ll-segv/`（不入库） | host 复现程序：`main.c`，证明 `_lv_ll_remove(&ll, NULL)` 段错误 |
+| `tests/cases/main/{test,unit}_sdio_detect.c` | SDIO 判定测试，以仓库为准 |
+| `tests/cases/wifi/test_backend_release.c` | `wifi_backend_release()` 判空回归测试，以仓库为准 |
 | `/tmp/dblclose/`（不入库） | host 复现程序：`main.c`，证明对同一 `FILE*` 两次 `fclose` 的后果 |
 | `/tmp/lp-toolchain/`、`/tmp/nofix/`（不入库） | uClibc 工具链 sparse 检出与修复前对照程序构建目录（Task 7） |
 | 本 plan / spec | Task、验证证据、偏离 |
@@ -63,134 +63,13 @@ ls /var/run/wpa_supplicant
 
 - Modify: `custom/custom_main.c`（两个宏、`luckfox_sdio_has_id()`、`luckfox_get_wifi_enable_info()` 的 `"Luckfox Pico Ultra"` 分支与 `fclose`）
 - Modify: `custom/custom_wifi.c`（`wifi_backend_release()` 判空，见「与计划的偏离」）
-- Test: `/tmp/sdio-test/`（不入库）
+- Test: `tests/cases/main/test_sdio_detect.c`（以仓库为准）
 
 **Interfaces:** 产出 `static int luckfox_sdio_has_id(const char *bus_dir, const char *uevent_line)`（找到返回 1，否则 0）；宏 `LUCKFOX_SDIO_BUS_DIR`、`LUCKFOX_ULTRA_W_SDIO_ID`。
 
-harness（`/tmp/sdio-test/harness.c`）：
+SDIO 判定测试以仓库 `tests/cases/main/test_sdio_detect.c` 为准：在临时目录造 7 种 uevent 布局（absent/empty/func1_only/ultra_w/hidden/no_newline/prefix），经 `unit_sdio_detect.c` 调用 `luckfox_sdio_has_id()` 断言返回值。
 
-```c
-#include <dirent.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/stat.h>
-
-#include "helper.inc"
-
-#define ROOT "/tmp/sdio-test/root"
-
-static int failures;
-
-static void make_dir(const char *path)
-{
-    if (mkdir(path, 0755) != 0)
-        perror(path);
-}
-
-static void put_uevent(const char *bus_dir, const char *dev, const char *content)
-{
-    char path[512];
-    FILE *fp;
-
-    snprintf(path, sizeof(path), "%s/%s", bus_dir, dev);
-    make_dir(path);
-    snprintf(path, sizeof(path), "%s/%s/uevent", bus_dir, dev);
-    fp = fopen(path, "w");
-    if (fp == NULL) {
-        perror(path);
-        return;
-    }
-    fputs(content, fp);
-    fclose(fp);
-}
-
-static void expect(const char *name, const char *bus_dir, int want)
-{
-    int got = luckfox_sdio_has_id(bus_dir, LUCKFOX_ULTRA_W_SDIO_ID);
-
-    printf("%s %s: got=%d want=%d\n", got == want ? "PASS" : "FAIL", name, got, want);
-    if (got != want)
-        failures++;
-}
-
-int main(void)
-{
-    expect("absent", ROOT "/absent", 0);
-
-    make_dir(ROOT "/empty");
-    expect("empty", ROOT "/empty", 0);
-
-    make_dir(ROOT "/func1_only");
-    put_uevent(ROOT "/func1_only", "mmc1:e9ea:1", "SDIO_CLASS=07\nSDIO_ID=C8A1:C08D\n");
-    expect("func1_only", ROOT "/func1_only", 0);
-
-    make_dir(ROOT "/ultra_w");
-    put_uevent(ROOT "/ultra_w", "mmc1:e9ea:1", "SDIO_CLASS=07\nSDIO_ID=C8A1:C08D\n");
-    put_uevent(ROOT "/ultra_w", "mmc1:e9ea:2", "SDIO_CLASS=07\nSDIO_ID=C8A1:C18D\nSDIO_REVISION=0.0\n");
-    expect("ultra_w", ROOT "/ultra_w", 1);
-
-    make_dir(ROOT "/hidden");
-    put_uevent(ROOT "/hidden", ".mmc1:e9ea:2", "SDIO_ID=C8A1:C18D\n");
-    expect("hidden", ROOT "/hidden", 0);
-
-    make_dir(ROOT "/no_newline");
-    put_uevent(ROOT "/no_newline", "mmc1:e9ea:2", "SDIO_ID=C8A1:C18D");
-    expect("no_newline", ROOT "/no_newline", 1);
-
-    make_dir(ROOT "/prefix");
-    put_uevent(ROOT "/prefix", "mmc1:e9ea:2", "SDIO_ID=C8A1:C18DX\n");
-    expect("prefix", ROOT "/prefix", 0);
-
-    return failures == 0 ? 0 : 1;
-}
-```
-
-`/tmp/sdio-test/run.sh`（从仓库源文件抽宏与函数，测的是入库代码）：
-
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-cd /tmp/sdio-test
-rm -rf root && mkdir -p root
-{ grep -E '^#define LUCKFOX_(SDIO_BUS_DIR|ULTRA_W_SDIO_ID) ' /workspace/custom/custom_main.c || true
-  sed -n '/^static int luckfox_sdio_has_id(/,/^}/p' /workspace/custom/custom_main.c; } > helper.inc
-gcc -std=gnu99 -Wall -Wextra -Werror -o harness harness.c
-./harness
-```
-
-复现程序（`/tmp/ll-segv/main.c`，为 `lv_mem_*` 打桩，只编 vendored `lv_ll.c`）：
-
-```c
-#include <stdio.h>
-#include <stdlib.h>
-#include <signal.h>
-#include <unistd.h>
-#include "lvgl/src/misc/lv_ll.h"
-
-void * lv_mem_alloc(size_t size) { return malloc(size); }
-void lv_mem_free(void * data) { free(data); }
-void * lv_mem_realloc(void * p, size_t n) { return realloc(p, n); }
-
-static void on_segv(int sig) { (void)sig; const char m[] = "CAUGHT SIGSEGV in _lv_ll_remove(&ll, NULL)\n"; write(1, m, sizeof(m) - 1); _exit(139); }
-
-int main(void)
-{
-    lv_ll_t ll;
-    _lv_ll_init(&ll, 16);
-    _lv_ll_ins_head(&ll);
-    _lv_ll_ins_head(&ll);
-    printf("list has 2 nodes: head=%p tail=%p\n", _lv_ll_get_head(&ll), _lv_ll_get_tail(&ll));
-    fflush(stdout);
-    signal(SIGSEGV, on_segv);
-    _lv_ll_remove(&ll, NULL);
-    printf("NO CRASH\n");
-    return 0;
-}
-```
-
-```bash
-cd /tmp/ll-segv && gcc -I/workspace/lib -I/workspace/lib/lvgl -o ll-segv main.c /workspace/lib/lvgl/src/misc/lv_ll.c && ./ll-segv; echo "exit=$?"
-```
+`wifi_backend_release()` 判空以仓库 `tests/cases/wifi/test_backend_release.c` 为准：未创建定时器即调用、创建后连调两次，均须正常返回且定时器指针为 NULL。修复前的崩溃由 `tests/cases/wifi/backend_release.mutants` 的 W1 重现。
 
 双重 `fclose` 复现程序（`/tmp/dblclose/main.c`，host glibc）：
 
@@ -214,8 +93,8 @@ int main(void)
 cd /tmp/dblclose && gcc -o dblclose main.c && ./dblclose; echo "exit=$?"
 ```
 
-- [x] **Step 1:** 写 harness 与 `run.sh`
-- [x] **Step 2:** RED：`bash /tmp/sdio-test/run.sh` 编译失败（`luckfox_sdio_has_id` implicit declaration、`LUCKFOX_ULTRA_W_SDIO_ID` undeclared）
+- [x] **Step 1:** 写 SDIO 判定测试（`tests/cases/main/{test,unit}_sdio_detect.c`）
+- [x] **Step 2:** RED：SDIO 判定测试编译失败（`luckfox_sdio_has_id` implicit declaration、`LUCKFOX_ULTRA_W_SDIO_ID` undeclared）
 - [x] **Step 3:** 加宏
 - [x] **Step 4:** 加 `luckfox_sdio_has_id()`
 - [x] **Step 5:** GREEN：7 行 PASS，退出码 0
@@ -238,15 +117,7 @@ grep -E 'custom_(main|wifi)\.c:.*warning' /tmp/build.log
 
 - [x] **Step 9:** 范围检查：`custom/custom_main.c`、`custom/custom_wifi.c`；新增行无 `strcpy`/`strcat`/`sprintf(`/`popen`/`system(`
 - [x] **Step 10:** 提交 `fix(custom)`（`custom/custom_main.c`、`custom/custom_wifi.c`）
-- [x] **Step 11:** ASan/UBSan 下重跑 harness（先执行 `run.sh` 生成 `helper.inc`）
-
-```bash
-set -euo pipefail
-cd /tmp/sdio-test
-gcc -std=gnu99 -Wall -Wextra -Werror -g -fno-omit-frame-pointer -fsanitize=address,undefined -fno-sanitize-recover=all -o harness-san harness.c
-rm -rf root && mkdir -p root
-ASAN_OPTIONS=detect_leaks=1 ./harness-san
-```
+- [x] **Step 11:** ASan/UBSan 下重跑：`tests/` 工程默认开启。
 
 ### Task 3: `AGENTS.md` 板型判据 gotcha（`docs(agents)`，已完成）
 
