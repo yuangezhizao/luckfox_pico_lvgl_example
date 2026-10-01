@@ -44,11 +44,13 @@ ENV TZ=Asia/Shanghai
 # - ARM 交叉工具链: gcc-arm-linux-gnueabihf、g++-arm-linux-gnueabihf（编 32-bit ARM 目标；本仓工具链在此安装）。
 # - 构建系统    : cmake；build-essential 提供 native x86 gcc/g++/make（native 渲染 harness 需要）。
 # - native 验证 : libdrm-dev、libcjson-dev（x86 版，供 custom/*.c 链接期符号）；libsdl2-dev（SDL 驱动桌面开窗渲染 + ffmpeg 录制演示）；pkg-config 便利工具（可选）。
+# - 32 位运行 : qemu-user（qemu-arm 用户态运行 32 位 ARM 程序：tests/ 的 32 位换算测试 main.brightness_arm32.conversion 与 uClibc 产物冒烟；CI 的 native-tests job 以 LUCKFOX_TESTS_ARM32=ON 依赖它）。⚠️ 修改本文件会改变 CI 镜像标签（取本文件哈希），该 PR 在合并前 build-image 找不到 dev 签名镜像而失败，合并后 dev push 重建镜像。
 RUN apt-get update && apt-get install -y --no-install-recommends \
       git sudo ca-certificates curl \
       gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf \
       cmake build-essential \
       libdrm-dev libcjson-dev libsdl2-dev pkg-config \
+      qemu-user \
     && rm -rf /var/lib/apt/lists/*
 
 # 允许对检出的工作区执行 git（避免 "detected dubious ownership" 报错）。
