@@ -1,0 +1,55 @@
+# test_brightness 的改坏变体（M 编号沿用 PR #6）；格式见 tests/README.md「改坏检验」。
+
+id: M1
+file: custom/custom_brightness.c
+old: #define BRIGHTNESS_MIN_PCT      10
+new: #define BRIGHTNESS_MIN_PCT      0
+tests: ^main\.brightness\.
+
+id: M2
+file: custom/custom_brightness.c
+old:     if (raw == backlight_last_written)\n        return;\n
+new:
+tests: ^main\.brightness\.
+
+id: M3
+file: custom/custom_brightness.c
+old:     lv_obj_move_background(slider);\n    lv_obj_move_background(value_label);\n    lv_obj_move_background(title_label);\n
+new:
+tests: ^main\.brightness\.
+
+id: M4
+file: custom/custom_brightness.c
+old:     pct = backlight_read_percent();\n
+new:     pct = backlight_read_percent();\n    backlight_write_percent(pct);\n
+tests: ^main\.brightness\.
+
+id: M5
+file: custom/custom_brightness.c
+old:  || backlight_max <= 0
+new:
+tests: ^main\.brightness\.
+
+id: M6
+file: custom/custom_brightness.c
+old: } else if (!backlight_write_error_reported) {
+new: } else {
+tests: ^main\.brightness\.
+
+id: M7
+file: custom/custom_brightness.c
+old: long raw = (long)(((long long)pct * backlight_max + 50) / 100);
+new: long raw = (long)(((long long)pct * backlight_max) / 100);
+tests: ^main\.brightness\.
+
+id: M10
+file: custom/custom_brightness.c
+old:     if (raw < 1)\n        raw = 1;\n
+new:
+tests: ^main\.brightness\.
+
+id: M11
+file: custom/custom_brightness.c
+old:  || backlight_max > BRIGHTNESS_MAX_RAW
+new:
+tests: ^main\.brightness\.

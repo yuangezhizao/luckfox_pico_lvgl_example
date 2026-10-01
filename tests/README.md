@@ -10,7 +10,7 @@ cmake --build build-tests -j"$(nproc)"
 ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
 ```
 
-- 依赖：`build-essential`、`cmake`、`libdrm-dev`、`libcjson-dev`（均在 `.cursor/Dockerfile` 中）。
+- 依赖：`build-essential`、`cmake`、`libdrm-dev`、`libcjson-dev`（均在 `.cursor/Dockerfile` 中），以及 `python3`（`tools/mutate.sh` 用它解析清单）。
 - 只跑一个页面：`ctest --test-dir build-tests -L wifi`；按名字筛选：`ctest --test-dir build-tests -R '^main\.brightness\.'`；只列出不运行：加 `-N`。
 
 ## 目录与分类
@@ -50,4 +50,35 @@ ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
 
 - 测试不调用 `custom_init()`：它用 `vfork()` 启动 `mpv`，主机无 `mpv` 时子进程 `return` 会破坏父进程栈。
 - 捕获输出期间 `CHECK` 的打印也会被捕获，断言放在 `tst_capture_end()` 之后。
+- 测试工程对 `lib/lvgl/src`、`generated/`、`custom/` 递归 glob 全部 `.c`，与产品 `CMakeLists.txt` 只 glob 指定目录不完全相同，在这些目录下新增子目录或非产品 `.c` 时需留意。
+- libdrm、cjson 头文件使用系统路径 `/usr/include/libdrm`、`/usr/include/cjson`（Debian/Ubuntu 布局）。
 - `custom_brightness.c` 在测试构建中以 `BACKLIGHT_SYSFS_DIR=tst_backlight_root()` 编译，背光目录位于本进程临时目录，`ctest -j` 并行互不干扰。
+
+## 手动目标
+
+不进默认构建、不注册为 ctest：
+
+- `cmake --build build-tests --target screenshots`：以 480、720 输出主屏初始、滑条拖到最左、音乐弹窗、无背光设备四类截图到 `build-tests/screenshots/`（PPM；装了 `ffmpeg` 时另存 PNG）。
+- `cmake --build build-tests --target preview` 后 `PREVIEW_RES=480 PREVIEW_BACKLIGHT=255:204 DISPLAY=:1 ./build-tests/preview`：SDL 开窗，鼠标即触摸，点 OFF 退出；需要 SDL2（`libsdl2-dev`），找不到时不生成该目标。`PREVIEW_RES` 默认 480；不设 `PREVIEW_BACKLIGHT` 时没有背光设备，亮度控件隐藏；用 xdotool 等自动化点击时需按住约 150 ms 再抬起，否则点击可能被丢掉。
+
+| 方面 | 本工程 | 真机 |
+|---|---|---|
+| 源码 | 同一份 `lib/lvgl`、`generated/`、`custom/` | 同左 |
+| 显示 | 内存帧缓冲（截图）或 SDL 窗口 | `/dev/fb0` |
+| 输入 | 脚本化触摸或鼠标 | `/dev/input/event0` 触摸屏 |
+| 背光 | 临时目录下的假 sysfs | `/sys/class/backlight` |
+| `custom_init()`（mpv 等） | 不调用 | 调用 |
+
+截图与预览只用于对齐布局和复现交互，权威验证仍是真机。
+
+## 改坏检验
+
+`tests/tools/mutate.sh [id...]` 逐条应用 `cases/*/*.mutants` 中的改坏变体，确认对应测试失败（`KILLED`）后还原；它把 `custom/` 复制到工作目录 `$MUTATE_WORK/src`（默认 `/tmp/luckfox-mutate/src`）、其余目录链接回仓库，以 `-DLUCKFOX_ROOT` 配置测试工程，不改动工作区。
+
+`*.mutants` 放在被测测试旁、命名 `<对象>.mutants`；每条记录由 `id`（只含字母、数字、`_`、`.`、`-`，且以字母或数字开头）、`file`（须在 `custom/` 下）、`old`（须恰好出现一次）、`new`、`tests`（ctest 正则）五行 `键: 值` 组成，记录间空一行，`#` 开头为注释；值去掉冒号后恰好一个空格，`\n` 表示换行，`new:` 后为空表示删除。
+
+退出码：0 表示全部 `KILLED`；1 表示有变体 `SURVIVED`（测试没能发现这处改坏）；2 表示工具或清单错误，包括基线不绿、构建失败、`file` 不在 `custom/` 下或含 `..`、`old` 不是恰好匹配一次、清单解析失败（未知键、重复 id、记录内重复键也算，后者通常是漏写记录间空行）、传入的 id 不存在、一个变体都没跑。
+
+对应测试未注册的变体（如缺 `qemu-arm` 时的 32 位用例）标为 `SKIPPED`，不影响退出码，结尾会汇总 `N run, M skipped`。
+
+工作目录由 `MUTATE_WORK` 指定，默认固定为 `/tmp/luckfox-mutate`，并发运行须用不同的 `MUTATE_WORK` 区分。脚本启动时会 `rm -rf` 其中的 `src`，所以拒绝 `/`、仓库内的路径与仓库位于其 `src/` 之内的目录，只使用不存在、为空或带标记文件 `.luckfox-mutate-workdir`（普通文件，脚本首次使用时创建）的目录，否则以退出码 2 结束；`custom/` 中有符号链接时同样拒绝，因为变体会经副本写回仓库。

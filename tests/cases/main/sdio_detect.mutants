@@ -1,0 +1,7 @@
+# test_sdio_detect 的改坏变体；格式见 tests/README.md「改坏检验」。
+
+id: S1
+file: custom/custom_main.c
+old:             if (strcmp(line, uevent_line) == 0) {
+new:             if (strncmp(line, uevent_line, strlen(uevent_line)) == 0) {
+tests: ^main\.sdio_detect\.

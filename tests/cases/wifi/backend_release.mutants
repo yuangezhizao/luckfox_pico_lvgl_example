@@ -1,0 +1,7 @@
+# test_backend_release 的改坏变体（W1 即 PR #5 之前 31e3506 的实现）；格式见 tests/README.md「改坏检验」。
+
+id: W1
+file: custom/custom_wifi.c
+old:     if (wifi_update_timer != NULL) {\n        lv_timer_del(wifi_update_timer);\n        wifi_update_timer = NULL;\n    }\n
+new:     lv_timer_del(wifi_update_timer);\n
+tests: ^wifi\.backend_release\.
