@@ -79,7 +79,8 @@ void Sketchpad_color_cpicker_event_cb(lv_event_t * e);
 void Sketchpad_clear_btn_event_cb(lv_event_t * e);
 
 /* Music Player */
-int music_scan_list(char* mp3_string);
+int music_scan_list(void);
+const char *music_roller_options(void);
 
 void Music_player_list_roller_event_handler(lv_event_t *e);
 void Music_player_next_btn_event_handler(lv_event_t *e);

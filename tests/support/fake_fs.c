@@ -153,3 +153,11 @@ void tst_fake_exec(const char *name, const char *script)
         path_set = 1;
     }
 }
+
+const char *tst_music_dir(void)
+{
+    static char path[1024];
+    if (path[0] == '\0')
+        tst_path(path, sizeof(path), "music");
+    return path;
+}

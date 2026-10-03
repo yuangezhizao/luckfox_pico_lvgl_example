@@ -1,0 +1,11 @@
+id: MUSIC-2
+file: custom/custom_musicplayer.c
+old:         total += strlen(cur->filename) + 1;
+new:         total += strlen(cur->filename);
+tests: ^music\.list\.
+
+id: MUSIC-13
+file: custom/custom_musicplayer.c
+old:         music_list_clear();\n        free(music_roller_str);\n        music_roller_str = NULL;
+new:         /* 改坏：保留旧选项与新链表。 */
+tests: ^music\.list_alloc\.

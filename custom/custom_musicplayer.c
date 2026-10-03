@@ -19,8 +19,9 @@
  *********************/
 
 #define MAX_FILENAME_LEN 256
-#define MAX_CMD_LEN 256
+#ifndef MUSIC_DIR_PATH
 #define MUSIC_DIR_PATH "/music"
+#endif
 /**********************
  *      TYPEDEFS
  **********************/
@@ -53,10 +54,6 @@ extern lv_ui guider_ui;
  **********************/
 static void sigaction_exit_handler(int sig) { exit(0); }
 
-static void init_music_node_list(struct Music_Node** head) {
-    *head = NULL;
-}
-
 static void insert_music_node(struct Music_Node** head, char* filename, int id) {
     struct Music_Node* newNode = (struct Music_Node*)malloc(sizeof(struct Music_Node));
     if (newNode == NULL) {
@@ -79,16 +76,53 @@ static void insert_music_node(struct Music_Node** head, char* filename, int id) 
     }
 }
 
-static void free_music_node_list(struct Music_Node* head) {
-    if (head != NULL) {
-        struct Music_Node* current = head->next;
-        while (current != head) {
-            struct Music_Node* temp = current;
-            current = current->next;
-            free(temp);
+static char *music_roller_str;
+
+/* 链表是环形的：先断开环再逐个释放；重复扫描不泄漏。 */
+static void music_list_clear(void)
+{
+    struct Music_Node *cur = head;
+
+    if (cur != NULL) {
+        cur->prev->next = NULL;
+        while (cur != NULL) {
+            struct Music_Node *next = cur->next;
+            free(cur);
+            cur = next;
         }
-        free(head);
     }
+    head = NULL;
+    playing_music_node = NULL;
+}
+
+/* 扫描已重建链表；选项分配失败时同时清空节点和选项，避免旧选项指向新歌曲。 */
+static int music_build_roller_options(int count)
+{
+    struct Music_Node *cur = head;
+    size_t total = 1, used = 0;
+    char *buf;
+    int i;
+
+    for (i = 0; i < count; i++, cur = cur->next)
+        total += strlen(cur->filename) + 1;
+    buf = malloc(total);
+    if (buf == NULL) {
+        music_list_clear();
+        free(music_roller_str);
+        music_roller_str = NULL;
+        return -1;
+    }
+    buf[0] = '\0';
+    for (i = 0, cur = head; i < count; i++, cur = cur->next)
+        used += (size_t)snprintf(buf + used, total - used, "%s%s", i ? "\n" : "", cur->filename);
+    free(music_roller_str);
+    music_roller_str = buf;
+    return 0;
+}
+
+const char *music_roller_options(void)
+{
+    return music_roller_str != NULL ? music_roller_str : "";
 }
 
 static void _music_pause(int sta)
@@ -201,14 +235,13 @@ void *get_music_playback_time(void *arg)
  *  GLOBAL FUNCTIONS
  **********************/
 
-int music_scan_list(char* mp3_string)
+int music_scan_list(void)
 {
     DIR *dir;
     struct dirent *entry;
     int id_num = 0;
-    int i;
 
-    init_music_node_list(&head);
+    music_list_clear();
     dir = opendir(MUSIC_DIR_PATH); 
 
     // Read files from music dir
@@ -230,21 +263,8 @@ int music_scan_list(char* mp3_string)
     }
     closedir(dir);
     
-    // Create roller str
-    mp3_string[0] = '\0';
-    if (head != NULL) {
-        struct Music_Node* current = head;
-        playing_music_node = head;
-        for(i = 0;i < id_num;i++) {
-            if(i != 0)
-                strcat(mp3_string,"\n");
-            strcat(mp3_string, current->filename);
-            //printf("%s\n", current->filename);
-            current = current->next;
-        }
-    }
-
-    return 0;
+    playing_music_node = head;
+    return music_build_roller_options(id_num);
 }
 
 void Music_player_list_roller_event_handler(lv_event_t *e)
