@@ -169,7 +169,8 @@ static void _wifi_conf_load(const char* ssid, const char* password)
     wpa_supplicant_pipe = popen("wpa_cli", "w");
     if (wpa_supplicant_pipe == NULL) {
         perror("popen");
-        exit(EXIT_FAILURE);
+        wifi_hint_show("Cannot run wpa_cli");
+        return ;
     }
     // set network ssid adn psk
     memset(buffer,0,MAX_CONF_LEN);
@@ -343,7 +344,6 @@ static void _wifi_status_update()
     fp = popen(command, "r");
     if (fp == NULL) {
         printf("Failed to run command\n");
-        pclose(fp);
         return ;
     }
 

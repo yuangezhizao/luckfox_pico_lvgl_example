@@ -40,3 +40,5 @@ void tst_wifi_conf_get(char ssid[128], char psk[128])
 }
 
 int tst_wifi_scan(void) { return _wifi_scanning_ssid(); }
+
+void tst_wifi_status_update(void) { _wifi_status_update(); }
