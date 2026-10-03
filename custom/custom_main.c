@@ -214,7 +214,6 @@ void custom_init()
 
     /* Music Player */
     MUSIC_ENABLE = 0;
-    system("mpv 2>&1 >/dev/null");
     music_player_thread_init();
 
     /* GIF */

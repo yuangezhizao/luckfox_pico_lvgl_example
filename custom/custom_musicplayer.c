@@ -12,6 +12,8 @@
  *      INCLUDES
  *********************/
 #include <stdio.h>
+#include <sys/wait.h>
+#include <time.h>
 #include "lvgl.h"
 #include "custom.h"
 /*********************
@@ -19,6 +21,8 @@
  *********************/
 
 #define MAX_FILENAME_LEN 256
+#define MPV_CONNECT_TIMEOUT_MS 5000
+#define MPV_CONNECT_POLL_MS 50
 #ifndef MPV_SOCKET_PATH
 #define MPV_SOCKET_PATH "/tmp/mpvsocket"
 _Static_assert(sizeof(MPV_SOCKET_PATH) <= sizeof(((struct sockaddr_un *)0)->sun_path), "MPV_SOCKET_PATH too long for sun_path");
@@ -447,6 +451,43 @@ void Music_player_mode_btn_event_handler(lv_event_t *e)
 
 }
 
+/* 返回已连接的 fd；-2 表示 mpv 已退出且已回收（如 exec 失败的 127）；-1 表示超时或 socket() 失败，子进程仍待回收。 */
+static int mpv_wait_connect(pid_t child, const char *sock_path)
+{
+    struct sockaddr_un sa;
+    struct timespec start, now;
+    int status;
+
+    memset(&sa, 0, sizeof(sa));
+    sa.sun_family = AF_UNIX;
+    memcpy(sa.sun_path, sock_path, strlen(sock_path) + 1);
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    for (;;) {
+        int fd;
+        long elapsed_ms;
+
+        if (waitpid(child, &status, WNOHANG) == child) {
+            printf("mpv exited before its IPC socket appeared (status 0x%x)\n", status);
+            return -2;
+        }
+        fd = socket(AF_UNIX, SOCK_STREAM, 0);
+        if (fd < 0) {
+            perror("Create socket failed");
+            return -1;
+        }
+        if (connect(fd, (struct sockaddr *)&sa, sizeof(sa)) == 0)
+            return fd;
+        close(fd);
+        clock_gettime(CLOCK_MONOTONIC, &now);
+        elapsed_ms = (now.tv_sec - start.tv_sec) * 1000L + (now.tv_nsec - start.tv_nsec) / 1000000L;
+        if (elapsed_ms >= MPV_CONNECT_TIMEOUT_MS) {
+            printf("Cannot connect to %s\n", sock_path);
+            return -1;
+        }
+        usleep(MPV_CONNECT_POLL_MS * 1000);
+    }
+}
+
 int music_player_thread_init()
 {
     /* MPV_SOCKET_PATH 可被测试覆盖为运行期表达式，长度只能在运行期检查，且须在启动 mpv 之前。 */
@@ -463,6 +504,8 @@ int music_player_thread_init()
         printf("mpv ipc argument too long\n");
         return -1;
     }
+    /* 移除旧实例的监听路径，已有连接不受影响。 */
+    unlink(sock_path);
     pid = vfork();
     if (pid == 0) // child thread
     {
@@ -473,34 +516,31 @@ int music_player_thread_init()
     }
     else if (pid > 0) // parent thread
     {
+        int fd;
 
-        sleep(1);
         close(0);
-
         act.sa_handler = sigaction_exit_handler;
         sigfillset(&act.sa_mask);
         act.sa_flags = SA_RESTART; /* don't fiddle with EINTR */
         sigaction(SIGUSR1, &act, NULL);
-        addr.sun_family = AF_UNIX;
-        memcpy(addr.sun_path, sock_path, strlen(sock_path) + 1);
-        
-        fd_mpv = socket(AF_UNIX, SOCK_STREAM, 0);
-        if (fd_mpv == -1)
-        {   
-            perror("Create socket failed\n");
+
+        fd = mpv_wait_connect(pid, sock_path);
+        if (fd == -2)
+            return -1;
+        if (fd < 0) {
+            kill(pid, SIGKILL);
+            waitpid(pid, NULL, 0);
             return -1;
         }
-        sleep(0.1);
-    	// socket connect
-		if (connect(fd_mpv, (struct sockaddr *)&addr, sizeof(addr)) == -1)
-        {
-            perror("Cannot connect to socket \n");
-            return -1;
-        }
+        fd_mpv = fd;
         // Monitor thread
         if (pthread_create(&monitor_thread, NULL, get_music_playback_time, NULL) != 0)
         {
             perror("pthread create error!\n");
+            close(fd_mpv);
+            fd_mpv = -1;
+            kill(pid, SIGKILL);
+            waitpid(pid, NULL, 0);
             return -1;
         }
         return 0;
