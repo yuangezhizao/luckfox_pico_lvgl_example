@@ -22,3 +22,6 @@ if(LUCKFOX_ARM32_ENABLED)
     add_test(NAME main.brightness_arm32.conversion COMMAND ${LUCKFOX_QEMU_ARM} -L /usr/arm-linux-gnueabihf ${arm32_exe})
     set_tests_properties(main.brightness_arm32.conversion PROPERTIES TIMEOUT 120 LABELS "main;arm32")
 endif()
+
+luckfox_add_compile_check(no_implicit_decl FLAGS -Werror=implicit-function-declaration
+    SOURCES ${LUCKFOX_ROOT}/custom/custom_main.c ${LUCKFOX_ROOT}/lib/lvgl/src/hal/lv_hal_tick.c ${CMAKE_CURRENT_SOURCE_DIR}/compile_fcntl_custom.c)

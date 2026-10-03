@@ -15,7 +15,7 @@ extern "C" {
 
 #include <dirent.h>
 #include <errno.h>
-#include <linux/fcntl.h>
+#include <fcntl.h>
 #include <linux/input.h>
 #include <pthread.h>
 #include <signal.h>
@@ -55,7 +55,7 @@ extern "C" {
 
 // LVGL System
 void custom_init();
-uint32_t custom_tick_get(void);
+#include "custom_tick.h"
 
 // Compatible API
 void luckfox_lv_obj_set_pos(lv_obj_t * obj, lv_coord_t x, lv_coord_t y);

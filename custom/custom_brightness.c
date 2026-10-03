@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/* custom.h 引入了 <linux/fcntl.h>，与 <fcntl.h> 同时包含会重复定义 struct flock，因此 sysfs 用 stdio 读写。 */
+/* sysfs 用 stdio 读写。 */
 #include "custom.h"
 
 #ifndef BACKLIGHT_SYSFS_DIR
