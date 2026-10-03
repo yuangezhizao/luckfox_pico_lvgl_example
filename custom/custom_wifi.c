@@ -12,6 +12,8 @@
  *      INCLUDES
  *********************/
 #include <stdio.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "lvgl.h"
 #include "custom.h"
 
@@ -150,17 +152,40 @@ static void _wifi_conf_load(const char* ssid, const char* password)
     fputs("save_config\n", wpa_supplicant_pipe);
     pclose(wpa_supplicant_pipe);
 
-    // save wifi conf to /etc/wpa_supplicant.conf
+    char temp_path[512];
+    int n = snprintf(temp_path, sizeof(temp_path), "%s.luckfox.new", WPA_FILE_PATH);
+    if (n < 0 || (size_t)n >= sizeof(temp_path)) {
+        printf("Config path too long.\n");
+        return ;
+    }
+
+    // 保存 WiFi 配置到 WPA_FILE_PATH。
     FILE *file = fopen(WPA_FILE_PATH, "r");
     if (file == NULL) {
         printf("Failed to open file.\n");
         return ;
     }
 
-    FILE *temp_file = fopen("temp_wpa_supplicant.conf", "w");
+    struct stat st;
+    if (fstat(fileno(file), &st) != 0) {
+        perror("fstat");
+        fclose(file);
+        return ;
+    }
+
+    FILE *temp_file = fopen(temp_path, "w");
     if (temp_file == NULL) {
         printf("Failed to create temporary file.\n");
         fclose(file);
+        return ;
+    }
+
+    /* fopen("w") 受 umask 影响，必须成功保留原配置的权限才能替换。 */
+    if (fchmod(fileno(temp_file), st.st_mode & 07777) != 0) {
+        perror("fchmod");
+        fclose(file);
+        fclose(temp_file);
+        remove(temp_path);
         return ;
     }
 
@@ -199,12 +224,24 @@ static void _wifi_conf_load(const char* ssid, const char* password)
         }
     }
 
-    fclose(file);
-    fclose(temp_file);
-
-    remove(WPA_FILE_PATH);    
-    rename("temp_wpa_supplicant.conf", WPA_FILE_PATH);
-    //printf("SSID and PSK replaced successfully.\n");
+    /* 读写、刷盘和关闭均成功后才允许替换，失败时保留原配置。 */
+    int failed = ferror(file) || ferror(temp_file);
+    if (fclose(file) != 0)
+        failed = 1;
+    if (!failed && (fflush(temp_file) != 0 || fsync(fileno(temp_file)) != 0))
+        failed = 1;
+    if (fclose(temp_file) != 0)
+        failed = 1;
+    if (failed) {
+        printf("Failed to write configuration.\n");
+        remove(temp_path);
+        return ;
+    }
+    if (rename(temp_path, WPA_FILE_PATH) != 0) {
+        perror("rename");
+        remove(temp_path);
+        return ;
+    }
 
     // reconnect wifi
     system("wpa_cli reconfigure &");

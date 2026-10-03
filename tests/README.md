@@ -51,7 +51,7 @@ ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
 ## 注意
 
 - 测试不调用 `custom_init()`：它用 `vfork()` 启动 `mpv`，主机无 `mpv` 时子进程 `return` 会破坏父进程栈。
-- `custom_wifi.c` 的 `WPA_FILE_PATH=tst_wpa_conf_path()` 由 `tests/CMakeLists.txt` 的源文件 `COMPILE_DEFINITIONS` 覆盖，声明通过 `-include support/fake_fs.h` 引入，配置文件位于本进程临时目录。
+- `custom_wifi.c` 的 `WPA_FILE_PATH=tst_wpa_conf_path()` 由 `tests/CMakeLists.txt` 的源文件 `COMPILE_DEFINITIONS` 覆盖，声明通过 `-include support/fake_fs.h` 引入，配置文件位于本进程临时目录；包含源码的 `unit_wifi.c` 在 `#include "custom_wifi.c"` 前用 `#define` 做相同覆盖。
 - 捕获输出期间 `CHECK` 的打印也会被捕获，断言放在 `tst_capture_end()` 之后。
 - 测试工程对 `lib/lvgl/src`、`generated/`、`custom/` 递归 glob 全部 `.c`，与产品 `CMakeLists.txt` 只 glob 指定目录不完全相同，在这些目录下新增子目录或非产品 `.c` 时需留意。
 - libdrm、cjson 头文件使用系统路径 `/usr/include/libdrm`、`/usr/include/cjson`（Debian/Ubuntu 布局）。

@@ -1,0 +1,11 @@
+id: WIFI-21a
+file: custom/custom_wifi.c
+old:     if (rename(temp_path, WPA_FILE_PATH) != 0) {
+new:     remove(WPA_FILE_PATH);\n    if (rename(temp_path, WPA_FILE_PATH) != 0) {
+tests: ^wifi\.conf_write\.
+
+id: WIFI-21b
+file: custom/custom_wifi.c
+old:     if (fchmod(fileno(temp_file), st.st_mode & 07777) != 0) {
+new:     if (0) {
+tests: ^wifi\.conf_write\.
