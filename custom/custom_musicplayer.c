@@ -247,6 +247,11 @@ int music_scan_list(void)
     // Read files from music dir
     while ((entry = readdir(dir)) != NULL) {
         if (entry->d_type == DT_REG) { // common file
+            /* lv_roller 按 \n 计选项，含 \n 的名字会占两项并让下标整体错位。 */
+            if (strchr(entry->d_name, '\n') != NULL) {
+                printf("skip music file with newline in name\n");
+                continue;
+            }
             // check .mp3
             char *ext = strrchr(entry->d_name, '.');
             if (ext != NULL && strcmp(ext, ".mp3") == 0) {

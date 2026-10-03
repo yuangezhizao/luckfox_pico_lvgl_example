@@ -1,5 +1,7 @@
 /* 音乐列表选项串：总长超过 255 字节不溢出，内容逐项正确（spec D3、D4）。 */
 #include <string.h>
+#include "capture.h"
+int music_scan_list(void);
 
 #include "app_env.h"
 #include "check.h"
@@ -38,8 +40,26 @@ static void options_over_255(void)
     CHECK(strlen(music_roller_options()) == 12 * 200 + 11);
 }
 
+static void newline_name_skipped(void)
+{
+    const char *out, *opts, *nl;
+
+    music_env_socketpair();
+    music_env_file("a.mp3");
+    music_env_file("b\nc.mp3");
+    music_env_file("d.mp3");
+    tst_capture_begin();
+    music_scan_list();
+    out = tst_capture_end();
+    opts = music_roller_options();
+    nl = strchr(opts, '\n');
+    CHECK(nl != NULL && strchr(nl + 1, '\n') == NULL);
+    CHECK(strchr(opts, 'b') == NULL);
+    CHECK_EQ_INT(tst_count_lines(out, "skip music file"), 1);
+}
+
 int main(int argc, char **argv)
 {
-    static const tst_case_t cases[] = {{"options_over_255", options_over_255}};
+    static const tst_case_t cases[] = {{"options_over_255", options_over_255}, {"newline_name_skipped", newline_name_skipped}};
     return tst_run_case(cases, TST_COUNT(cases), argc, argv);
 }
