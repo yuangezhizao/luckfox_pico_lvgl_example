@@ -511,6 +511,10 @@ static int _wifi_scanning_ssid()
 
 static void wifi_update_timer_cb(lv_timer_t * tmr)
 {
+    LV_UNUSED(tmr);
+    /* 定时器只创建一次（离开页面不重建），不在 WIFI 页时跳过，不删除。 */
+    if (lv_scr_act() != guider_ui.WIFI)
+        return;
     _wifi_status_update();
 }
 
