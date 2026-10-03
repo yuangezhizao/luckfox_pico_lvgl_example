@@ -224,8 +224,10 @@ void *get_music_playback_time(void *arg)
     while (1)
     {
         memset(buf, 0, sizeof(buf));
-        if (read(fd_mpv, buf, sizeof(buf)) > 0)
+        ssize_t n = read(fd_mpv, buf, sizeof(buf) - 1);
+        if (n > 0)
         {
+            buf[n] = '\0';
             // printf("%s len:%d", buf, strlen(buf));
             // Get one line data
 			char *temp = strtok(buf, "\n"); 

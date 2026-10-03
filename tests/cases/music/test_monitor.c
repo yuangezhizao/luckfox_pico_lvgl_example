@@ -44,8 +44,16 @@ static void no_leak(void)
     feed_and_drain(data, sizeof(data));
 }
 
+static void full_buffer_line(void)
+{
+    char data[600];
+
+    memset(data, 'a', sizeof(data));
+    feed_and_drain(data, sizeof(data));
+}
+
 int main(int argc, char **argv)
 {
-    static const tst_case_t cases[] = {{"no_leak", no_leak}};
+    static const tst_case_t cases[] = {{"no_leak", no_leak}, {"full_buffer_line", full_buffer_line}};
     return tst_run_case(cases, TST_COUNT(cases), argc, argv);
 }

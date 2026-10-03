@@ -3,3 +3,9 @@ file: custom/custom_musicplayer.c
 old:                     cJSON_Delete(root);\n
 new:
 tests: ^music\.monitor\.
+
+id: MUSIC-6
+file: custom/custom_musicplayer.c
+old:         ssize_t n = read(fd_mpv, buf, sizeof(buf) - 1);
+new:         ssize_t n = read(fd_mpv, buf, sizeof(buf));
+tests: ^music\.monitor\.
