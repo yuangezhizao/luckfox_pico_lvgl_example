@@ -103,6 +103,23 @@ function(luckfox_add_test name)
     set_tests_properties(${tests} PROPERTIES TIMEOUT 120 LABELS "${labels}")
 endfunction()
 
+# luckfox_add_compile_check(<用例> FLAGS <选项>... SOURCES <文件>...)：以普通 -I 编译每个源文件，任一失败即测试失败；测试名 <类别>.compile.<用例>。
+# 不继承 luckfox_app 的 SYSTEM 包含目录：-isystem 下 GCC 不报系统头里展开的宏的诊断，lib/lv_conf.h 里的 custom_tick_get 会漏检。
+function(luckfox_add_compile_check name)
+    cmake_parse_arguments(C "" "" "FLAGS;SOURCES" ${ARGN})
+    get_filename_component(category "${CMAKE_CURRENT_SOURCE_DIR}" NAME)
+    set(flags -std=gnu99)
+    foreach(dir IN LISTS LUCKFOX_INCLUDE_DIRS)
+        list(APPEND flags "-I${dir}")
+    endforeach()
+    list(APPEND flags ${C_FLAGS})
+    string(REPLACE ";" "|" flags "${flags}")
+    string(REPLACE ";" "|" sources "${C_SOURCES}")
+    add_test(NAME ${category}.compile.${name}
+        COMMAND ${CMAKE_COMMAND} -DCC=${CMAKE_C_COMPILER} -DFLAGS=${flags} -DSOURCES=${sources} -P ${PROJECT_SOURCE_DIR}/tools/compile_check.cmake)
+    set_tests_properties(${category}.compile.${name} PROPERTIES TIMEOUT 120 LABELS "${category};compile")
+endfunction()
+
 add_subdirectory(cases/main)
 add_subdirectory(cases/wifi)
 

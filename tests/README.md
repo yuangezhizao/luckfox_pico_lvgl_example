@@ -42,6 +42,8 @@ ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
 2. 在该目录 `CMakeLists.txt` 加一行 `luckfox_add_test(xxx [UNIT unit_xxx.c] CASES <用例>...)`。
 3. 新页面第一个测试：建目录与 `CMakeLists.txt`，在 `tests/CMakeLists.txt` 加 `add_subdirectory(cases/<页面>)`，并更新上表。
 
+编译层检查在对应页面的 `CMakeLists.txt` 用 `luckfox_add_compile_check(<用例> FLAGS -Werror=<诊断> SOURCES <源文件>...)` 注册为 `<类别>.compile.<用例>`（标签 `<类别>;compile`，超时 120 秒），以普通 `-I` 逐个编译源文件，任一失败即测试失败。
+
 ## 32 位测试
 
 目标板的 `long` 为 32 位，主机为 64 位，换算溢出只能在 32 位下测出：`main.brightness_arm32.conversion` 用 `arm-linux-gnueabihf-gcc` 编译、`qemu-arm` 运行（标签 `arm32`，`ctest -LE arm32` 可跳过）。它不经 `luckfox_add_test()`，而由 `cases/main/CMakeLists.txt` 的自定义命令交叉编译并注册，测试名仍按 `<类别>.<对象>.<用例>`。两者都在 `.cursor/Dockerfile` 与 `.cursor/Dockerfile.luckfox_pico` 中；其他环境需 `sudo apt-get install -y gcc-arm-linux-gnueabihf qemu-user`。`-DLUCKFOX_TESTS_ARM32=AUTO`（默认）缺工具时跳过，`ON` 缺工具即报错，`OFF` 不注册。
