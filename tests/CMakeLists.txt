@@ -64,6 +64,11 @@ set_source_files_properties(${LUCKFOX_ROOT}/custom/custom_brightness.c PROPERTIE
     COMPILE_OPTIONS "-include;${CMAKE_CURRENT_SOURCE_DIR}/support/fake_fs.h"
     COMPILE_DEFINITIONS "BACKLIGHT_SYSFS_DIR=tst_backlight_root()")
 
+# WiFi 配置文件指向本进程临时目录（spec D14）。
+set_source_files_properties(${LUCKFOX_ROOT}/custom/custom_wifi.c PROPERTIES
+    COMPILE_OPTIONS "-include;${CMAKE_CURRENT_SOURCE_DIR}/support/fake_fs.h"
+    COMPILE_DEFINITIONS "WPA_FILE_PATH=tst_wpa_conf_path()")
+
 # OBJECT 库：被测源码引用这里定义的全局量，这里又引用被测源码，两个静态库互相引用会受链接顺序影响。
 add_library(tst_support OBJECT
     support/app_env.c
@@ -86,6 +91,7 @@ function(luckfox_add_test name)
         add_library(${exe}_unit OBJECT ${T_UNIT})
         target_link_libraries(${exe}_unit PRIVATE luckfox_app)
         target_compile_options(${exe}_unit PRIVATE -w)
+        target_include_directories(${exe}_unit PRIVATE ${PROJECT_SOURCE_DIR}/support)
         target_link_libraries(${exe} PRIVATE ${exe}_unit)
     endif()
     target_link_libraries(${exe} PRIVATE tst_support luckfox_app)
@@ -103,8 +109,38 @@ function(luckfox_add_test name)
     set_tests_properties(${tests} PROPERTIES TIMEOUT 120 LABELS "${labels}")
 endfunction()
 
+# luckfox_add_compile_check(<用例> FLAGS <选项>... SOURCES <文件>...)：以普通 -I 编译每个源文件，任一失败即测试失败；测试名 <类别>.compile.<用例>。
+# 不继承 luckfox_app 的 SYSTEM 包含目录：-isystem 下 GCC 不报系统头里展开的宏的诊断，lib/lv_conf.h 里的 custom_tick_get 会漏检。
+function(luckfox_add_compile_check name)
+    cmake_parse_arguments(C "" "" "FLAGS;SOURCES" ${ARGN})
+    get_filename_component(category "${CMAKE_CURRENT_SOURCE_DIR}" NAME)
+    set(flags -std=gnu99)
+    foreach(dir IN LISTS LUCKFOX_INCLUDE_DIRS)
+        list(APPEND flags "-I${dir}")
+    endforeach()
+    list(APPEND flags ${C_FLAGS})
+    string(REPLACE ";" "|" flags "${flags}")
+    string(REPLACE ";" "|" sources "${C_SOURCES}")
+    add_test(NAME ${category}.compile.${name}
+        COMMAND ${CMAKE_COMMAND} -DCC=${CMAKE_C_COMPILER} -DFLAGS=${flags} -DSOURCES=${sources} -P ${PROJECT_SOURCE_DIR}/tools/compile_check.cmake)
+    set_tests_properties(${category}.compile.${name} PROPERTIES TIMEOUT 120 LABELS "${category};compile")
+endfunction()
+
 add_subdirectory(cases/main)
 add_subdirectory(cases/wifi)
+# 音乐目录指向本进程临时目录（spec §5.4）。
+set_source_files_properties(${LUCKFOX_ROOT}/custom/custom_musicplayer.c PROPERTIES
+    COMPILE_OPTIONS "-include;${CMAKE_CURRENT_SOURCE_DIR}/support/fake_fs.h"
+    COMPILE_DEFINITIONS "MUSIC_DIR_PATH=tst_music_dir();MPV_SOCKET_PATH=tst_mpv_socket_path()")
+
+add_subdirectory(cases/sketchpad)
+# 清屏写入上限由测试改小（spec D9）。
+set_source_files_properties(${LUCKFOX_ROOT}/custom/custom_fb.c PROPERTIES
+    COMPILE_OPTIONS "-include;${CMAKE_CURRENT_SOURCE_DIR}/support/fake_fs.h"
+    COMPILE_DEFINITIONS "FB_CLEAR_MAX_BYTES=tst_fb_clear_max_bytes")
+
+add_subdirectory(cases/music)
+add_subdirectory(cases/exit)
 
 # 手动目标，不进 ALL、不注册为 ctest（spec §5.6）。
 add_executable(luckfox_screenshots EXCLUDE_FROM_ALL tools/screenshots.c)

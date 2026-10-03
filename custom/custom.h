@@ -15,7 +15,7 @@ extern "C" {
 
 #include <dirent.h>
 #include <errno.h>
-#include <linux/fcntl.h>
+#include <fcntl.h>
 #include <linux/input.h>
 #include <pthread.h>
 #include <signal.h>
@@ -55,7 +55,8 @@ extern "C" {
 
 // LVGL System
 void custom_init();
-uint32_t custom_tick_get(void);
+#include "custom_fb.h"
+#include "custom_tick.h"
 
 // Compatible API
 void luckfox_lv_obj_set_pos(lv_obj_t * obj, lv_coord_t x, lv_coord_t y);
@@ -74,11 +75,13 @@ int luckfox_get_system_info();
 
 /* Sketchpad */
 lv_obj_t * lv_sketchpad_create(lv_obj_t * parent);
+lv_res_t lv_sketchpad_set_size(lv_obj_t * obj, lv_coord_t w, lv_coord_t h);
 void Sketchpad_color_cpicker_event_cb(lv_event_t * e);
 void Sketchpad_clear_btn_event_cb(lv_event_t * e);
 
 /* Music Player */
-int music_scan_list(char* mp3_string);
+int music_scan_list(void);
+const char *music_roller_options(void);
 
 void Music_player_list_roller_event_handler(lv_event_t *e);
 void Music_player_next_btn_event_handler(lv_event_t *e);
@@ -92,14 +95,15 @@ int music_app_init();
 int music_player_thread_init();
 
 /* WIFI */
+const char *wifi_input_check(const char *ssid, const char *password);
 void WIFI_clear_btn_event_handler(lv_event_t *e);
 void WIFI_load_btn_event_handler(lv_event_t *e);
 void WIFI_scanning_btn_event_handler(lv_event_t *e);
 void WIFI_wifi_list_event_handler(lv_event_t *e);
 
-void wifi_app_init();
-void wifi_backend_init();
-void wifi_backend_release();
+void wifi_app_init(void);
+void wifi_backend_init(void);
+void wifi_backend_release(void);
 
 /* Main */
 void Main_OFF_btn_event_handler(lv_event_t *e);

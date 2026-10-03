@@ -1,0 +1,5 @@
+id: WIFI-24t
+file: custom/custom_wifi.c
+old:     if (lv_scr_act() != guider_ui.WIFI)\n        return;\n
+new:
+tests: ^wifi\.timer\.

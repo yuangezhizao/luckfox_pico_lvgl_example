@@ -1,0 +1,24 @@
+id: MUSIC-10a
+file: custom/custom_musicplayer.c
+old:         if (waitpid(child, &status, WNOHANG) == child) {
+new:         if (0) {
+tests: ^music\.player\.
+
+id: MUSIC-10b
+file: custom/custom_musicplayer.c
+old: #define MPV_CONNECT_TIMEOUT_MS 5000
+new: #define MPV_CONNECT_TIMEOUT_MS 2500
+tests: ^music\.player\.
+
+id: MUSIC-12
+file: custom/custom_musicplayer.c
+old:     unlink(sock_path);
+new:     /* 改坏：保留旧实例的监听路径。 */
+tests: ^music\.player\.stale_socket$
+
+# 连接预算扩大至 8000 毫秒。
+id: MUSIC-10c
+file: custom/custom_musicplayer.c
+old: #define MPV_CONNECT_TIMEOUT_MS 5000
+new: #define MPV_CONNECT_TIMEOUT_MS 8000
+tests: ^music\.player\.

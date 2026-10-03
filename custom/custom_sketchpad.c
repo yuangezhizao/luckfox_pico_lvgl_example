@@ -20,6 +20,10 @@
  *********************/
 #define LAST_VALUE -32768 
 
+#ifndef SKETCHPAD_BUF_ALLOC
+#define SKETCHPAD_BUF_ALLOC(size) lv_mem_alloc(size)
+#endif
+
 /**********************
  *      TYPEDEFS
  **********************/
@@ -27,6 +31,7 @@ typedef struct {
     lv_img_t img;
     lv_img_dsc_t dsc;
     lv_draw_line_dsc_t line_rect_dsc;
+    void * buf;   /* lv_sketchpad_set_size() 分配的画布缓冲区，析构时释放 */
 } lv_sketchpad_t;
 
 /**********************
@@ -57,6 +62,7 @@ static void lv_sketchpad_constructor(const lv_obj_class_t * class_p, lv_obj_t * 
     LV_UNUSED(class_p);
     lv_sketchpad_t * sketchpad = (lv_sketchpad_t *)obj; 
     canva_obj = obj;
+    sketchpad->buf = NULL;
     
     sketchpad->dsc.header.always_zero = 0;
     sketchpad->dsc.header.cf          = LV_IMG_CF_TRUE_COLOR;
@@ -80,8 +86,10 @@ static void lv_sketchpad_constructor(const lv_obj_class_t * class_p, lv_obj_t * 
 static void lv_sketchpad_destructor(const lv_obj_class_t * class_p, lv_obj_t * obj)
 {
     LV_UNUSED(class_p);
-    lv_canvas_t * canvas = (lv_canvas_t *)obj;
-    lv_img_cache_invalidate_src(&canvas->dsc);
+    lv_sketchpad_t * sketchpad = (lv_sketchpad_t *)obj;
+    lv_img_cache_invalidate_src(&sketchpad->dsc);
+    lv_mem_free(sketchpad->buf);
+    sketchpad->buf = NULL;
 }
 
 void lv_sketchpad_event(const lv_obj_class_t * class_p, lv_event_t * e)
@@ -101,11 +109,16 @@ void lv_sketchpad_event(const lv_obj_class_t * class_p, lv_event_t * e)
 
     if (code == LV_EVENT_PRESSING)
     {
+        if (sketchpad->buf == NULL)  return;
         lv_indev_t * indev = lv_indev_get_act();
         if(indev == NULL)  return;
 
         lv_point_t point;
         lv_indev_get_point(indev, &point);
+        lv_area_t coords;
+        lv_obj_get_coords(obj, &coords);
+        point.x -= coords.x1;
+        point.y -= coords.y1;
 
         lv_color_t c0;
         c0.full = 10;
@@ -149,6 +162,23 @@ lv_obj_t * lv_sketchpad_create(lv_obj_t * parent)
     return obj;
 }
 
+/* 一次性堆分配画布缓冲区；失败时返回 LV_RES_INV 且不调用 lv_canvas_set_buffer。dsc.data_size 保持 lv_canvas_set_buffer 的行为（不设置）。 */
+lv_res_t lv_sketchpad_set_size(lv_obj_t * obj, lv_coord_t w, lv_coord_t h)
+{
+    lv_sketchpad_t * sketchpad = (lv_sketchpad_t *)obj;
+    void * buf = SKETCHPAD_BUF_ALLOC(LV_CANVAS_BUF_SIZE_TRUE_COLOR((w), (h)));
+
+    if (buf == NULL) {
+        LV_LOG_WARN("sketchpad: canvas buffer allocation failed");
+        return LV_RES_INV;
+    }
+    lv_canvas_set_buffer(obj, buf, w, h, LV_IMG_CF_TRUE_COLOR);
+    if (sketchpad->buf != NULL)
+        lv_mem_free(sketchpad->buf);
+    sketchpad->buf = buf;
+    return LV_RES_OK;
+}
+
 void Sketchpad_color_cpicker_event_cb(lv_event_t * e)
 {
     lv_event_code_t code = lv_event_get_code(e);
@@ -168,6 +198,7 @@ void Sketchpad_clear_btn_event_cb(lv_event_t * e)
 
     if (code == LV_EVENT_RELEASED)
     {
+        if (lv_canvas_get_img(canva_obj)->data == NULL) return;
         // clear canvas
         lv_canvas_fill_bg(canva_obj, lv_palette_lighten(LV_PALETTE_GREY, 3), LV_OPA_COVER);
     }

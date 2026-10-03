@@ -85,7 +85,7 @@
 /*Expression evaluating to current system time in ms*/
 //#define LV_TICK_CUSTOM_SYS_TIME_EXPR (millis())
 
-#define LV_TICK_CUSTOM_INCLUDE <stdint.h>         /*Header for the system time function*/
+#define LV_TICK_CUSTOM_INCLUDE "custom_tick.h"         /*Header for the system time function*/
 #define LV_TICK_CUSTOM_SYS_TIME_EXPR (custom_tick_get())  
 #endif    /* LV_TICK_CUSTOM */
 

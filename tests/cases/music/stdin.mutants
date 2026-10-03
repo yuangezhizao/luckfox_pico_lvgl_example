@@ -1,0 +1,5 @@
+id: MUSIC-11
+file: custom/custom_musicplayer.c
+old:         fd = mpv_wait_connect(pid, sock_path);
+new:         close(0);\n        fd = mpv_wait_connect(pid, sock_path);
+tests: ^music\.player\.

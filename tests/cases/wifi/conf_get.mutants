@@ -1,0 +1,5 @@
+id: WIFI-25
+file: custom/custom_wifi.c
+old:     if (len >= size)\n        return -1;\n
+new:
+tests: ^wifi\.conf_get\.

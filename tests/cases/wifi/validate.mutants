@@ -1,0 +1,41 @@
+id: WIFI-20a
+file: custom/custom_wifi.c
+old:         else if (*p == '#' && seen_quote)\n            return 0;\n
+new:
+tests: ^wifi\.validate\.
+
+id: WIFI-20b
+file: custom/custom_wifi.c
+old:     if (!wifi_value_ok(password, 8, 63))
+new:     if (!wifi_value_ok(password, 0, 63))
+tests: ^wifi\.validate\.
+
+id: WIFI-20c
+file: custom/custom_wifi.c
+old:             wifi_hint_show(err);\n            return;\n
+new:             wifi_hint_show(err);\n
+tests: ^wifi\.load\.
+
+id: WIFI-20utf8
+file: custom/custom_wifi.c
+old:         if ((n == 1 && cp < 0x80) || (n == 2 && cp < 0x800) || (n == 3 && (cp < 0x10000 || cp > 0x10ffff)) || (cp >= 0xd800 && cp <= 0xdfff))
+new:         if (0)
+tests: ^wifi\.validate\.utf8$
+
+id: WIFI-20cont
+file: custom/custom_wifi.c
+old:             if ((s[i] & 0xc0) != 0x80)
+new:             if (s[i] == 0)
+tests: ^wifi\.validate\.utf8$
+
+id: WIFI-20hide
+file: custom/custom_wifi.c
+old:     if (wifi_hint_label != NULL)\n        lv_obj_add_flag(wifi_hint_label, LV_OBJ_FLAG_HIDDEN);
+new:     if (0)\n        lv_obj_add_flag(wifi_hint_label, LV_OBJ_FLAG_HIDDEN);
+tests: ^wifi\.load\.edit_hides_hint$
+
+id: WIFI-20length
+file: custom/custom_wifi.c
+old:         if (strlen(ssid) > 32) {
+new:         if (0) {
+tests: ^wifi\.load\.dropdown_overlong$

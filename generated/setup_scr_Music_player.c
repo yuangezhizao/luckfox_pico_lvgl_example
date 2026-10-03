@@ -410,9 +410,8 @@ void setup_scr_Music_player(lv_ui *ui)
 	//Write codes Music_player_roller_1
 	ui->Music_player_roller_1 = lv_roller_create(ui->Music_player_cont_1);
 	
-	char roller_str[256];
-	music_scan_list(roller_str);
-	lv_roller_set_options(ui->Music_player_roller_1, roller_str, LV_ROLLER_MODE_INFINITE);
+	music_scan_list();
+	lv_roller_set_options(ui->Music_player_roller_1, music_roller_options(), LV_ROLLER_MODE_INFINITE);
 	//lv_roller_set_options(ui->Music_player_roller_1, "music1\nmusic2\nmusic3\nmusic4\nmusic5", LV_ROLLER_MODE_INFINITE);
 	luckfox_lv_obj_set_pos(ui->Music_player_roller_1, 19, 27);
 	luckfox_lv_obj_set_width(ui->Music_player_roller_1, 272);

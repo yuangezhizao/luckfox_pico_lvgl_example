@@ -11,6 +11,8 @@
 #include "gui_guider.h"
 #include "widgets_init.h"
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
 
 __attribute__((unused)) void kb_event_cb (lv_event_t *e) {
@@ -106,17 +108,21 @@ void Main_datetext_1_event_handler(lv_event_t *e)
 void Main_datetext_1_init_calendar(lv_obj_t *obj, char * s)
 {
 	if (Main_datetext_1_calendar == NULL){
+		static lv_calendar_date_t highlighted_days[1];       /* LVGL 只保存指针，数组须为静态存储。 */
+		char date[32];
+		snprintf(date, sizeof(date), "%s", s);
+		char * year = strtok(date, "/");
+		char * month = strtok(NULL, "/");
+		char * day = strtok(NULL, "/");
+		if (year == NULL || month == NULL || day == NULL)
+			return;
 		lv_obj_add_flag(lv_layer_top(), LV_OBJ_FLAG_CLICKABLE);
 		Main_datetext_1_calendar = lv_calendar_create(lv_layer_top());
 		lv_obj_t * scr = lv_obj_get_screen(obj);
 		lv_coord_t scr_height = lv_obj_get_height(scr);
 		lv_coord_t scr_width = lv_obj_get_width(scr);
 		lv_obj_set_size(Main_datetext_1_calendar, scr_width * 0.8, scr_height * 0.8);
-		char * year = strtok(s, "/");
-		char * month = strtok(NULL, "/");
-		char * day = strtok(NULL, "/");
 		lv_calendar_set_showed_date(Main_datetext_1_calendar, atoi(year), atoi(month));
-		lv_calendar_date_t highlighted_days[1];       /*Only its pointer will be saved so should be static*/
 		highlighted_days[0].year = atoi(year);
 		highlighted_days[0].month = atoi(month);
 		highlighted_days[0].day = atoi(day);

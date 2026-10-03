@@ -1,0 +1,5 @@
+id: MUSIC-C2
+file: custom/custom_musicplayer.c
+old:                 continue;
+new:                 /* 改坏：继续接纳含换行的名字。 */
+tests: ^music\.list\.

@@ -34,10 +34,10 @@ void setup_scr_Sketchpad(lv_ui *ui)
 	int cbuf_width = WIDTH * SCALE;
 	int cbuf_height = HEIGHT * 0.75 * SCALE;
 	int cbuf_skeptchpad_pos_y_offset = -80 * SCALE;
-	lv_color_t cbuf[LV_CANVAS_BUF_SIZE_TRUE_COLOR(cbuf_width, cbuf_height)];
-	lv_canvas_set_buffer(sketchpad_obj, cbuf, cbuf_width, cbuf_height, LV_IMG_CF_TRUE_COLOR);
+	lv_res_t cbuf_res = lv_sketchpad_set_size(sketchpad_obj, cbuf_width, cbuf_height);
 	lv_obj_align(sketchpad_obj, LV_ALIGN_CENTER, 0, cbuf_skeptchpad_pos_y_offset);
-    lv_canvas_fill_bg(sketchpad_obj, lv_palette_lighten(LV_PALETTE_GREY, 3), LV_OPA_COVER);
+	if (cbuf_res == LV_RES_OK)
+		lv_canvas_fill_bg(sketchpad_obj, lv_palette_lighten(LV_PALETTE_GREY, 3), LV_OPA_COVER);
 
 
 	//Write style for Sketchpad, Part: LV_PART_MAIN, State: LV_STATE_DEFAULT.

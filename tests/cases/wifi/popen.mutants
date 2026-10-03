@@ -1,0 +1,11 @@
+id: WIFI-23
+file: custom/custom_wifi.c
+old:     fp = popen(command, "r");\n    if (fp == NULL) {\n
+new:     fp = popen(command, "r");\n    if (fp == NULL) {\n        pclose(fp);\n
+tests: ^wifi\.popen\.
+
+id: WIFI-C4
+file: custom/custom_wifi.c
+old:         wifi_hint_show("Cannot run wpa_cli");\n        return ;\n
+new:         exit(EXIT_FAILURE);\n
+tests: ^wifi\.popen\.

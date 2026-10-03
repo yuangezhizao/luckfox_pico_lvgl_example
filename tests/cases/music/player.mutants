@@ -1,0 +1,5 @@
+id: MUSIC-1
+file: custom/custom_musicplayer.c
+old:         _exit(127);
+new:         return 0;
+tests: ^music\.player\.

@@ -1,0 +1,5 @@
+id: SKETCH-18
+file: custom/custom_sketchpad.c
+old:     if (buf == NULL) {\n        LV_LOG_WARN("sketchpad: canvas buffer allocation failed");\n        return LV_RES_INV;\n    }\n
+new:
+tests: ^sketchpad\.canvas\.

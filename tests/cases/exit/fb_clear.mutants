@@ -1,0 +1,25 @@
+id: EXIT-17a
+file: custom/custom_fb.c
+old:         if (errno == ENOSPC)\n            break;\n
+new:
+tests: ^exit\.fb_clear\.
+
+id: EXIT-17b
+file: custom/custom_fb.c
+old:         fprintf(stderr, "custom_fb_clear: open
+new:         if (0) fprintf(stderr, "custom_fb_clear: open
+tests: ^exit\.fb_clear\.
+
+# 删除零字节写入终止分支。
+id: EXIT-17c
+file: custom/custom_fb.c
+old:         if (n == 0)\n            break;\n
+new:
+tests: ^exit\.fb_clear\.
+
+# 删除 EINTR 重试分支。
+id: EXIT-17d
+file: custom/custom_fb.c
+old:         if (errno == EINTR)\n            continue;\n
+new:
+tests: ^exit\.fb_clear\.

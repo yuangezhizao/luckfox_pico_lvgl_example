@@ -23,7 +23,7 @@ ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
 | `wifi/` | WiFi | `custom_wifi.c`、`setup_scr_WIFI.c` |
 | `music/` | 音乐页 | `custom_musicplayer.c`、`setup_scr_Music_player.c` |
 | `sketchpad/` | 画板 | `custom_sketchpad.c`、`setup_scr_Sketchpad.c` |
-| `exit/` | OFF 退出 | `src/main.c` 退出路径、`Main_OFF_btn_event_handler` |
+| `exit/` | OFF 退出 | `custom/custom_fb.c`，调用点 `src/main.c` |
 | `gif/` | GIF 页 | `setup_scr_Gif.c` |
 
 还没有测试的页面不建目录；本表即登记处。
@@ -42,15 +42,20 @@ ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
 2. 在该目录 `CMakeLists.txt` 加一行 `luckfox_add_test(xxx [UNIT unit_xxx.c] CASES <用例>...)`。
 3. 新页面第一个测试：建目录与 `CMakeLists.txt`，在 `tests/CMakeLists.txt` 加 `add_subdirectory(cases/<页面>)`，并更新上表。
 
+编译层检查在对应页面的 `CMakeLists.txt` 用 `luckfox_add_compile_check(<用例> FLAGS -Werror=<诊断> SOURCES <源文件>...)` 注册为 `<类别>.compile.<用例>`（标签 `<类别>;compile`，超时 120 秒），以普通 `-I` 逐个编译源文件，任一失败即测试失败。
+
 ## 32 位测试
 
-目标板的 `long` 为 32 位，主机为 64 位，换算溢出只能在 32 位下测出：`main.brightness_arm32.conversion` 用 `arm-linux-gnueabihf-gcc` 编译、`qemu-arm` 运行（标签 `arm32`，`ctest -LE arm32` 可跳过）。它不经 `luckfox_add_test()`，而由 `cases/main/CMakeLists.txt` 的自定义命令交叉编译并注册，测试名仍按 `<类别>.<对象>.<用例>`。两者都在 `.cursor/Dockerfile` 与 `.cursor/Dockerfile.luckfox_pico` 中；其他环境需 `sudo apt-get install -y gcc-arm-linux-gnueabihf qemu-user`。`-DLUCKFOX_TESTS_ARM32=AUTO`（默认）缺工具时跳过，`ON` 缺工具即报错，`OFF` 不注册。
+目标板的 `long` 为 32 位，主机为 64 位，换算溢出只能在 32 位下测出：`main.brightness_arm32.conversion` 用 `arm-linux-gnueabihf-gcc` 编译、`qemu-arm` 运行（标签 `arm32`，`ctest -LE arm32` 可跳过）。`main.tick.monotonic_wrap` 同样在 ARM32 下验证单调时钟、毫秒换算与回绕；其编译选项 `-U_TIME_BITS -U_FILE_OFFSET_BITS` 取消工具链默认的 64 位时间与文件偏移宏，使 `time_t` 为 32 位，覆盖目标板上的溢出条件。这两个目标不经 `luckfox_add_test()`，而由 `cases/main/CMakeLists.txt` 的自定义命令交叉编译并注册，测试名仍按 `<类别>.<对象>.<用例>`。编译器 `arm-linux-gnueabihf-gcc` 与 `qemu-arm` 都由 `.cursor/Dockerfile` 与 `.cursor/Dockerfile.luckfox_pico` 提供；其他环境需 `sudo apt-get install -y gcc-arm-linux-gnueabihf qemu-user`。`-DLUCKFOX_TESTS_ARM32=AUTO`（默认）缺工具时跳过，`ON` 缺工具即报错，`OFF` 不注册。
 
 ## 注意
 
-- 测试不调用 `custom_init()`：它用 `vfork()` 启动 `mpv`，主机无 `mpv` 时子进程 `return` 会破坏父进程栈。
+- 常规 UI 测试不调用 `custom_init()`：它会拉起 `mpv` 并做硬件相关初始化；`mpv` 的启动与连接由 `cases/music/` 的用例以假 `mpv` 单独测试。
+- `custom_wifi.c` 的 `WPA_FILE_PATH=tst_wpa_conf_path()` 由 `tests/CMakeLists.txt` 的源文件 `COMPILE_DEFINITIONS` 覆盖，声明通过 `-include support/fake_fs.h` 引入，配置文件位于本进程临时目录；包含源码的 `unit_wifi.c` 在 `#include "custom_wifi.c"` 前用 `#define` 做相同覆盖。
 - 捕获输出期间 `CHECK` 的打印也会被捕获，断言放在 `tst_capture_end()` 之后。
 - 测试工程对 `lib/lvgl/src`、`generated/`、`custom/` 递归 glob 全部 `.c`，与产品 `CMakeLists.txt` 只 glob 指定目录不完全相同，在这些目录下新增子目录或非产品 `.c` 时需留意。
+- 音乐源码的 `MUSIC_DIR_PATH=tst_music_dir()` 也通过源文件 `COMPILE_DEFINITIONS` 和 `-include support/fake_fs.h` 覆盖；`unit_list_alloc.c` 在包含源码前用 `#define` 做相同覆盖，目录由本进程独享；`MPV_SOCKET_PATH=tst_mpv_socket_path()` 使用同样的源文件属性与 UNIT 宏覆盖，假 mpv 的套接字也在本进程临时目录。
+- `custom_fb.c` 的 `FB_CLEAR_MAX_BYTES=tst_fb_clear_max_bytes` 通过源文件 `COMPILE_DEFINITIONS` 和 `-include support/fake_fs.h` 覆盖，用例可修改该变量缩小清屏上限。路径宏是运行期 `const char *` 表达式，不能拼接字符串字面量或用 `sizeof` 计算路径长度。
 - libdrm、cjson 头文件使用系统路径 `/usr/include/libdrm`、`/usr/include/cjson`（Debian/Ubuntu 布局）。
 - `custom_brightness.c` 在测试构建中以 `BACKLIGHT_SYSFS_DIR=tst_backlight_root()` 编译，背光目录位于本进程临时目录，`ctest -j` 并行互不干扰。
 

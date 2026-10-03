@@ -21,4 +21,29 @@ if(LUCKFOX_ARM32_ENABLED)
     add_custom_target(main_brightness_arm32 ALL DEPENDS ${arm32_exe})
     add_test(NAME main.brightness_arm32.conversion COMMAND ${LUCKFOX_QEMU_ARM} -L /usr/arm-linux-gnueabihf ${arm32_exe})
     set_tests_properties(main.brightness_arm32.conversion PROPERTIES TIMEOUT 120 LABELS "main;arm32")
+    set(tick32_exe ${arm32_dir}/main_tick_arm32)
+    add_custom_command(
+        OUTPUT ${tick32_exe}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${arm32_dir}
+        COMMAND ${LUCKFOX_ARM32_CC} -std=gnu99 -O1 -w -U_TIME_BITS -U_FILE_OFFSET_BITS -ffunction-sections -fdata-sections ${LUCKFOX_ARM32_INCLUDE_FLAGS} -c ${CMAKE_CURRENT_SOURCE_DIR}/unit_tick_arm32.c -o ${arm32_dir}/tick_unit.o
+        COMMAND ${LUCKFOX_ARM32_CC} -std=gnu99 -O1 -Wall -Wextra -Werror -U_TIME_BITS -U_FILE_OFFSET_BITS -I${PROJECT_SOURCE_DIR}/support -c ${CMAKE_CURRENT_SOURCE_DIR}/test_tick_arm32.c -o ${arm32_dir}/tick_test.o
+        COMMAND ${LUCKFOX_ARM32_CC} -Wl,--gc-sections ${arm32_dir}/tick_unit.o ${arm32_dir}/tick_test.o -o ${tick32_exe}
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/unit_tick_arm32.c ${CMAKE_CURRENT_SOURCE_DIR}/test_tick_arm32.c
+                ${LUCKFOX_ROOT}/custom/custom_main.c ${LUCKFOX_ROOT}/custom/custom_tick.h ${PROJECT_SOURCE_DIR}/support/check.h
+        VERBATIM)
+    add_custom_target(main_tick_arm32 ALL DEPENDS ${tick32_exe})
+    add_test(NAME main.tick.monotonic_wrap COMMAND ${LUCKFOX_QEMU_ARM} -L /usr/arm-linux-gnueabihf ${tick32_exe})
+    set_tests_properties(main.tick.monotonic_wrap PROPERTIES TIMEOUT 120 LABELS "main;arm32")
 endif()
+
+luckfox_add_compile_check(no_implicit_decl FLAGS -Werror=implicit-function-declaration
+    SOURCES ${LUCKFOX_ROOT}/custom/custom_main.c ${LUCKFOX_ROOT}/lib/lvgl/src/hal/lv_hal_tick.c ${CMAKE_CURRENT_SOURCE_DIR}/compile_fcntl_custom.c)
+
+luckfox_add_test(tick CASES step_back_host)
+
+luckfox_add_test(clock UNIT unit_clock.c CASES meridiem)
+
+luckfox_add_test(calendar CASES highlight_survives no_slash one_slash)
+set_tests_properties(main.calendar.highlight_survives PROPERTIES ENVIRONMENT "ASAN_OPTIONS=detect_stack_use_after_return=1")
+
+luckfox_add_test(sysinfo CASES popen_failure)
