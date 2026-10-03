@@ -279,6 +279,8 @@ static void _wifi_conf_load(const char* ssid, const char* password)
 
     // reconnect wifi
     system("wpa_cli reconfigure &");
+    /* [u]dhcpc 不匹配 pkill 自身与父 shell；与启动命令分两次 system()，否则 sh -c 的命令行也被匹配而连 shell 一起杀掉。 */
+    system("pkill -f '[u]dhcpc -i wlan0'");
     system("udhcpc -i wlan0 &");
     return ;
 }

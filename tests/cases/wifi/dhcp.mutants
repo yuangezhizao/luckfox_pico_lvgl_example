@@ -1,0 +1,5 @@
+id: WIFI-24d
+file: custom/custom_wifi.c
+old:     system("pkill -f '[u]dhcpc -i wlan0'");\n    system("udhcpc -i wlan0 &");\n
+new:     system("pkill -f '[u]dhcpc -i wlan0'; udhcpc -i wlan0 &");\n
+tests: ^wifi\.dhcp\.
