@@ -1,0 +1,11 @@
+id: MAIN-12a
+file: custom/custom_main.c
+old: tm_info->tm_hour >= 12 ? "PM" : "AM"
+new: tm_info->tm_hour > 12 ? "PM" : "AM"
+tests: ^main\.clock\.
+
+id: MAIN-12b
+file: custom/custom_main.c
+old:     Main_digital_clock_1_hour_value = (tm_info->tm_hour + 11) % 12 + 1;
+new:     Main_digital_clock_1_hour_value = tm_info->tm_hour % 12;
+tests: ^main\.clock\.

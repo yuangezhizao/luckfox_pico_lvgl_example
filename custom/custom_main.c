@@ -60,25 +60,10 @@ static void _time_update()
     time(&current_time);
     tm_info = localtime(&current_time);
 
-    Main_digital_clock_1_hour_value = tm_info->tm_hour;
+    Main_digital_clock_1_hour_value = (tm_info->tm_hour + 11) % 12 + 1;
     Main_digital_clock_1_min_value = tm_info->tm_min;
     Main_digital_clock_1_sec_value = tm_info->tm_sec;
-
-    if(tm_info->tm_hour > 12)
-    {
-        tm_info->tm_hour -= 12;    
-        Main_digital_clock_1_hour_value = tm_info->tm_hour;
-        Main_digital_clock_1_min_value = tm_info->tm_min;
-        Main_digital_clock_1_sec_value = tm_info->tm_sec;
-        strcpy(Main_digital_clock_1_meridiem, "PM");
-    }
-    else
-    { 
-        Main_digital_clock_1_hour_value = tm_info->tm_hour;
-        Main_digital_clock_1_min_value = tm_info->tm_min;
-        Main_digital_clock_1_sec_value = tm_info->tm_sec;
-        strcpy(Main_digital_clock_1_meridiem, "AM");
-    }
+    snprintf(Main_digital_clock_1_meridiem, sizeof(Main_digital_clock_1_meridiem), "%s", tm_info->tm_hour >= 12 ? "PM" : "AM");
 
     char day_str[8];
     char month_str[8];

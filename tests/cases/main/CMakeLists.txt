@@ -40,3 +40,5 @@ luckfox_add_compile_check(no_implicit_decl FLAGS -Werror=implicit-function-decla
     SOURCES ${LUCKFOX_ROOT}/custom/custom_main.c ${LUCKFOX_ROOT}/lib/lvgl/src/hal/lv_hal_tick.c ${CMAKE_CURRENT_SOURCE_DIR}/compile_fcntl_custom.c)
 
 luckfox_add_test(tick CASES step_back_host)
+
+luckfox_add_test(clock UNIT unit_clock.c CASES meridiem)
