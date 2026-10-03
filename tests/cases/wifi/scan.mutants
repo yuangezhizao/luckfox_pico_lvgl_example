@@ -1,0 +1,17 @@
+id: WIFI-22a
+file: custom/custom_wifi.c
+old:             case 'e': c = 0x1b; in++; break;
+new:             case 'e': c = 'e'; in++; break;
+tests: ^wifi\.scan\.
+
+id: WIFI-22b
+file: custom/custom_wifi.c
+old:         if (wifi_ssid_decode(ssid, networks[network_count].ssid, MAX_CONF_LEN) != 0)\n            continue;\n        network_count++;\n
+new:         wifi_ssid_decode(ssid, networks[network_count].ssid, MAX_CONF_LEN);\n        network_count++;\n
+tests: ^wifi\.scan\.
+
+id: WIFI-22c
+file: custom/custom_wifi.c
+old:         if (n < 0 || (size_t)n >= remaining) {
+new:         if (0) {
+tests: ^wifi\.scan\.append_

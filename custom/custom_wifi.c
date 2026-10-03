@@ -383,6 +383,59 @@ static void _wifi_status_update()
 
 }
 
+static int wifi_hex(int c)
+{
+    if (c >= '0' && c <= '9')
+        return c - '0';
+    if (c >= 'a' && c <= 'f')
+        return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F')
+        return c - 'A' + 10;
+    return -1;
+}
+
+/* hostap printf_encode 的逆过程；空、含控制字符、残缺或未知转义、超过 out_size - 1 字节时返回 -1。 */
+static int wifi_ssid_decode(const char *in, char *out, size_t out_size)
+{
+    size_t n = 0;
+
+    while (*in != '\0') {
+        unsigned char c = (unsigned char)*in++;
+
+        if (c == '\\') {
+            int hi, lo;
+
+            switch (*in) {
+            case '"': c = '"'; in++; break;
+            case '\\': c = '\\'; in++; break;
+            case 'e': c = 0x1b; in++; break;
+            case 'n': c = '\n'; in++; break;
+            case 'r': c = '\r'; in++; break;
+            case 't': c = '\t'; in++; break;
+            case 'x':
+                hi = wifi_hex(in[1]);
+                lo = hi < 0 ? -1 : wifi_hex(in[2]);
+                if (lo < 0)
+                    return -1;
+                c = (unsigned char)(hi * 16 + lo);
+                in += 3;
+                break;
+            default:
+                return -1;
+            }
+        }
+        if (c < 0x20 || c == 0x7f)
+            return -1;
+        if (n + 1 >= out_size)
+            return -1;
+        out[n++] = (char)c;
+    }
+    if (n == 0)
+        return -1;
+    out[n] = '\0';
+    return 0;
+}
+
 static int _wifi_scanning_ssid()
 {
     struct wifi_network networks[MAX_LINE_LEN];
@@ -399,38 +452,40 @@ static int _wifi_scanning_ssid()
     // Skip the first two lines as they contain header information
     fgets(line, MAX_LINE_LEN, fp);
 
-    // Parse each line to extract the SSID
+    // scan_results 每行为 bssid\tfreq\tsignal\tflags\tssid；按 TAB 位置取第 5 个字段
     while (fgets(line, MAX_LINE_LEN, fp) != NULL) {
-        char *token = strtok(line, "\t ");
-        int count = 0;
-        while (token != NULL) {
-            if (count == 4) {
-                strncpy(networks[network_count].ssid, token, MAX_CONF_LEN);
-                networks[network_count].ssid[MAX_CONF_LEN - 1] = '\0'; // Ensure null-termination
-                if (strlen(networks[network_count].ssid) > 0) {
-                    network_count++;
-                }
-                break;
-            }
-            token = strtok(NULL, "\t ");
-            count++;
+        char *ssid = line;
+        int tabs = 0;
+
+        line[strcspn(line, "\r\n")] = '\0';
+        while (tabs < 4 && (ssid = strchr(ssid, '\t')) != NULL) {
+            ssid++;
+            tabs++;
         }
+        if (ssid == NULL)
+            continue;
+        if (wifi_ssid_decode(ssid, networks[network_count].ssid, MAX_CONF_LEN) != 0)
+            continue;
+        network_count++;
         if (network_count >= MAX_NETWORKS)
             break;
     }
 
-    // Create a string with SSIDs separated by '\n'
-    char ssid_string[MAX_NETWORKS * (MAX_CONF_LEN + 1)]; // 1 additional character for '\n'
-    ssid_string[0] = '\0'; // Ensure ssid_string is empty initially
-
+    // 将 SSID 用换行符连接为下拉选项
+    char ssid_string[MAX_NETWORKS * MAX_CONF_LEN + sizeof("\n...")];
+    size_t used = 0;
+    ssid_string[0] = '\0';
     for (int i = 0; i < network_count; i++) {
-        if(strcmp(networks[i].ssid,"\n") && strlen(networks[i].ssid) < 16 )
-        {
-            strcat(ssid_string, networks[i].ssid);
+        /* 始终为末尾的换行与省略号保留四字节，截断项整条撤回。 */
+        size_t remaining = sizeof(ssid_string) - used - (sizeof("\n...") - 1);
+        int n = snprintf(ssid_string + used, remaining, "%s%s", i ? "\n" : "", networks[i].ssid);
+        if (n < 0 || (size_t)n >= remaining) {
+            ssid_string[used] = '\0';
+            break;
         }
+        used += (size_t)n;
     }
 
-    
     // Print the SSID string
     printf("SSID String:\n%s", ssid_string); 
     if(ssid_string == NULL || *ssid_string == '\0')

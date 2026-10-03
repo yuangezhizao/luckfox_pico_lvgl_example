@@ -16,6 +16,17 @@ __attribute__((weak)) int tst_conf_ferror(FILE *stream) { return ferror(stream);
 #define fsync tst_conf_fsync
 #define fclose tst_conf_fclose
 #define ferror tst_conf_ferror
+#include <stdarg.h>
+/* 普通调用透传；扫描用例可模拟格式化输出超过剩余容量或编码失败。 */
+__attribute__((weak)) int tst_wifi_snprintf(char *out, size_t size, const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    int n = vsnprintf(out, size, fmt, ap);
+    va_end(ap);
+    return n;
+}
+#define snprintf tst_wifi_snprintf
 #include "custom_wifi.c"
 
 void tst_wifi_conf_load(const char *ssid, const char *psk)
@@ -27,3 +38,5 @@ void tst_wifi_conf_get(char ssid[128], char psk[128])
 {
     _wifi_conf_get(ssid, 128, psk, 128);
 }
+
+int tst_wifi_scan(void) { return _wifi_scanning_ssid(); }
