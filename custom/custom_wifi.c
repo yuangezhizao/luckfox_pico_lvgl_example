@@ -123,6 +123,22 @@ static void wifi_hint_hide_cb(lv_event_t *e)
         lv_obj_add_flag(wifi_hint_label, LV_OBJ_FLAG_HIDDEN);
 }
 
+static const char *wifi_conf_skip_ws(const char *s)
+{
+    while (*s == ' ' || *s == '\t')
+        s++;
+    return s;
+}
+
+/* 去掉行首空白后以 <key>= 开头才算命中，避免 scan_ssid=、bssid=、wpa_psk= 被当成 ssid=、psk=。 */
+static int wifi_conf_is_key(const char *line, const char *key)
+{
+    size_t n = strlen(key);
+
+    line = wifi_conf_skip_ws(line);
+    return strncmp(line, key, n) == 0 && line[n] == '=';
+}
+
 static void _wifi_conf_load(const char* ssid, const char* password)
 {
     FILE *wpa_supplicant_pipe;
@@ -205,12 +221,12 @@ static void _wifi_conf_load(const char* ssid, const char* password)
         }
         // Inside network={} block
         if (inside_network_block) {
-            if (strstr(line, "ssid=")) {
+            if (wifi_conf_is_key(line, "ssid")) {
                 memset(buffer,0,MAX_CONF_LEN);
                 sprintf(buffer, "        ssid=\"%s\"\n",ssid);
                 fputs(buffer, temp_file);
             }
-            else if (strstr(line, "psk=")) {
+            else if (wifi_conf_is_key(line, "psk")) {
                 memset(buffer,0,MAX_CONF_LEN);
                 sprintf(buffer, "        psk=\"%s\"\n",password);
                 fputs(buffer, temp_file);
@@ -272,10 +288,10 @@ static void _wifi_conf_get(char* ssid, char* passwd)
         }
         // Inside network={} block
         if (inside_network_block) {
-            if (strstr(line, "ssid=")) {
+            if (wifi_conf_is_key(line, "ssid")) {
                 sscanf(line, " ssid=\"%[^\"]\"", ssid);
             }
-            if (strstr(line, "psk=")) {
+            if (wifi_conf_is_key(line, "psk")) {
                 sscanf(line, " psk=\"%[^\"]\"", passwd);
             }
         }

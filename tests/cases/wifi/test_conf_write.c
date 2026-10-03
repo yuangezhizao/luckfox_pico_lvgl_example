@@ -130,8 +130,24 @@ static void io_failures(void)
     }
 }
 
+static void only_ssid_psk_lines(void)
+{
+    static const char before[] =
+        "ctrl_interface=/var/run/wpa_supplicant\nnetwork={\n        scan_ssid=1\n        bssid=11:22:33:44:55:66\n        ssid=\"home\"\n        key_mgmt=WPA-PSK\n        wpa_psk=keep\n        psk=\"homepass1\"\n}\n";
+    static const char after[] =
+        "ctrl_interface=/var/run/wpa_supplicant\nnetwork={\n        scan_ssid=1\n        bssid=11:22:33:44:55:66\n        ssid=\"newnet\"\n        key_mgmt=WPA-PSK\n        wpa_psk=keep\n        psk=\"newpass12\"\n}\n";
+    char *conf;
+
+    load_screen(before);
+    tst_wifi_conf_load("newnet", "newpass12");
+    conf = wifi_env_read("wpa_supplicant.conf");
+    printf("%s", conf);
+    CHECK(strcmp(conf, after) == 0);
+    free(conf);
+}
+
 int main(int argc, char **argv)
 {
-    static const tst_case_t cases[] = {{"same_dir_atomic", same_dir_atomic}, {"io_failures", io_failures}};
+    static const tst_case_t cases[] = {{"same_dir_atomic", same_dir_atomic}, {"io_failures", io_failures}, {"only_ssid_psk_lines", only_ssid_psk_lines}};
     return tst_run_case(cases, TST_COUNT(cases), argc, argv);
 }

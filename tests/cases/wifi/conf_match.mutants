@@ -1,0 +1,5 @@
+id: WIFI-C3
+file: custom/custom_wifi.c
+old:     return strncmp(line, key, n) == 0 && line[n] == '=';
+new:     return strstr(line, key) != NULL;
+tests: ^wifi\.conf_write\.
