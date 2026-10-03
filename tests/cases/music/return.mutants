@@ -1,0 +1,5 @@
+id: MUSIC-9
+file: custom/custom_musicplayer.c
+old:     _music_pause(1);\n    return 0;\n
+new:     _music_pause(1);\n
+tests: ^music\.compile\.

@@ -483,7 +483,7 @@ int music_player_thread_init()
             perror("pthread create error!\n");
             return -1;
         }
-        //printf("get music pos pthread create ok!\n");
+        return 0;
     }
     else
     {
@@ -500,9 +500,11 @@ int music_app_init()
     _music_pause(1);
     _music_set_volume(50);
     _music_set_mode(1);
+    return 0;
 }
 
 int music_app_quit()
 {
     _music_pause(1);
+    return 0;
 }
