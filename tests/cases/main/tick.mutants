@@ -1,0 +1,13 @@
+# custom_tick_get() 的改坏变体；格式见 tests/README.md「改坏检验」。
+
+id: MAIN-13a
+file: custom/custom_main.c
+old:     now_ms = (uint64_t)ts.tv_sec * 1000u + (uint64_t)ts.tv_nsec / 1000000u;
+new:     now_ms = (uint64_t)ts.tv_sec * 1000u + (uint64_t)ts.tv_nsec / 1000u;
+tests: ^main\.tick\.
+
+id: MAIN-13b
+file: custom/custom_main.c
+old:         started = true;\n
+new:
+tests: ^main\.tick\.

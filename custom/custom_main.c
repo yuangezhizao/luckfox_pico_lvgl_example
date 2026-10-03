@@ -11,7 +11,9 @@
 /*********************
  *      INCLUDES
  *********************/
+#include <stdbool.h>
 #include <stdio.h>
+#include <time.h>
 #include "lvgl.h"
 #include "custom.h"
 #include "custom_brightness.h"
@@ -237,20 +239,19 @@ void custom_init()
 /*Set in lv_conf.h as `LV_TICK_CUSTOM_SYS_TIME_EXPR`*/
 uint32_t custom_tick_get(void)
 {
-    static uint64_t start_ms = 0;
-    if(start_ms == 0) {
-        struct timeval tv_start;
-        gettimeofday(&tv_start, NULL);
-        start_ms = (tv_start.tv_sec * 1000000 + tv_start.tv_usec) / 1000;
-    }
-
-    struct timeval tv_now;
-    gettimeofday(&tv_now, NULL);
+    static uint64_t start_ms;
+    static bool started;
+    struct timespec ts;
     uint64_t now_ms;
-    now_ms = (tv_now.tv_sec * 1000000 + tv_now.tv_usec) / 1000;
 
-    uint32_t time_ms = now_ms - start_ms;
-    return time_ms;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    now_ms = (uint64_t)ts.tv_sec * 1000u + (uint64_t)ts.tv_nsec / 1000000u;
+    if (!started) {
+        start_ms = now_ms;
+        started = true;
+    }
+    /* LVGL 的 lv_tick_elaps 按 uint32_t 回绕处理。 */
+    return (uint32_t)(now_ms - start_ms);
 }
 
 /* GUI */

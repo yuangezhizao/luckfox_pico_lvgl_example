@@ -46,7 +46,7 @@ ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
 
 ## 32 位测试
 
-目标板的 `long` 为 32 位，主机为 64 位，换算溢出只能在 32 位下测出：`main.brightness_arm32.conversion` 用 `arm-linux-gnueabihf-gcc` 编译、`qemu-arm` 运行（标签 `arm32`，`ctest -LE arm32` 可跳过）。它不经 `luckfox_add_test()`，而由 `cases/main/CMakeLists.txt` 的自定义命令交叉编译并注册，测试名仍按 `<类别>.<对象>.<用例>`。两者都在 `.cursor/Dockerfile` 与 `.cursor/Dockerfile.luckfox_pico` 中；其他环境需 `sudo apt-get install -y gcc-arm-linux-gnueabihf qemu-user`。`-DLUCKFOX_TESTS_ARM32=AUTO`（默认）缺工具时跳过，`ON` 缺工具即报错，`OFF` 不注册。
+目标板的 `long` 为 32 位，主机为 64 位，换算溢出只能在 32 位下测出：`main.brightness_arm32.conversion` 用 `arm-linux-gnueabihf-gcc` 编译、`qemu-arm` 运行（标签 `arm32`，`ctest -LE arm32` 可跳过）。`main.tick.monotonic_wrap` 同样在 ARM32 下验证单调时钟、毫秒换算与回绕；其编译选项 `-U_TIME_BITS -U_FILE_OFFSET_BITS` 取消工具链默认的 64 位时间与文件偏移宏，使 `time_t` 为 32 位，覆盖目标板上的溢出条件。这两个目标不经 `luckfox_add_test()`，而由 `cases/main/CMakeLists.txt` 的自定义命令交叉编译并注册，测试名仍按 `<类别>.<对象>.<用例>`。编译器 `arm-linux-gnueabihf-gcc` 与 `qemu-arm` 都由 `.cursor/Dockerfile` 与 `.cursor/Dockerfile.luckfox_pico` 提供；其他环境需 `sudo apt-get install -y gcc-arm-linux-gnueabihf qemu-user`。`-DLUCKFOX_TESTS_ARM32=AUTO`（默认）缺工具时跳过，`ON` 缺工具即报错，`OFF` 不注册。
 
 ## 注意
 
