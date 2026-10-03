@@ -518,7 +518,6 @@ int music_player_thread_init()
     {
         int fd;
 
-        close(0);
         act.sa_handler = sigaction_exit_handler;
         sigfillset(&act.sa_mask);
         act.sa_flags = SA_RESTART; /* don't fiddle with EINTR */

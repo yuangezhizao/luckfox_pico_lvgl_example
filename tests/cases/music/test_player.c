@@ -2,6 +2,7 @@
 #define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <sys/un.h>
 #include <string.h>
 #include <signal.h>
@@ -114,6 +115,28 @@ static void mpv_missing_fast(void)
     CHECK(elapsed < 500);
 }
 
+static int fd_type(int fd)
+{
+    struct stat st;
+
+    return fstat(fd, &st) == 0 ? (int)(st.st_mode & S_IFMT) : -1;
+}
+
+/* ctest 下 fd 0 本是打开的字符设备；若已关闭先占住，否则修复后 socket() 也会拿到 0。不能用 fcntl(0, F_GETFD) 判断：close(0) 后 socket() 恰好返回 0。 */
+static void stdin_kept(void)
+{
+    int before;
+
+    if (fcntl(0, F_GETFD) == -1)
+        CHECK(open("/dev/null", O_RDONLY) == 0);
+    install_fake_mpv();
+    before = fd_type(0);
+    CHECK_EQ_INT(music_player_thread_init(), 0);
+    CHECK_EQ_INT(fd_type(0), before);
+    CHECK(fd_type(0) != S_IFSOCK);
+    CHECK(fd_mpv != 0);
+}
+
 /* 旧监听器仍活着；新 mpv 尚未建立端点时不得误连旧实例。 */
 static void stale_socket(void)
 {
@@ -140,6 +163,6 @@ static void stale_socket(void)
 
 int main(int argc, char **argv)
 {
-    static const tst_case_t cases[] = {{"exec_failure", exec_failure}, {"slow_socket", slow_socket}, {"timeout_reaps_child", timeout_reaps_child}, {"mpv_missing_fast", mpv_missing_fast}, {"stale_socket", stale_socket}};
+    static const tst_case_t cases[] = {{"exec_failure", exec_failure}, {"slow_socket", slow_socket}, {"timeout_reaps_child", timeout_reaps_child}, {"mpv_missing_fast", mpv_missing_fast}, {"stdin_kept", stdin_kept}, {"stale_socket", stale_socket}};
     return tst_run_case(cases, TST_COUNT(cases), argc, argv);
 }
