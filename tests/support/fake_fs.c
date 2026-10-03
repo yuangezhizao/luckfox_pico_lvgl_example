@@ -10,6 +10,8 @@
 #include <string.h>
 #include <sys/stat.h>
 
+unsigned long long tst_fb_clear_max_bytes = 64ULL << 20;
+
 static char tmp_dir[256];
 static char backlight_root[320];
 

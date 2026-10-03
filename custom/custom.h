@@ -55,6 +55,7 @@ extern "C" {
 
 // LVGL System
 void custom_init();
+#include "custom_fb.h"
 #include "custom_tick.h"
 
 // Compatible API

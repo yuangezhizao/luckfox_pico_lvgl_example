@@ -39,7 +39,7 @@ mkdir -p build && cd build && cmake .. && make -j && make install
 - CI 镜像只在 `dev` 上构建并 attest；`pull_request` 只复用 dest-lock（signer/source=`dev`）通过的 digest，失败即退出，不覆盖 GHCR。镜像标签取 `.cursor/Dockerfile` 内容哈希，所以修改该文件的 PR 在合并前 `build-image` 必然失败（找不到 dev 签名镜像），合并后 dev push 重建镜像才恢复。不把 `container:` 换成 `luckfox-pico-ci`（其中无 `gcc-arm-linux-gnueabihf`，uClibc gcc 也不在镜像层）。
 
 ### Lint（代码检查）
-没有独立的 linter，也没有告警关卡（无 `-Werror`）。`CMakeLists.txt` 的告警段 `add_compile_options()` 位于 `add_executable()` 之前（`add_compile_options()` 只作用于其后创建的 target），并用 `-std=gnu99`（`-std=c99` 会关掉 POSIX/GNU 扩展声明而编译失败），主程序以 `-Wall -Wextra …` 编译：glibc 132 条、uClibc 131 条告警为既存基线，只记录不作门禁。另一处 `add_compile_options(-fPIC -Wall -O3 -g0)` 仍在 `add_executable()` 之后、未生效，主程序实际按 `-O0` 编译；LVGL 与 lv_drivers 子目录不受这两处影响，`C_FLAGS` 为空。
+没有独立的 linter，也没有告警关卡（无 `-Werror`）。`CMakeLists.txt` 的告警段 `add_compile_options()` 位于 `add_executable()` 之前（`add_compile_options()` 只作用于其后创建的 target），并用 `-std=gnu99`（`-std=c99` 会关掉 POSIX/GNU 扩展声明而编译失败），主程序以 `-Wall -Wextra …` 编译：glibc 119 条、uClibc 118 条告警为既存基线，只记录不作门禁。另一处 `add_compile_options(-fPIC -Wall -O3 -g0)` 仍在 `add_executable()` 之后、未生效，主程序实际按 `-O0` 编译；LVGL 与 lv_drivers 子目录不受这两处影响，`C_FLAGS` 为空。
 
 ### 测试
 `tests/` 是独立的主机原生 CMake 工程（gcc + ASan/UBSan、headless），与交叉编译互不影响：`cmake -S tests -B build-tests && cmake --build build-tests -j && ctest --test-dir build-tests --output-on-failure -j`。32 位换算测试需 `qemu-user`（`qemu-arm`）与 `arm-linux-gnueabihf-gcc` 同时存在，缺任一时自动跳过，两者都由 `.cursor/Dockerfile` 与 `.cursor/Dockerfile.luckfox_pico` 提供；CI 的 `native-tests` job 以 `-DLUCKFOX_TESTS_ARM32=ON` 强制运行。常规 UI 测试不调用 `custom_init()`（它会拉起 `mpv` 并做硬件相关初始化；`mpv` 的启动与连接由 `cases/music/` 的用例以假 `mpv` 单独测试）。用例按页面放在 `tests/cases/<页面>/`，分类、命名、新增步骤与改坏检验见 `tests/README.md`。

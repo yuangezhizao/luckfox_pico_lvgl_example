@@ -96,6 +96,6 @@ int main()
         wifi_backend_release();
     main_backend_release();
 
-    system("cat /dev/zero > /dev/fb0");
+    custom_fb_clear("/dev/fb0");
     return 0;
 }

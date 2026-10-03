@@ -18,4 +18,6 @@ void tst_fake_exec(const char *name, const char *script);
 const char *tst_music_dir(void);
 const char *tst_mpv_socket_path(void);
 
+extern unsigned long long tst_fb_clear_max_bytes;
+
 #endif

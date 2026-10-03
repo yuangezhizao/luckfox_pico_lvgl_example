@@ -134,7 +134,13 @@ set_source_files_properties(${LUCKFOX_ROOT}/custom/custom_musicplayer.c PROPERTI
     COMPILE_DEFINITIONS "MUSIC_DIR_PATH=tst_music_dir();MPV_SOCKET_PATH=tst_mpv_socket_path()")
 
 add_subdirectory(cases/sketchpad)
+# 清屏写入上限由测试改小（spec D9）。
+set_source_files_properties(${LUCKFOX_ROOT}/custom/custom_fb.c PROPERTIES
+    COMPILE_OPTIONS "-include;${CMAKE_CURRENT_SOURCE_DIR}/support/fake_fs.h"
+    COMPILE_DEFINITIONS "FB_CLEAR_MAX_BYTES=tst_fb_clear_max_bytes")
+
 add_subdirectory(cases/music)
+add_subdirectory(cases/exit)
 
 # 手动目标，不进 ALL、不注册为 ctest（spec §5.6）。
 add_executable(luckfox_screenshots EXCLUDE_FROM_ALL tools/screenshots.c)
