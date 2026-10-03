@@ -19,6 +19,10 @@
  *********************/
 
 #define MAX_FILENAME_LEN 256
+#ifndef MPV_SOCKET_PATH
+#define MPV_SOCKET_PATH "/tmp/mpvsocket"
+_Static_assert(sizeof(MPV_SOCKET_PATH) <= sizeof(((struct sockaddr_un *)0)->sun_path), "MPV_SOCKET_PATH too long for sun_path");
+#endif
 #ifndef MUSIC_DIR_PATH
 #define MUSIC_DIR_PATH "/music"
 #endif
@@ -38,7 +42,7 @@ struct Music_Node {
 struct Music_Node *playing_music_node;  
 struct Music_Node* head;
 
-int32_t fd_mpv;
+int32_t fd_mpv = -1;
 struct sigaction act;
 pid_t pid;
 struct sockaddr_un addr;
@@ -128,6 +132,8 @@ const char *music_roller_options(void)
 /* MSG_NOSIGNAL 只作用于本次发送；否决 signal(SIGPIPE, SIG_IGN)（进程级，会影响 WiFi 的 popen 等路径）。 */
 static int mpv_send(const char *buf, size_t len)
 {
+    if (fd_mpv < 0)
+        return -1;
     ssize_t n = send(fd_mpv, buf, len, MSG_NOSIGNAL);
 
     if (n != (ssize_t)len) {
@@ -443,16 +449,30 @@ void Music_player_mode_btn_event_handler(lv_event_t *e)
 
 int music_player_thread_init()
 {
-	pid = vfork();
-	if (pid == 0) // child thread
-	{  
-        char cmd[256];
+    /* MPV_SOCKET_PATH 可被测试覆盖为运行期表达式，长度只能在运行期检查，且须在启动 mpv 之前。 */
+    const char *sock_path = MPV_SOCKET_PATH;
+    char ipc_arg[sizeof("--input-ipc-server=") + sizeof(addr.sun_path)];
+    int n;
+
+    if (strlen(sock_path) >= sizeof(addr.sun_path)) {
+        printf("mpv socket path too long: %s\n", sock_path);
+        return -1;
+    }
+    n = snprintf(ipc_arg, sizeof(ipc_arg), "--input-ipc-server=%s", sock_path);
+    if (n < 0 || (size_t)n >= sizeof(ipc_arg)) {
+        printf("mpv ipc argument too long\n");
+        return -1;
+    }
+    pid = vfork();
+    if (pid == 0) // child thread
+    {
         prctl(PR_SET_PDEATHSIG, SIGKILL);
-        execlp("mpv", "mpv", "--quiet", "--no-terminal", "--no-video", "--idle=yes", "--term-status-msg=", "--input-ipc-server=/tmp/mpvsocket", NULL);        
-        return 0;
-	}
-	else if (pid > 0) // parent thread
-	{
+        execlp("mpv", "mpv", "--quiet", "--no-terminal", "--no-video", "--idle=yes", "--term-status-msg=", ipc_arg, (char *)NULL);
+        /* vfork 子进程与父进程共用栈，只能 _exit，不能 return。 */
+        _exit(127);
+    }
+    else if (pid > 0) // parent thread
+    {
 
         sleep(1);
         close(0);
@@ -462,7 +482,7 @@ int music_player_thread_init()
         act.sa_flags = SA_RESTART; /* don't fiddle with EINTR */
         sigaction(SIGUSR1, &act, NULL);
         addr.sun_family = AF_UNIX;
-        strcpy(addr.sun_path, "/tmp/mpvsocket");
+        memcpy(addr.sun_path, sock_path, strlen(sock_path) + 1);
         
         fd_mpv = socket(AF_UNIX, SOCK_STREAM, 0);
         if (fd_mpv == -1)
@@ -477,7 +497,7 @@ int music_player_thread_init()
             perror("Cannot connect to socket \n");
             return -1;
         }
-		// Monitor thread
+        // Monitor thread
         if (pthread_create(&monitor_thread, NULL, get_music_playback_time, NULL) != 0)
         {
             perror("pthread create error!\n");

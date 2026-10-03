@@ -3,3 +3,10 @@ file: custom/custom_musicplayer.c
 old:     ssize_t n = send(fd_mpv, buf, len, MSG_NOSIGNAL);
 new:     ssize_t n = write(fd_mpv, buf, len);
 tests: ^music\.mpv_send\.
+
+# 删除负 fd 的发送保护。
+id: MUSIC-14
+file: custom/custom_musicplayer.c
+old:     if (fd_mpv < 0)\n        return -1;\n
+new:
+tests: ^music\.mpv_send\.

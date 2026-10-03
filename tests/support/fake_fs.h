@@ -16,5 +16,6 @@ const char *tst_wpa_conf_path(void);
 void tst_fake_exec(const char *name, const char *script);
 
 const char *tst_music_dir(void);
+const char *tst_mpv_socket_path(void);
 
 #endif

@@ -50,11 +50,11 @@ ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
 
 ## 注意
 
-- 测试不调用 `custom_init()`：它用 `vfork()` 启动 `mpv`，主机无 `mpv` 时子进程 `return` 会破坏父进程栈。
+- 常规 UI 测试不调用 `custom_init()`：它会拉起 `mpv` 并做硬件相关初始化；`mpv` 的启动与连接由 `cases/music/` 的用例以假 `mpv` 单独测试。
 - `custom_wifi.c` 的 `WPA_FILE_PATH=tst_wpa_conf_path()` 由 `tests/CMakeLists.txt` 的源文件 `COMPILE_DEFINITIONS` 覆盖，声明通过 `-include support/fake_fs.h` 引入，配置文件位于本进程临时目录；包含源码的 `unit_wifi.c` 在 `#include "custom_wifi.c"` 前用 `#define` 做相同覆盖。
 - 捕获输出期间 `CHECK` 的打印也会被捕获，断言放在 `tst_capture_end()` 之后。
 - 测试工程对 `lib/lvgl/src`、`generated/`、`custom/` 递归 glob 全部 `.c`，与产品 `CMakeLists.txt` 只 glob 指定目录不完全相同，在这些目录下新增子目录或非产品 `.c` 时需留意。
-- 音乐源码的 `MUSIC_DIR_PATH=tst_music_dir()` 也通过源文件 `COMPILE_DEFINITIONS` 和 `-include support/fake_fs.h` 覆盖；`unit_list_alloc.c` 在包含源码前用 `#define` 做相同覆盖，目录由本进程独享。
+- 音乐源码的 `MUSIC_DIR_PATH=tst_music_dir()` 也通过源文件 `COMPILE_DEFINITIONS` 和 `-include support/fake_fs.h` 覆盖；`unit_list_alloc.c` 在包含源码前用 `#define` 做相同覆盖，目录由本进程独享；`MPV_SOCKET_PATH=tst_mpv_socket_path()` 使用同样的源文件属性与 UNIT 宏覆盖，假 mpv 的套接字也在本进程临时目录。
 - libdrm、cjson 头文件使用系统路径 `/usr/include/libdrm`、`/usr/include/cjson`（Debian/Ubuntu 布局）。
 - `custom_brightness.c` 在测试构建中以 `BACKLIGHT_SYSFS_DIR=tst_backlight_root()` 编译，背光目录位于本进程临时目录，`ctest -j` 并行互不干扰。
 

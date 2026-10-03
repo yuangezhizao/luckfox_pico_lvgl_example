@@ -131,7 +131,7 @@ add_subdirectory(cases/wifi)
 # 音乐目录指向本进程临时目录（spec §5.4）。
 set_source_files_properties(${LUCKFOX_ROOT}/custom/custom_musicplayer.c PROPERTIES
     COMPILE_OPTIONS "-include;${CMAKE_CURRENT_SOURCE_DIR}/support/fake_fs.h"
-    COMPILE_DEFINITIONS "MUSIC_DIR_PATH=tst_music_dir()")
+    COMPILE_DEFINITIONS "MUSIC_DIR_PATH=tst_music_dir();MPV_SOCKET_PATH=tst_mpv_socket_path()")
 
 add_subdirectory(cases/sketchpad)
 add_subdirectory(cases/music)

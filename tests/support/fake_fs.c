@@ -161,3 +161,11 @@ const char *tst_music_dir(void)
         tst_path(path, sizeof(path), "music");
     return path;
 }
+
+const char *tst_mpv_socket_path(void)
+{
+    static char path[1024];
+    if (path[0] == '\0')
+        tst_path(path, sizeof(path), "mpv.sock");
+    return path;
+}
