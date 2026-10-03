@@ -1,1 +1,4 @@
 luckfox_add_test(backend_release CASES without_timer twice)
+luckfox_add_test(validate CASES rules utf8)
+luckfox_add_test(load CASES invalid_no_wpa_call dropdown_utf8 dropdown_overlong edit_hides_hint)
+luckfox_add_compile_check(prototypes FLAGS -Werror=implicit-function-declaration SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/compile_prototypes.c")

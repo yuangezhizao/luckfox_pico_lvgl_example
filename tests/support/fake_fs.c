@@ -119,3 +119,37 @@ long tst_read_long(const char *rel)
     fclose(fp);
     return value;
 }
+
+const char *tst_wpa_conf_path(void)
+{
+    static char path[1024];
+
+    if (path[0] == '\0')
+        tst_path(path, sizeof(path), "wpa_supplicant.conf");
+    return path;
+}
+
+/* 在 <临时目录>/bin 写一个可执行脚本；首次调用时把该目录放到 PATH 最前。 */
+void tst_fake_exec(const char *name, const char *script)
+{
+    static int path_set;
+    char rel[256], path[1024];
+
+    tst_mkdirs("bin");
+    tst_fmt(rel, sizeof(rel), "bin/%s", name);
+    tst_write_file(rel, script);
+    tst_path(path, sizeof(path), rel);
+    if (chmod(path, 0755) != 0) {
+        perror("chmod");
+        abort();
+    }
+    if (!path_set) {
+        char bin[1024], value[4096];
+        const char *old = getenv("PATH");
+
+        tst_path(bin, sizeof(bin), "bin");
+        tst_fmt(value, sizeof(value), "%s:%s", bin, old != NULL ? old : "/usr/bin:/bin");
+        setenv("PATH", value, 1);
+        path_set = 1;
+    }
+}

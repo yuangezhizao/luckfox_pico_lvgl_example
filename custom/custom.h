@@ -92,14 +92,15 @@ int music_app_init();
 int music_player_thread_init();
 
 /* WIFI */
+const char *wifi_input_check(const char *ssid, const char *password);
 void WIFI_clear_btn_event_handler(lv_event_t *e);
 void WIFI_load_btn_event_handler(lv_event_t *e);
 void WIFI_scanning_btn_event_handler(lv_event_t *e);
 void WIFI_wifi_list_event_handler(lv_event_t *e);
 
-void wifi_app_init();
-void wifi_backend_init();
-void wifi_backend_release();
+void wifi_app_init(void);
+void wifi_backend_init(void);
+void wifi_backend_release(void);
 
 /* Main */
 void Main_OFF_btn_event_handler(lv_event_t *e);

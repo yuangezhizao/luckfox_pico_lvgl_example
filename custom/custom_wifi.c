@@ -21,7 +21,9 @@
 #define MAX_CONF_LEN 128
 #define MAX_LINE_LEN 1024
 #define MAX_NETWORKS 10
+#ifndef WPA_FILE_PATH
 #define WPA_FILE_PATH "/etc/wpa_supplicant.conf"
+#endif
 /**********************
  *      TYPEDEFS
  **********************/
@@ -37,9 +39,88 @@ extern lv_ui guider_ui;
  **********************/
 pthread_t wifi_status_update_thread;
 lv_timer_t *wifi_update_timer;
+static lv_obj_t *wifi_hint_label;
 /**********************
  *  STATIC FUNCTIONS
  **********************/
+static int wifi_utf8_valid(const unsigned char *s)
+{
+    while (*s != '\0') {
+        uint32_t cp;
+        int n, i;
+
+        if (*s < 0x80) {
+            s++;
+            continue;
+        }
+        if ((*s & 0xe0) == 0xc0) {
+            n = 1;
+            cp = *s & 0x1f;
+        } else if ((*s & 0xf0) == 0xe0) {
+            n = 2;
+            cp = *s & 0x0f;
+        } else if ((*s & 0xf8) == 0xf0) {
+            n = 3;
+            cp = *s & 0x07;
+        } else {
+            return 0;
+        }
+        for (i = 1; i <= n; i++) {
+            if ((s[i] & 0xc0) != 0x80)
+                return 0;
+            cp = (cp << 6) | (s[i] & 0x3f);
+        }
+        if ((n == 1 && cp < 0x80) || (n == 2 && cp < 0x800) || (n == 3 && (cp < 0x10000 || cp > 0x10ffff)) || (cp >= 0xd800 && cp <= 0xdfff))
+            return 0;
+        s += n + 1;
+    }
+    return 1;
+}
+
+/* 按字节计长度；wpa_supplicant 把引号外的 # 当注释，保守起见值里 # 之前出现过 " 就拒绝。 */
+static int wifi_value_ok(const char *value, size_t min_len, size_t max_len)
+{
+    const unsigned char *p;
+    size_t len = strlen(value);
+    int seen_quote = 0;
+
+    if (len < min_len || len > max_len)
+        return 0;
+    for (p = (const unsigned char *)value; *p != '\0'; p++) {
+        if (*p < 0x20 || *p == 0x7f)
+            return 0;
+        if (*p == '"')
+            seen_quote = 1;
+        else if (*p == '#' && seen_quote)
+            return 0;
+    }
+    return wifi_utf8_valid((const unsigned char *)value);
+}
+
+const char *wifi_input_check(const char *ssid, const char *password)
+{
+    if (!wifi_value_ok(ssid, 1, 32))
+        return "Invalid SSID: 1-32 bytes, no control characters, no # after \"";
+    if (!wifi_value_ok(password, 8, 63))
+        return "Invalid password: 8-63 bytes, no control characters, no # after \"";
+    return NULL;
+}
+
+static void wifi_hint_show(const char *text)
+{
+    if (wifi_hint_label == NULL)
+        return;
+    lv_label_set_text(wifi_hint_label, text);
+    lv_obj_clear_flag(wifi_hint_label, LV_OBJ_FLAG_HIDDEN);
+}
+
+static void wifi_hint_hide_cb(lv_event_t *e)
+{
+    LV_UNUSED(e);
+    if (wifi_hint_label != NULL)
+        lv_obj_add_flag(wifi_hint_label, LV_OBJ_FLAG_HIDDEN);
+}
+
 static void _wifi_conf_load(const char* ssid, const char* password)
 {
     FILE *wpa_supplicant_pipe;
@@ -305,7 +386,13 @@ void WIFI_load_btn_event_handler(lv_event_t *e)
     {
         const char *ssid = lv_textarea_get_text(guider_ui.WIFI_ssid_ta);
         const char *passwd = lv_textarea_get_text(guider_ui.WIFI_psw_ta);
-        _wifi_conf_load(ssid, passwd);     
+        const char *err = wifi_input_check(ssid, passwd);
+
+        if (err != NULL) {
+            wifi_hint_show(err);
+            return;
+        }
+        _wifi_conf_load(ssid, passwd);
     }
 }
 
@@ -342,6 +429,16 @@ void WIFI_wifi_list_event_handler(lv_event_t *e)
         char ssid[MAX_CONF_LEN];
         memset(ssid, 0, MAX_CONF_LEN);
         lv_dropdown_get_selected_str(guider_ui.WIFI_wifi_list, ssid, MAX_CONF_LEN);
+        /* 文本框会丢弃非法字节，必须先检查扫描得到的原始 SSID。 */
+        if (!wifi_utf8_valid((const unsigned char *)ssid)) {
+            wifi_hint_show("Invalid SSID: UTF-8 required");
+            return;
+        }
+        /* 回填前按原始字节长度拒绝，避免文本框截断后提交另一个名称。 */
+        if (strlen(ssid) > 32) {
+            wifi_hint_show(wifi_input_check(ssid, ""));
+            return;
+        }
         lv_textarea_set_text(guider_ui.WIFI_ssid_ta, ssid);
     } 
 }
@@ -362,6 +459,17 @@ void wifi_app_init()
 
     lv_obj_add_flag(guider_ui.WIFI_wifi_log_img,LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(guider_ui.WIFI_loaded_wifi_label,LV_OBJ_FLAG_HIDDEN); 
+    wifi_hint_label = lv_label_create(guider_ui.WIFI);
+    luckfox_lv_obj_set_pos(wifi_hint_label, 150, 245);
+    luckfox_lv_obj_set_size(wifi_hint_label, 310, 60);
+    lv_label_set_long_mode(wifi_hint_label, LV_LABEL_LONG_WRAP);
+    lv_obj_set_style_text_color(wifi_hint_label, lv_color_hex(0xff0000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    luckfox_lv_obj_set_style_text_font(wifi_hint_label, &lv_font_montserratMedium_16, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_add_flag(wifi_hint_label, LV_OBJ_FLAG_HIDDEN);
+    /* 回填文本框也会发 VALUE_CHANGED，所以在回填之后、标签创建之后才注册。 */
+    lv_obj_add_event_cb(guider_ui.WIFI_ssid_ta, wifi_hint_hide_cb, LV_EVENT_VALUE_CHANGED, NULL);
+    lv_obj_add_event_cb(guider_ui.WIFI_psw_ta, wifi_hint_hide_cb, LV_EVENT_VALUE_CHANGED, NULL);
+
 }
 
 void wifi_backend_init()

@@ -12,4 +12,7 @@ void tst_mkdirs(const char *rel);
 void tst_write_file(const char *rel, const char *content);
 long tst_read_long(const char *rel);
 
+const char *tst_wpa_conf_path(void);
+void tst_fake_exec(const char *name, const char *script);
+
 #endif

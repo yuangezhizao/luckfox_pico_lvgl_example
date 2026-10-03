@@ -64,6 +64,11 @@ set_source_files_properties(${LUCKFOX_ROOT}/custom/custom_brightness.c PROPERTIE
     COMPILE_OPTIONS "-include;${CMAKE_CURRENT_SOURCE_DIR}/support/fake_fs.h"
     COMPILE_DEFINITIONS "BACKLIGHT_SYSFS_DIR=tst_backlight_root()")
 
+# WiFi 配置文件指向本进程临时目录（spec D14）。
+set_source_files_properties(${LUCKFOX_ROOT}/custom/custom_wifi.c PROPERTIES
+    COMPILE_OPTIONS "-include;${CMAKE_CURRENT_SOURCE_DIR}/support/fake_fs.h"
+    COMPILE_DEFINITIONS "WPA_FILE_PATH=tst_wpa_conf_path()")
+
 # OBJECT 库：被测源码引用这里定义的全局量，这里又引用被测源码，两个静态库互相引用会受链接顺序影响。
 add_library(tst_support OBJECT
     support/app_env.c
