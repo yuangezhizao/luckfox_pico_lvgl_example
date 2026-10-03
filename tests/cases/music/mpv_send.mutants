@@ -1,0 +1,5 @@
+id: MUSIC-7
+file: custom/custom_musicplayer.c
+old:     ssize_t n = send(fd_mpv, buf, len, MSG_NOSIGNAL);
+new:     ssize_t n = write(fd_mpv, buf, len);
+tests: ^music\.mpv_send\.

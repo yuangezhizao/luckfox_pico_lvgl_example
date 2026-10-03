@@ -125,11 +125,16 @@ const char *music_roller_options(void)
     return music_roller_str != NULL ? music_roller_str : "";
 }
 
+/* MSG_NOSIGNAL 只作用于本次发送；否决 signal(SIGPIPE, SIG_IGN)（进程级，会影响 WiFi 的 popen 等路径）。 */
 static int mpv_send(const char *buf, size_t len)
 {
-    ssize_t n = write(fd_mpv, buf, len);
+    ssize_t n = send(fd_mpv, buf, len, MSG_NOSIGNAL);
 
-    return n == (ssize_t)len ? 0 : -1;
+    if (n != (ssize_t)len) {
+        perror("mpv_send");
+        return -1;
+    }
+    return 0;
 }
 
 /* 文件名里的 " 与 \ 由 cJSON 转义；路径前缀保持字面量 /music/（板上与 MUSIC_DIR_PATH 相同）。 */
@@ -162,7 +167,7 @@ static void _music_pause(int sta)
     char cmd[256];
     sprintf(cmd, "{ \"command\": [\"set_property\", \"pause\",%s] }\n", sta ? "true" : "false");
     //printf("%s\n", cmd);
-    write(fd_mpv, cmd, strlen(cmd));
+    mpv_send(cmd, strlen(cmd));
 }
 
 static void _music_set_pos(int music_id)
@@ -171,7 +176,7 @@ static void _music_set_pos(int music_id)
     char cmd[256];
     sprintf(cmd, "{ \"command\": [\"set_property\", \"playlist-pos\", %d] }\n",music_id);
     //printf("%s\n", cmd);
-    write(fd_mpv, cmd, strlen(cmd)); 
+    mpv_send(cmd, strlen(cmd));
     // set name
     lv_label_set_text(guider_ui.Music_player_music_name, playing_music_node->filename);
 }
@@ -181,7 +186,7 @@ static void _music_set_volume(int volume)
     char cmd[256];
     sprintf(cmd, "{ \"command\": [\"set_property\", \"volume\", %d] }\n",volume);
     //printf("%s\n", cmd);
-    write(fd_mpv, cmd, strlen(cmd));        
+    mpv_send(cmd, strlen(cmd));
 }
 
 static void _music_set_progress(int progress)
@@ -189,7 +194,7 @@ static void _music_set_progress(int progress)
     char cmd[256];
     sprintf(cmd, "{ \"command\": [\"seek\", %d, \"absolute\"] }\n",progress);
     //printf("%s\n", cmd);
-    write(fd_mpv, cmd, strlen(cmd));        
+    mpv_send(cmd, strlen(cmd));
 }
 
 static void _music_set_mode(int mode)
@@ -197,7 +202,7 @@ static void _music_set_mode(int mode)
     char cmd[256];
     sprintf(cmd, "{ \"command\": [\"set_property\", \"loop\",%s] }\n", mode ? "true" : "false");
     //printf("%s\n", cmd);
-    write(fd_mpv, cmd, strlen(cmd)); 
+    mpv_send(cmd, strlen(cmd));
 }
 
 void *get_music_playback_time(void *arg)
@@ -214,8 +219,8 @@ void *get_music_playback_time(void *arg)
     cJSON *cjson_obj;
     char buf[512];
 
-    write(fd_mpv, cmd, strlen(cmd));
-    write(fd_mpv, cmd1, strlen(cmd1));
+    mpv_send(cmd, strlen(cmd));
+    mpv_send(cmd1, strlen(cmd1));
     while (1)
     {
         memset(buf, 0, sizeof(buf));
