@@ -1,0 +1,5 @@
+id: MUSIC-3
+file: custom/custom_musicplayer.c
+old:     cJSON_AddItemToArray(cmd, cJSON_CreateString(path));
+new:     cJSON_AddItemToArray(cmd, cJSON_CreateString(filename));
+tests: ^music\.mpv_cmd\.

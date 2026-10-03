@@ -1,2 +1,3 @@
 luckfox_add_test(list CASES options_over_255 newline_name_skipped)
+luckfox_add_test(mpv_cmd CASES escaping_and_length)
 luckfox_add_test(list_alloc UNIT unit_list_alloc.c CASES options_alloc_failure)

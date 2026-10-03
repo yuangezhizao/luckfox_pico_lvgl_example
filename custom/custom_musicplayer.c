@@ -125,6 +125,38 @@ const char *music_roller_options(void)
     return music_roller_str != NULL ? music_roller_str : "";
 }
 
+static int mpv_send(const char *buf, size_t len)
+{
+    ssize_t n = write(fd_mpv, buf, len);
+
+    return n == (ssize_t)len ? 0 : -1;
+}
+
+/* 文件名里的 " 与 \ 由 cJSON 转义；路径前缀保持字面量 /music/（板上与 MUSIC_DIR_PATH 相同）。 */
+static void music_mpv_loadfile(const char *filename)
+{
+    char path[sizeof("/music/") + 256];
+    cJSON *root = cJSON_CreateObject();
+    cJSON *cmd = root != NULL ? cJSON_AddArrayToObject(root, "command") : NULL;
+    char *json;
+
+    if (cmd == NULL) {
+        cJSON_Delete(root);
+        return;
+    }
+    snprintf(path, sizeof(path), "/music/%s", filename);
+    cJSON_AddItemToArray(cmd, cJSON_CreateString("loadfile"));
+    cJSON_AddItemToArray(cmd, cJSON_CreateString(path));
+    cJSON_AddItemToArray(cmd, cJSON_CreateString("append"));
+    json = cJSON_PrintUnformatted(root);
+    if (json != NULL) {
+        mpv_send(json, strlen(json));
+        mpv_send("\n", 1);
+        cJSON_free(json);
+    }
+    cJSON_Delete(root);
+}
+
 static void _music_pause(int sta)
 {
     char cmd[256];
@@ -259,10 +291,7 @@ int music_scan_list(void)
                 insert_music_node(&head, entry->d_name,id_num);
                 id_num++;
                 //add to mpv list            
-                char cmd[256];
-                sprintf(cmd, "{ \"command\": [\"loadfile\", \"/music/%s\",\"append\"] }\n",entry->d_name);
-                //printf("%s\n", cmd);
-                write(fd_mpv, cmd, strlen(cmd));
+                music_mpv_loadfile(entry->d_name);
             }
         }
     }
