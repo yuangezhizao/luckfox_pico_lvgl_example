@@ -1,4 +1,5 @@
 luckfox_add_test(list CASES options_over_255 newline_name_skipped missing_dir)
 luckfox_add_test(mpv_cmd CASES escaping_and_length)
 luckfox_add_test(roller CASES select_long_name)
+luckfox_add_test(empty_list UNIT unit_list_alloc.c CASES no_crash alloc_failure_no_crash)
 luckfox_add_test(list_alloc UNIT unit_list_alloc.c CASES options_alloc_failure)

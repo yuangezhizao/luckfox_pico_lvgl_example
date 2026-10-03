@@ -1,0 +1,5 @@
+id: MUSIC-C1
+file: custom/custom_musicplayer.c
+old:         if (playing_music_node == NULL)\n            return;\n        playing_music_node = playing_music_node->next;\n
+new:         playing_music_node = playing_music_node->next;\n
+tests: ^music\.empty_list\.

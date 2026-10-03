@@ -337,6 +337,8 @@ void Music_player_next_btn_event_handler(lv_event_t *e)
 
     if (code == LV_EVENT_RELEASED)
     {
+        if (playing_music_node == NULL)
+            return;
         playing_music_node = playing_music_node->next;
         lv_roller_set_selected(guider_ui.Music_player_roller_1,playing_music_node->id,LV_ANIM_OFF);
         // set play music    
@@ -351,6 +353,8 @@ void Music_player_pre_btn_event_handler(lv_event_t *e)
 
     if (code == LV_EVENT_RELEASED)
     {   
+        if (playing_music_node == NULL)
+            return;
         playing_music_node = playing_music_node->prev;
         lv_roller_set_selected(guider_ui.Music_player_roller_1,playing_music_node->id,LV_ANIM_OFF);
         // set play music
@@ -482,6 +486,8 @@ int music_player_thread_init()
 
 int music_app_init()
 {
+    if (playing_music_node == NULL)
+        return -1;
     _music_set_pos(0);
     _music_pause(1);
     _music_set_volume(50);
