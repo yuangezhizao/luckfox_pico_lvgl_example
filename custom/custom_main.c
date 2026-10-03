@@ -333,6 +333,7 @@ int luckfox_get_system_info()
     FILE *fp = popen("cat /etc/os-release | grep \"Ubuntu\"", "r");
     if (fp == NULL) {
         perror("popen failed");
+        return 0;
     }
 
     char buffer[128];

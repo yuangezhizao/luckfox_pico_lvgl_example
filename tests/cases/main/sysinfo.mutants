@@ -1,0 +1,5 @@
+id: MAIN-16
+file: custom/custom_main.c
+old:         perror("popen failed");\n        return 0;\n
+new:         perror("popen failed");\n
+tests: ^main\.sysinfo\.

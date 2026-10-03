@@ -45,3 +45,5 @@ luckfox_add_test(clock UNIT unit_clock.c CASES meridiem)
 
 luckfox_add_test(calendar CASES highlight_survives no_slash one_slash)
 set_tests_properties(main.calendar.highlight_survives PROPERTIES ENVIRONMENT "ASAN_OPTIONS=detect_stack_use_after_return=1")
+
+luckfox_add_test(sysinfo CASES popen_failure)
