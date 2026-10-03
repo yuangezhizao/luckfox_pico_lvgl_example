@@ -14,6 +14,7 @@
 #include "wifi_env.h"
 
 void tst_wifi_conf_load(const char *ssid, const char *psk);
+void tst_wifi_conf_get(char ssid[128], char psk[128]);
 
 static char g_from[1024], g_to[1024];
 static int g_fail;
@@ -146,8 +147,42 @@ static void only_ssid_psk_lines(void)
     free(conf);
 }
 
+static void load_and_read_back(const char *ssid, const char *psk)
+{
+    char got_ssid[128] = "", got_psk[128] = "";
+
+    tst_wifi_conf_load(ssid, psk);
+    tst_wifi_conf_get(got_ssid, got_psk);
+    printf("ssid=[%s] psk=[%s]\n", got_ssid, got_psk);
+    CHECK(strcmp(got_ssid, ssid) == 0);
+    CHECK(strcmp(got_psk, psk) == 0);
+}
+
+/* CRLF 块结束后的 ssid/psk 属于块外内容，必须逐字保留。 */
+static void crlf_block_end(void)
+{
+    static const char before[] =
+        "network={\r\n    ssid=\"home\"\n    psk=\"homepass1\"\n \t} \t\r\nssid=\"outside\"\npsk=\"outsidepass\"\n";
+    static const char after[] =
+        "network={\r\n        ssid=\"newnet\"\n        psk=\"newpass12\"\n \t} \t\r\nssid=\"outside\"\npsk=\"outsidepass\"\n";
+    char *conf;
+
+    load_screen(before);
+    tst_wifi_conf_load("newnet", "newpass12");
+    conf = wifi_env_read("wpa_supplicant.conf");
+    CHECK(strcmp(conf, after) == 0);
+    free(conf);
+}
+
+static void brace_in_value(void)
+{
+    load_screen(WIFI_ENV_CONF);
+    load_and_read_back("my}net", "pw network={1");
+    load_and_read_back("plain", "plainpass1");
+}
+
 int main(int argc, char **argv)
 {
-    static const tst_case_t cases[] = {{"same_dir_atomic", same_dir_atomic}, {"io_failures", io_failures}, {"only_ssid_psk_lines", only_ssid_psk_lines}};
+    static const tst_case_t cases[] = {{"crlf_block_end", crlf_block_end}, {"same_dir_atomic", same_dir_atomic}, {"io_failures", io_failures}, {"only_ssid_psk_lines", only_ssid_psk_lines}, {"brace_in_value", brace_in_value}};
     return tst_run_case(cases, TST_COUNT(cases), argc, argv);
 }

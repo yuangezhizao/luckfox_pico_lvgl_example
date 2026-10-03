@@ -139,6 +139,23 @@ static int wifi_conf_is_key(const char *line, const char *key)
     return strncmp(line, key, n) == 0 && line[n] == '=';
 }
 
+static int wifi_conf_is_block_start(const char *line)
+{
+    return strncmp(wifi_conf_skip_ws(line), "network={", 9) == 0;
+}
+
+/* 去掉行首空白与行尾 \r、\n、空白后整行为 } 才算块结束，值里的 } 不算。 */
+static int wifi_conf_is_block_end(const char *line)
+{
+    const char *p = wifi_conf_skip_ws(line);
+
+    if (*p != '}')
+        return 0;
+    for (p++; *p == ' ' || *p == '\t' || *p == '\r' || *p == '\n'; p++)
+        ;
+    return *p == '\0';
+}
+
 static void _wifi_conf_load(const char* ssid, const char* password)
 {
     FILE *wpa_supplicant_pipe;
@@ -210,13 +227,13 @@ static void _wifi_conf_load(const char* ssid, const char* password)
 
     while (fgets(line, MAX_LINE_LEN, file)) {
         // Enter network={} block
-        if (strstr(line, "network={")) {
+        if (wifi_conf_is_block_start(line)) {
             inside_network_block = 1;
             fputs(line, temp_file);
             continue;
         }
         // Exit network={} block
-        if (strstr(line, "}")) {
+        if (wifi_conf_is_block_end(line)) {
             inside_network_block = 0;
         }
         // Inside network={} block
@@ -278,12 +295,12 @@ static void _wifi_conf_get(char* ssid, char* passwd)
 
     while (fgets(line, MAX_LINE_LEN, file)) {
         // Enter network={} block
-        if (strstr(line, "network={")) {
+        if (wifi_conf_is_block_start(line)) {
             inside_network_block = 1;
             continue;
         }
         // Exit network={} block
-        if (strstr(line, "}")) {
+        if (wifi_conf_is_block_end(line)) {
             inside_network_block = 0;
         }
         // Inside network={} block

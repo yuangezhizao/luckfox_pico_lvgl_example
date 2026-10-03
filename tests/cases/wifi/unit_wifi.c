@@ -21,3 +21,8 @@ void tst_wifi_conf_load(const char *ssid, const char *psk)
 {
     _wifi_conf_load(ssid, psk);
 }
+
+void tst_wifi_conf_get(char ssid[128], char psk[128])
+{
+    _wifi_conf_get(ssid, psk);
+}

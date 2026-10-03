@@ -3,3 +3,22 @@ file: custom/custom_wifi.c
 old:     return strncmp(line, key, n) == 0 && line[n] == '=';
 new:     return strstr(line, key) != NULL;
 tests: ^wifi\.conf_write\.
+
+id: WIFI-C5a
+file: custom/custom_wifi.c
+old:     const char *p = wifi_conf_skip_ws(line);
+new:     return strstr(line, "}") != NULL; const char *p = wifi_conf_skip_ws(line);
+tests: ^wifi\.conf_write\.
+
+id: WIFI-C5b
+file: custom/custom_wifi.c
+old:     return strncmp(wifi_conf_skip_ws(line), "network={", 9) == 0;
+new:     return strstr(line, "network={") != NULL;
+tests: ^wifi\.conf_write\.
+
+# 块结束不接受 CRLF。
+id: WIFI-C5c
+file: custom/custom_wifi.c
+old:  || *p == '\r'
+new:
+tests: ^wifi\.conf_write\.
