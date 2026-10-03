@@ -74,6 +74,7 @@ int luckfox_get_system_info();
 
 /* Sketchpad */
 lv_obj_t * lv_sketchpad_create(lv_obj_t * parent);
+lv_res_t lv_sketchpad_set_size(lv_obj_t * obj, lv_coord_t w, lv_coord_t h);
 void Sketchpad_color_cpicker_event_cb(lv_event_t * e);
 void Sketchpad_clear_btn_event_cb(lv_event_t * e);
 

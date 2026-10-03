@@ -1,0 +1,1 @@
+luckfox_add_test(canvas UNIT unit_canvas.c CASES buffer_not_on_stack buffer_full_write alloc_failure)

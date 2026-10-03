@@ -128,6 +128,7 @@ endfunction()
 
 add_subdirectory(cases/main)
 add_subdirectory(cases/wifi)
+add_subdirectory(cases/sketchpad)
 
 # 手动目标，不进 ALL、不注册为 ctest（spec §5.6）。
 add_executable(luckfox_screenshots EXCLUDE_FROM_ALL tools/screenshots.c)
