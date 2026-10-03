@@ -282,7 +282,24 @@ static void _wifi_conf_load(const char* ssid, const char* password)
     return ;
 }
 
-static void _wifi_conf_get(char* ssid, char* passwd)
+/* 取该行第一个到最后一个 " 之间的内容；放不下或没有成对引号时返回 -1，不写 out。 */
+static int wifi_conf_quoted(const char *line, char *out, size_t size)
+{
+    const char *first = strchr(line, '"');
+    const char *last = strrchr(line, '"');
+    size_t len;
+
+    if (first == NULL || last == first)
+        return -1;
+    len = (size_t)(last - first - 1);
+    if (len >= size)
+        return -1;
+    memcpy(out, first + 1, len);
+    out[len] = '\0';
+    return 0;
+}
+
+static void _wifi_conf_get(char *ssid, size_t ssid_size, char *passwd, size_t passwd_size)
 {
     FILE *file = fopen(WPA_FILE_PATH, "r");
     if (file == NULL) {
@@ -305,12 +322,10 @@ static void _wifi_conf_get(char* ssid, char* passwd)
         }
         // Inside network={} block
         if (inside_network_block) {
-            if (wifi_conf_is_key(line, "ssid")) {
-                sscanf(line, " ssid=\"%[^\"]\"", ssid);
-            }
-            if (wifi_conf_is_key(line, "psk")) {
-                sscanf(line, " psk=\"%[^\"]\"", passwd);
-            }
+            if (wifi_conf_is_key(line, "ssid"))
+                wifi_conf_quoted(line, ssid, ssid_size);
+            else if (wifi_conf_is_key(line, "psk"))
+                wifi_conf_quoted(line, passwd, passwd_size);
         }
     }
     fclose(file);
@@ -520,7 +535,7 @@ void wifi_app_init()
 
     memset(ssid, 0, MAX_CONF_LEN);
     memset(passwd, 0, MAX_CONF_LEN);
-    _wifi_conf_get(ssid,passwd);
+    _wifi_conf_get(ssid, MAX_CONF_LEN, passwd, MAX_CONF_LEN);
 
 
     lv_label_set_text(guider_ui.WIFI_loaded_wifi_label,ssid);

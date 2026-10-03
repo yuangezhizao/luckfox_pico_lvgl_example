@@ -3,12 +3,13 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <unistd.h>
-int tst_conf_fstat(int fd, struct stat *st);
-int tst_conf_fchmod(int fd, mode_t mode);
-int tst_conf_fflush(FILE *stream);
-int tst_conf_fsync(int fd);
-int tst_conf_fclose(FILE *stream);
-int tst_conf_ferror(FILE *stream);
+/* 普通配置测试透传到 libc；conf_write 的强定义覆盖这些包装以注入 I/O 失败。 */
+__attribute__((weak)) int tst_conf_fstat(int fd, struct stat *st) { return fstat(fd, st); }
+__attribute__((weak)) int tst_conf_fchmod(int fd, mode_t mode) { return fchmod(fd, mode); }
+__attribute__((weak)) int tst_conf_fflush(FILE *stream) { return fflush(stream); }
+__attribute__((weak)) int tst_conf_fsync(int fd) { return fsync(fd); }
+__attribute__((weak)) int tst_conf_fclose(FILE *stream) { return fclose(stream); }
+__attribute__((weak)) int tst_conf_ferror(FILE *stream) { return ferror(stream); }
 #define fstat tst_conf_fstat
 #define fchmod tst_conf_fchmod
 #define fflush tst_conf_fflush
@@ -24,5 +25,5 @@ void tst_wifi_conf_load(const char *ssid, const char *psk)
 
 void tst_wifi_conf_get(char ssid[128], char psk[128])
 {
-    _wifi_conf_get(ssid, psk);
+    _wifi_conf_get(ssid, 128, psk, 128);
 }
