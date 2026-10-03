@@ -1,0 +1,5 @@
+id: MUSIC-8
+file: custom/custom_musicplayer.c
+old:         perror("opendir music dir");\n        music_build_roller_options(0);\n        return -1;\n
+new:         perror("opendir music dir");\n
+tests: ^music\.list\.

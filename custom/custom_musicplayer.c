@@ -274,7 +274,12 @@ int music_scan_list(void)
     int id_num = 0;
 
     music_list_clear();
-    dir = opendir(MUSIC_DIR_PATH); 
+    dir = opendir(MUSIC_DIR_PATH);
+    if (dir == NULL) {
+        perror("opendir music dir");
+        music_build_roller_options(0);
+        return -1;
+    }
 
     // Read files from music dir
     while ((entry = readdir(dir)) != NULL) {

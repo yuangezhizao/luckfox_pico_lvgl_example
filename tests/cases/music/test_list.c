@@ -58,8 +58,15 @@ static void newline_name_skipped(void)
     CHECK_EQ_INT(tst_count_lines(out, "skip music file"), 1);
 }
 
+static void missing_dir(void)
+{
+    music_env_socketpair();
+    CHECK(music_scan_list() != 0);
+    CHECK(strcmp(music_roller_options(), "") == 0);
+}
+
 int main(int argc, char **argv)
 {
-    static const tst_case_t cases[] = {{"options_over_255", options_over_255}, {"newline_name_skipped", newline_name_skipped}};
+    static const tst_case_t cases[] = {{"options_over_255", options_over_255}, {"newline_name_skipped", newline_name_skipped}, {"missing_dir", missing_dir}};
     return tst_run_case(cases, TST_COUNT(cases), argc, argv);
 }
