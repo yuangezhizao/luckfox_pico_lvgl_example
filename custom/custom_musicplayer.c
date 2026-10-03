@@ -307,16 +307,21 @@ void Music_player_list_roller_event_handler(lv_event_t *e)
     lv_obj_t* obj = lv_event_get_target(e);
 
     if (code == LV_EVENT_VALUE_CHANGED)
-    {   
-        char buf[32];
-        lv_roller_get_selected_str(obj,  buf, sizeof(buf));
+    {
+        /* INFINITE 模式下 lv_roller_get_selected() 已对真实选项数取模，可直接对应链表 id。 */
+        uint16_t sel = lv_roller_get_selected(obj);
+        struct Music_Node *node = head;
 
-        while(strcmp(playing_music_node->filename, buf))
-        {
-            playing_music_node = playing_music_node->next;    
-        }
-
-        _music_set_pos(playing_music_node->id);
+        if (node == NULL)
+            return;
+        do {
+            if (node->id == sel) {
+                playing_music_node = node;
+                _music_set_pos(node->id);
+                return;
+            }
+            node = node->next;
+        } while (node != NULL && node != head);
     }
 }
 

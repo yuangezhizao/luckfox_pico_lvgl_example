@@ -1,0 +1,5 @@
+id: MUSIC-4
+file: custom/custom_musicplayer.c
+old:             if (node->id == sel) {
+new:             if (node->id == sel + 1) {
+tests: ^music\.roller\.
