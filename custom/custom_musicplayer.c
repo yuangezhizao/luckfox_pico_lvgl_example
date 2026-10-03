@@ -258,6 +258,7 @@ void *get_music_playback_time(void *arg)
                             }
                         }
                     }
+                    cJSON_Delete(root);
                 }
 
                 temp = strtok(NULL, "\n");

@@ -1,0 +1,5 @@
+id: MUSIC-5
+file: custom/custom_musicplayer.c
+old:                     cJSON_Delete(root);\n
+new:
+tests: ^music\.monitor\.
