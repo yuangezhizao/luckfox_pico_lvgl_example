@@ -1,0 +1,5 @@
+id: SKETCH-19
+file: custom/custom_sketchpad.c
+old:         point.y -= coords.y1;\n
+new:
+tests: ^sketchpad\.stroke\.

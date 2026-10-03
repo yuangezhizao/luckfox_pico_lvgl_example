@@ -115,6 +115,10 @@ void lv_sketchpad_event(const lv_obj_class_t * class_p, lv_event_t * e)
 
         lv_point_t point;
         lv_indev_get_point(indev, &point);
+        lv_area_t coords;
+        lv_obj_get_coords(obj, &coords);
+        point.x -= coords.x1;
+        point.y -= coords.y1;
 
         lv_color_t c0;
         c0.full = 10;
