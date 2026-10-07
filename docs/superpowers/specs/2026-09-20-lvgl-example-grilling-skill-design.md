@@ -11,6 +11,8 @@
 
 为本仓 Cloud Agent 环境补上 **grilling 全局技能**：在 `.cursor/environment.json` 增加 `install`，于创建 Environment Build 时把固定 Git commit 的 `SKILL.md` 写入仓库外 `$HOME/.cursor/skills/grilling/SKILL.md`，使后续从该 Build 启动的新 Agent 开箱具备该技能。机制对齐 luckfox-pico PR #4，技能文件版本直接使用 PR #5 的 pin（跳过 `2ab9580`），单个 PR 一次落地。
 
+> 2026-10-06 更新：内联 `curl` 已移入 `.cursor/install.sh`（同一条 `curl`，另加 `chown` 给 `ubuntu`），`install` 改为 `sudo -n -E bash .cursor/install.sh`，见 [2026-10-06 对齐规格](2026-10-06-lvgl-example-cloudagent-align-luckfox-pico-design.md)。本节保留当时结论。
+
 不把 `SKILL.md` 纳入 git。不引入 IMA。不搬运 luckfox-pico PR #8/#9/#10 的 `install.sh` / `start.sh` / ubuntu 运行用户 / sshd / Tailscale。
 
 ## 2. 背景与现状

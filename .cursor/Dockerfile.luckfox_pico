@@ -3,9 +3,9 @@
 # 目标：把开发环境「代码化」，不依赖任何人的个人快照（Personal snapshot）；提供一个基于 Luckfox 官方镜像的备选环境。启用方式：把 .cursor/environment.json 的 build.dockerfile 从 "Dockerfile" 改为 "Dockerfile.luckfox_pico" 即可。
 #
 # 说明：
-# - Cloud Agent 本身就运行在「一个容器」里；本 Dockerfile 只是「声明这个容器长什么样」，并非 docker-in-docker。
+# - Cloud Agent 本身就运行在「一个容器」里；本 Dockerfile 只是「声明这个容器长什么样」，并非 docker-in-docker。本仓安装 Tailscale，Agent Run 使用 kernel 模式（docs/superpowers/specs/2026-10-06-lvgl-example-cloudagent-align-luckfox-pico-design.md §3.2；理由见 luckfox-pico 08-30 spec §2.1）；Cursor 官方 userspace 路径只作回退。
 # - 基于 Luckfox 官方镜像 luckfoxtech/luckfox_pico:1.0（Ubuntu 22.04）：官方《Docker 环境下编译镜像》即用此镜像，已内置 SDK 编译所需 apt 依赖（cmake / gcc-g++ multilib / bison / flex / device-tree-compiler / python3 等）并已含 git。
-# - ⚠️ 与参考 SDK 仓库不同：本仓是单个 LVGL 应用（非 SDK），交叉编译用 glibc 工具链 gcc-arm-linux-gnueabihf（CMakeLists 走 $GLIBC_COMPILER 前缀）；而 SDK 的 uClibc 工具链 arm-rockchip830 随 SDK 仓库内置（本镜像与本仓中均无）——故本仓在官方镜像上【仍需】apt 补装 glibc 交叉工具链 + native 渲染库（libdrm-dev/libcjson-dev/libsdl2-dev）；官方预装的 SDK host 依赖对本仓多数用不上。结论：本备选镜像相对自建 ubuntu:24.04 并无实质构建收益，仅为「与参考项目对齐 + 提供可切换选项」而备。
+# - ⚠️ 与参考的 luckfox-pico 仓库不同：本仓是单个 LVGL 应用（非 SDK），交叉编译用 glibc 工具链 gcc-arm-linux-gnueabihf（CMakeLists 走 $GLIBC_COMPILER 前缀）；而 SDK 的 uClibc 工具链 arm-rockchip830 随 luckfox-pico 仓库内置（本镜像与本仓中均无）——故本仓在官方镜像上【仍需】apt 补装 glibc 交叉工具链 + native 渲染库（libdrm-dev/libcjson-dev/libsdl2-dev）；官方预装的 SDK host 依赖对本仓多数用不上。结论：本备选镜像相对自建 ubuntu:24.04 并无实质构建收益，仅为「与参考项目对齐 + 提供可切换选项」而备。
 # - 本仓【无 build.sh】，构建直接用 cmake；不存在参考里的「build.sh 选板 / 加入 PATH」流程。
 # - 不要 COPY 项目源码：Cursor 会自行 checkout 正确的 commit 到工作区。
 # - FROM 同时锁定 tag 与 digest：tag（1.0）便于人读，digest 保证镜像内容字节级不可变（同一 tag 可被重推、digest 不会）。获取/更新 digest：docker buildx imagetools inspect luckfoxtech/luckfox_pico:1.0（Docker Hub 该仓库目前仅 1.0 一个 tag、2023-11-11 后未更新）。
@@ -15,8 +15,10 @@ FROM luckfoxtech/luckfox_pico:1.0@sha256:915d44588085826cbeda4b969dbbe7d5e54bf77
 ARG DEBIAN_FRONTEND=noninteractive
 # 刻意不设 ENV TZ（与自建 Dockerfile 的差异点、非遗漏）：官方镜像已把时区写进镜像本身（实测 tzdata 2023c 已装、/etc/localtime 与 /etc/timezone 均为 Asia/Hong_Kong），本就是 UTC+8，无需再用环境变量纠偏。自建版走的是另一条路：裸 ubuntu:24.04 连 tzdata 都没有（无 /etc/localtime），apt 把 tzdata 作为依赖拉进来后默认落到 Etc/UTC，故需靠 ENV TZ 在运行期指定。
 
-# ┌─ 平台会「自动安装」的包（多数无需在本文件重复安装；例外见各行 ⚠️ 与下方 apt）──────
-# │ Cursor 每次启动都会跑桌面初始化脚本；该脚本比对 Aptfile 的 sha256，首次（或清单变化）才按容器内 /usr/local/share/vnc-desktop.Aptfile 用 `apt-get install --no-install-recommends` 安装下列，已装过则跳过（实测 sha256=819987b7…，本环境 2026-07-26 核验，与参考项目一致）：
+# ┌─ 平台会「自动安装」的包 ───────────────────────────────────────────────────
+# │ Cursor 在 Environment Build 阶段按容器内 /usr/local/share/vnc-desktop.Aptfile，
+# │ 以 `apt-get install --no-install-recommends` 安装下列包；Agent Run 时 desktop-init.sh 只负责启动桌面。
+# │ 2026-10-06 在 luckfox-pico 仓的 Agent（自建 Ubuntu 24.04 镜像）复核：sha256=819987b7…，58 个包名与下列清单一致；本备选镜像未重新构建。
 # │   VNC     : tigervnc-standalone-server tigervnc-common tigervnc-tools
 # │   XFCE    : xfce4 xfce4-terminal xfce4-settings thunar
 # │   X11     : x11-utils x11-xserver-utils xdg-utils xdotool xclip procps
@@ -26,28 +28,69 @@ ARG DEBIAN_FRONTEND=noninteractive
 # │   locale  : locales
 # │   字体    : xfonts-base xfonts-terminus fonts-noto fonts-wqy-microhei fonts-droid-fallback fonts-noto-color-emoji fonts-liberation fonts-croscore fonts-cantarell fonts-jetbrains-mono
 # │   桌面库  : libx11-dev libxkbfile-dev libsecret-1-dev libgbm-dev libnotify4 libnss3 libxss1
-# │   Mesa    : libgl1-mesa-dri libglx-mesa0 libgl1
+# │   Mesa    : libgl1-mesa-dri libglx-mesa0 libgl1（Aptfile 原文单列「Mesa software rendering for WebGL」，分组同原文）
+# │ 本镜像在平台安装前已有 Mesa 三包与 libgbm-dev：由下方 libsdl2-dev 的依赖链带入（Mesa 23.2，2026-10-07 实测）；无 GPU 时提供 llvmpipe 软件 OpenGL，SDL 预览默认用它上屏，见 docs/superpowers/specs/2026-10-06-lvgl-example-cloudagent-align-luckfox-pico-design.md §2.5。
 # │   Python  : python3-minimal python3-numpy
-# │   资产依赖: bash ca-certificates coreutils curl findutils gzip tar  —— ⚠️ curl 虽在此平台清单里，但 Cursor 安装 exec-daemon（从 S3 拉取 tar.gz）发生在桌面初始化脚本之前，那一刻它尚未被装上；故 curl 必须在下方镜像层自装，不能依赖本清单（否则 exec-daemon 引导会以 `curl: command not found` / exit 127 失败）。本官方镜像（Ubuntu 22.04.3）实测【不含】curl。
-# │ 另外平台还会：把 gh 软链到 /usr/local/bin/gh、配置 git 身份与 SSH 提交签名、准备 /opt/cursor/artifacts（以上本环境实测属实；参考项目另称每次启动会 git clean -fd，本环境未找到对应脚本、故不采信）。
-# │ ⚠️ 本仓用于交叉编译 + native 渲染验证、不用桌面 computer use，但平台仍会装上述包；其中 ffmpeg 与 X/VNC 桌面恰是 spec §6.1 所述 SDL 桌面渲染/录屏路径的依赖，并非纯冗余、勿当无用。
-# │   维护提示（清单实测 2026-07-26）：若平台不再自动装致编译/工具异常，把缺的项补进下面 apt。
+# │   资产依赖: bash ca-certificates coreutils curl findutils gzip tar
+# │   浏览器  : google-chrome-stable（单独脚本 install-google-chrome 安装）
+# │ 平台 Build 步骤还会配置 git 身份与 SSH 提交签名（含 git-cleanup 子步骤）、把 gh 软链到 /usr/local/bin/gh、创建 /opt/cursor/artifacts；
+# │ Agent Run 启动时 artifacts 被替换为指向 /cursor/stores/self/artifacts 的链接。
+# │ ⚠️ 本仓用于交叉编译 + native 渲染验证、不用桌面 computer use，但平台仍会装上述包；其中 ffmpeg 与 X/VNC 桌面恰是 docs/superpowers/specs/2026-07-24-lvgl-example-cloudagent-env-design.md §6.1 所述 SDL 桌面渲染/录屏路径的依赖，并非纯冗余。该清单只作 Cloud Agent 环境记录，不作为本文件 apt 取舍依据。
 # └──────────────────────────────────────────────────────────────────────────────
 
-# 在官方镜像上补装本仓「构建 + 验证」依赖（实测该镜像已预装 git 2.34.1 / cmake 3.22.1 / ca-certificates / pkg-config 0.29.2；下面 apt 只列本仓用得到的，已预装项仍列出以保证存在性——注意 apt 会顺带把它们升到当前版本，并非无操作）：
-# - 基础工具    : sudo（实测官方镜像未预装、必补）。git 刻意【不】列入下面的 apt —— 官方镜像已自带，本文件末尾的 git config 即依赖它；ca-certificates 虽已预装仍列出，作运行期 https（git clone / curl / gh）保底——与自建版一致地把能力固化进镜像层，不依赖平台运行期行为。
-# - 平台引导    : curl（必补）—— Cursor 安装 exec-daemon 时用它从 S3 拉取 tar.gz，且该步早于会补装 curl 的桌面初始化脚本；本官方镜像（Ubuntu 22.04.3）实测不含 curl，不补装则环境启动会以 `curl: command not found` / exit 127 失败。（参考项目为 buildroot 镜像测速亦另装 curl，动机不同但结论一致：都需要 curl；其另装的 vim/less/file/htop 等开发 CLI 则与本仓无关。）
+# apt 取舍只看当前 FROM digest 的 dpkg：不在 FROM 则显式安装，已在 FROM 则不写。该官方镜像没有公布与 digest 绑定的包清单。2026-10-06 对该 digest 执行 docker run --rm --entrypoint dpkg-query luckfoxtech/luckfox_pico:1.0@sha256:915d44588085826cbeda4b969dbbe7d5e54bf779ba36cda3c5072ee9533e0417 -W（amd64，366 个包）：git / cmake / ca-certificates / pkg-config / vim / file / rsync / unzip / wget / xz-utils / openssh-client / openssl 与 gcc / g++ / make 已在 FROM，不写；下列包不在。
+# 下方 apt 包分组与 docs/superpowers/specs/2026-10-06-lvgl-example-cloudagent-align-luckfox-pico-design.md §2.2 一致：先本仓构建依赖（基础工具、平台引导、ARM 交叉工具链、构建系统、native 验证、32 位运行），再 A / B / C 类；每组前一行组名注释，组内按字母序。
+# - 基础工具    : sudo（容器内提权）。git 已在 FROM，本文件末尾的 git config 即依赖它；ca-certificates 已在 FROM，供运行期 https（git clone / curl / gh）。
+# - 平台引导    : curl —— Cursor 安装 exec-daemon 时用它从 S3 拉取 tar.gz，且该步早于平台按 Aptfile 补装 curl；本官方镜像（Ubuntu 22.04.3）实测不含 curl，不补装则环境启动会以 `curl: command not found` / exit 127 失败。curl 还被下一层拉 Tailscale 密钥使用。
 # - ARM 交叉工具链: gcc-arm-linux-gnueabihf、g++-arm-linux-gnueabihf（glibc；官方镜像未预装、必补）。
-# - 构建系统    : cmake（实测已预装 3.22.1）、build-essential（实测元包未装，但其依赖中只差 dpkg-dev —— gcc/g++/make/libc6-dev/binutils 本就齐全；装元包只为补齐这一项并与自建版口径一致）。
-# - native 验证 : libdrm-dev、libcjson-dev（x86 版，供 custom/*.c 链接期符号）；libsdl2-dev（SDL 驱动桌面开窗渲染 + ffmpeg 录制演示）；pkg-config（实测已预装，便利工具、非硬需）。
+# - 构建系统    : build-essential（实测元包未装，但其依赖中只差 dpkg-dev —— gcc/g++/make/libc6-dev/binutils 本就齐全；装元包只为补齐这一项并与自建版口径一致）。cmake 已在 FROM（3.22.1）。
+# - native 验证 : libdrm-dev、libcjson-dev（x86 版，供 custom/*.c 链接期符号）；libsdl2-dev（SDL 驱动桌面开窗渲染 + ffmpeg 录制演示）。pkg-config 已在 FROM（0.29.2）。
 # - 32 位运行 : qemu-user（qemu-arm 用户态运行 32 位 ARM 程序：tests/ 的 32 位换算测试 main.brightness_arm32.conversion 与 uClibc 产物冒烟）。
+# - A 类 iproute2 / jq：`ss` 与 JSON 摘要供 .cursor/start.sh 使用；FROM 没有。procps 已在 FROM，不重复。
+# - B 类 tcpdump / htop / neofetch：抓包与排查 CLI。vim/less/file 已在 FROM，不重复。neofetch 在 jammy universe；本 RUN 带 --no-install-recommends，避免拉上 imagemagick 等推荐包。
+# - B 类 tree / iftop / iotop / screen / ncdu / traceroute / nmap / ngrep / conntrack / psmisc / fping / dmidecode：诊断 CLI。apt 写 conntrack（AlmaLinux 包名 conntrack-tools）；不写 conntrack-tools / conntrackd / iotop-c。nmap/ngrep/ncdu 等在 universe，与 neofetch 相同前提。
+# - C 类 通用 CLI：locales FROM 没有；其余通用 CLI（vim / file / rsync / unzip / wget / xz-utils / openssh-client / openssl）已在 FROM，不写。
+# - 公开 Dockerfile 层不安装 openssh-server：FROM 已有；活动镜像路径由 .cursor/install.sh 写入私有 Build 快照，本备选不在公开层再装一遍。
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      sudo ca-certificates curl \
-      gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf \
-      cmake build-essential \
-      libdrm-dev libcjson-dev libsdl2-dev pkg-config \
+      # 基础工具
+      sudo \
+      # 平台引导
+      curl \
+      # ARM 交叉工具链
+      g++-arm-linux-gnueabihf gcc-arm-linux-gnueabihf \
+      # 构建系统
+      build-essential \
+      # native 验证
+      libcjson-dev libdrm-dev libsdl2-dev \
+      # 32 位运行
       qemu-user \
+      # A 类：start.sh 依赖
+      iproute2 jq \
+      # B 类：诊断 CLI
+      conntrack dmidecode fping htop iftop iotop ncdu neofetch ngrep \
+      nmap psmisc screen tcpdump traceroute tree \
+      # C 类：通用 CLI（其余已在 FROM）
+      locales \
     && rm -rf /var/lib/apt/lists/*
+
+# Tailscale 使用官方 Ubuntu 22.04 Jammy stable apt 仓库，不锁定版本；节点认证只在 Agent Run 的 start 阶段进行。本层与上方 apt RUN 一样带 --no-install-recommends。
+RUN install -d -m 0755 /usr/share/keyrings \
+    && curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/jammy.noarmor.gpg \
+       -o /usr/share/keyrings/tailscale-archive-keyring.gpg \
+    && curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/jammy.tailscale-keyring.list \
+       -o /etc/apt/sources.list.d/tailscale.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends tailscale \
+    && rm -rf /var/lib/apt/lists/*
+
+# Cursor 平台在运行时提供 ubuntu 用户；为 OpenSSH 登录后的提权固化免密 sudo，不在此镜像层安装 openssh-server。
+RUN printf '%s\n' 'ubuntu ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/ubuntu \
+    && chmod 0440 /etc/sudoers.d/ubuntu \
+    && visudo -cf /etc/sudoers.d/ubuntu
 
 # 允许对检出的工作区执行 git（避免 "detected dubious ownership" 报错）。
 RUN git config --system --add safe.directory '*'
+
+# Cloud Agent 默认运行用户。须写在 docker build 的全部 RUN 之后：USER 会改变后续 RUN 的身份，构建期没有 sudo -n -E。Ubuntu 22.04 官方容器镜像不预置 ubuntu，USER 之前须 useradd。
+RUN id -u ubuntu >/dev/null 2>&1 || useradd --create-home --shell /bin/bash ubuntu
+USER ubuntu

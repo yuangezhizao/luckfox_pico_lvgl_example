@@ -64,6 +64,8 @@
 
 ### 5.2 `.cursor/environment.json`
 
+> 2026-10-06 更新：`install` 已改为 `sudo -n -E bash .cursor/install.sh`，并新增 `start`（`.cursor/start.sh`）、镜像末尾 `USER ubuntu` 与 Tailscale，见 [2026-10-06 对齐规格](2026-10-06-lvgl-example-cloudagent-align-luckfox-pico-design.md)。本节保留当时结论。
+
 ```json
 {
   "build": {

@@ -12,10 +12,12 @@
 这是一个交叉编译的嵌入式 GUI 应用（C + LVGL 8.3 + lv_drivers 8.1，使用 CMake 构建），面向 `Luckfox Pico Ultra` ARM 开发板。项目库依赖（LVGL/lv_drivers/libdrm/libcjson）已 vendored 于 `lib/`；交叉工具链与 native 渲染验证依赖（`libdrm-dev`/`libcjson-dev` 等）由 `.cursor/Dockerfile` 安装。现在通过 `.cursor/environment.json`（引用 `.cursor/Dockerfile`）以 Dockerfile 模式提供可复现环境。构建命令见 `README.md`。
 
 ### Cloud Agent 环境（Dockerfile 模式 / 配置即代码）
-- **当前活动**：`.cursor/environment.json` → `.cursor/Dockerfile`（自建 `ubuntu:24.04`，apt 安装 ARM 交叉工具链、CMake、native/SDL 验证依赖与 `qemu-user`）。
-- **备选**：`.cursor/Dockerfile.luckfox_pico`（Luckfox 官方镜像 `luckfoxtech/luckfox_pico:1.0`）；切换只需把 `environment.json` 的 `build.dockerfile` 改为指向它。
+- **当前活动**：`.cursor/environment.json` → `.cursor/Dockerfile`（自建 `ubuntu:24.04`，apt 安装 ARM 交叉工具链、CMake、native/SDL 验证依赖与 `qemu-user`，另装通用 / 诊断 CLI 与 Tailscale，末尾 `USER ubuntu`）。
+- **备选**：`.cursor/Dockerfile.luckfox_pico`（Luckfox 官方镜像 `luckfoxtech/luckfox_pico:1.0`，该 FROM 无 `ubuntu` 账户，`USER` 前 `useradd` 创建）；切换只需把 `environment.json` 的 `build.dockerfile` 改为指向它。
 - 按官方 resolution order，repo 级 `.cursor/environment.json` 优先于 personal / team saved environment，故通常无需任何 Dashboard 操作。
-- grilling：`environment.json` 的 `install` 在创建 Environment Build 时把固定 commit `85f83d3` 的技能写入 `$HOME/.cursor/skills/grilling/SKILL.md`（不进 git）。新 Agent 须从捕获了该 install 的 Build 启动。
+- grilling：`install`（`sudo -n -E bash .cursor/install.sh`）在创建 Environment Build 时把固定 commit `85f83d3` 的技能写入 `$HOME/.cursor/skills/grilling/SKILL.md`（不进 git），并 `chown` 给 `ubuntu`。新 Agent 须从捕获了该 install 的 Build 启动。
+- 默认用户 `ubuntu`（免密 sudo）；`start`（`sudo -n -E bash .cursor/start.sh`）每次 Agent Run 以 kernel 模式拉起 Tailscale 与 sshd，主机名 `cursor-agent-for-luckfox-pico-lvgl-example-<bcId 前 8 位>`，需要用户级 Secrets `TAILSCALE_AUTHKEY`、`SSH_AUTHORIZED_KEYS`（缺失时 `start` 失败，Agent 仍可编码，只是无远程接入）。
+- 要对锁定 digest 做 `dpkg-query` 时，按 Cursor 文档在当前 VM 临时安装 Docker，禁止写入 Dockerfile；遇 `/etc/fuse.conf` 的 conffile 提问用 `dpkg --force-confold --configure -a` 保留现有文件。
 
 ### 构建（标准开发流程）
 这是一个仅支持交叉编译的项目：产出的二进制是 32 位 ARM。`CMakeLists.txt` 会提前调用 `return()`，除非你先导出下列变量之一，否则不会产生任何构建目标：
@@ -36,7 +38,7 @@ mkdir -p build && cd build && cmake .. && make -j && make install
 - 作者当前系统是 SDK 编的 Buildroot，板上使用 **uClibc** 产物；glibc 产物 ABI 不兼容（`libc.so.6` vs `libc.so.0`），不能在这块板上运行。
 - CI 成功只证明交叉编译与 ABI 门禁通过，不能代替真机点亮；权威验证仍是物理 Luckfox Pico Ultra / Luckfox Pico Ultra W。
 - uClibc gcc 不在 `.cursor/Dockerfile` 里；CI 从 `yuangezhizao/luckfox-pico@dev` sparse checkout `tools/linux/toolchain/`，不引入 submodule。
-- CI 镜像只在 `dev` 上构建并 attest；`pull_request` 只复用 dest-lock（signer/source=`dev`）通过的 digest，失败即退出，不覆盖 GHCR。镜像标签取 `.cursor/Dockerfile` 内容哈希，所以修改该文件的 PR 在合并前 `build-image` 必然失败（找不到 dev 签名镜像），合并后 dev push 重建镜像才恢复。不把 `container:` 换成 `luckfox-pico-ci`（其中无 `gcc-arm-linux-gnueabihf`，uClibc gcc 也不在镜像层）。
+- CI 镜像只在 `dev` 上构建并 attest；`pull_request` 只复用 dest-lock（signer/source=`dev`）通过的 digest，失败即退出，不覆盖 GHCR。镜像标签取 `.cursor/Dockerfile` 内容哈希，所以修改该文件的 PR 在合并前 `build-image` 必然失败（找不到 dev 签名镜像），合并后 dev push 重建镜像才恢复。不把 `container:` 换成 `luckfox-pico-ci`（其中无 `gcc-arm-linux-gnueabihf`，uClibc gcc 也不在镜像层）。镜像末尾 `USER ubuntu`，`build-demo` 与 `native-tests` 以 `options: --user 0` 运行（Actions 要求 job 容器为超级用户）。
 
 ### Lint（代码检查）
 没有独立的 linter，也没有告警关卡（无 `-Werror`）。`CMakeLists.txt` 的告警段 `add_compile_options()` 位于 `add_executable()` 之前（`add_compile_options()` 只作用于其后创建的 target），并用 `-std=gnu99`（`-std=c99` 会关掉 POSIX/GNU 扩展声明而编译失败），主程序以 `-Wall -Wextra …` 编译：glibc 119 条、uClibc 118 条告警为既存基线，只记录不作门禁。另一处 `add_compile_options(-fPIC -Wall -O3 -g0)` 仍在 `add_executable()` 之后、未生效，主程序实际按 `-O0` 编译；LVGL 与 lv_drivers 子目录不受这两处影响，`C_FLAGS` 为空。
