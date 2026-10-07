@@ -100,6 +100,7 @@ GUI 工程按 480×480 设计（`custom/custom.h` 的 `WIDTH`/`HEIGHT`，各 `se
 - `runs-on: ${{ matrix.os }}`（两行均为 `ubuntu-24.04`），`timeout-minutes: 30`
 - `container.image: ${{ needs.build-image.outputs.image }}` + `credentials`（`github.actor` + `GITHUB_TOKEN`）
 - **不加** `container.options: --user 0`（本仓镜像默认 root）
+  - 2026-10-06 更新：镜像末尾改为 `USER ubuntu` 后，`build-demo` 与 `native-tests` 均已加 `options: --user 0`，见 [2026-10-06 对齐规格](2026-10-06-lvgl-example-cloudagent-align-luckfox-pico-design.md)。本节保留当时结论。
 - 权限：`contents: read`，`packages: read`
 - matrix：
 
