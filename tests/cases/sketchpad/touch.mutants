@@ -1,0 +1,36 @@
+# 触摸只跟随第一根按下的手指（spec §5.1 F2）。
+id: TOUCH-newest-primary
+file: custom/custom_touch.c
+old:         if (touch_primary < 0 && !touch_wait_all_up)
+new:         if (!touch_wait_all_up)
+tests: ^sketchpad\.touch\.
+
+id: TOUCH-any-lift-releases
+file: custom/custom_touch.c
+old:     if (touch_slot == touch_primary) {
+new:     if (touch_primary >= 0) {
+tests: ^sketchpad\.touch\.
+
+id: TOUCH-no-wait-all-up
+file: custom/custom_touch.c
+old:         touch_wait_all_up = true;\n
+new:
+tests: ^sketchpad\.touch\.
+
+id: TOUCH-release-at-emulated
+file: custom/custom_touch.c
+old:         x = pen_x;\n        y = pen_y;
+new:         x = pressed ? pen_x : st_x;\n        y = pressed ? pen_y : st_y;
+tests: ^sketchpad\.touch\.
+
+id: TOUCH-no-fallback
+file: custom/custom_touch.c
+old:     if (touch_mt) {
+new:     if (1) {
+tests: ^sketchpad\.touch\.
+
+id: TOUCH-no-cloexec
+file: custom/custom_touch.c
+old: O_RDONLY | O_NONBLOCK | O_CLOEXEC
+new: O_RDONLY | O_NONBLOCK
+tests: ^sketchpad\.touch\.
