@@ -64,7 +64,7 @@ ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
 
 不进默认构建、不注册为 ctest：
 
-- `cmake --build build-tests --target screenshots`：以 480、720 输出主屏初始、滑条拖到最左、音乐弹窗、无背光设备四类截图到 `build-tests/screenshots/`（PPM；装了 `ffmpeg` 时另存 PNG）。
+- `cmake --build build-tests --target screenshots`：以 480、720 输出主屏初始、滑条拖到最左、音乐弹窗、无背光设备、音乐页（含列表）、画板六类截图到 `build-tests/screenshots/`（PPM；装了 `ffmpeg` 时另存 PNG）。
 - `cmake --build build-tests --target preview` 后 `PREVIEW_RES=480 PREVIEW_BACKLIGHT=255:204 DISPLAY=:1 ./build-tests/preview`：SDL 开窗，鼠标即触摸，点 OFF 退出；需要 SDL2（`libsdl2-dev`），找不到时不生成该目标。`PREVIEW_RES` 默认 480；不设 `PREVIEW_BACKLIGHT` 时没有背光设备，亮度控件隐藏；用 xdotool 等自动化点击时需按住约 150 ms 再抬起，否则点击可能被丢掉。
 
 | 方面 | 本工程 | 真机 |
