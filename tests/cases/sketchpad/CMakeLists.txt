@@ -1,2 +1,4 @@
 luckfox_add_test(canvas UNIT unit_canvas.c CASES buffer_not_on_stack buffer_full_write alloc_failure)
 luckfox_add_test(stroke CASES canvas_coordinates tap_draws_dot)
+luckfox_add_test(touch UNIT unit_touch.c CASES board_tap_while_drawing board_second_finger_ignored primary_lift_waits_all_up single_touch_fallback fd_cloexec)
+target_compile_definitions(sketchpad_touch PRIVATE TST_SKETCH_SRC_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
