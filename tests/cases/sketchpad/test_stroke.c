@@ -1,4 +1,4 @@
-/* 笔迹落在 (屏幕点 - 画布左上角)，不落在屏幕坐标原值（spec D10）。 */
+/* 笔迹落在 (屏幕点 - 画布左上角)，不落在屏幕坐标原值（PR #8 spec D10）；原地轻点也留下一个点（spec §5.1 F3）。 */
 #include "app_env.h"
 #include "check.h"
 #include "gui_guider.h"
@@ -44,8 +44,29 @@ static void canvas_coordinates(void)
     CHECK(lv_canvas_get_px(canva_obj, sx + 10, sy).full == bg.full);
 }
 
+/* 按下 100 ms 不移动再抬起：两点相同时 lv_draw_sw_line() 不画，旧实现什么都不留下。 */
+static void tap_draws_dot(void)
+{
+    lv_area_t a;
+    lv_coord_t sx, sy;
+
+    tst_app_init(480, 0, 0);
+    setup_scr_Sketchpad(&guider_ui);
+    lv_scr_load(guider_ui.Sketchpad);
+    tst_run_ms(100);
+    lv_obj_get_coords(canva_obj, &a);
+    sx = a.x1 + 240;
+    sy = a.y1 + 180;
+    tst_pointer_set(sx, sy, 1);
+    tst_run_ms(100);
+    tst_pointer_set(sx, sy, 0);
+    tst_run_ms(50);
+    CHECK(pen_near(240, 180));
+    CHECK(!pen_near(250, 180));
+}
+
 int main(int argc, char **argv)
 {
-    static const tst_case_t cases[] = {{"canvas_coordinates", canvas_coordinates}};
+    static const tst_case_t cases[] = {{"canvas_coordinates", canvas_coordinates}, {"tap_draws_dot", tap_draws_dot}};
     return tst_run_case(cases, TST_COUNT(cases), argc, argv);
 }

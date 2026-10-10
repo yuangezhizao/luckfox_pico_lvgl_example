@@ -1,5 +1,11 @@
 id: SKETCH-19
 file: custom/custom_sketchpad.c
-old:         point.y -= coords.y1;\n
+old:     point->y -= coords.y1;\n
+new:
+tests: ^sketchpad\.stroke\.
+
+id: SKETCH-F3-no-dot
+file: custom/custom_sketchpad.c
+old:         lv_canvas_draw_rect(obj, point.x - d / 2, point.y - d / 2, d, d, &dot_dsc);\n
 new:
 tests: ^sketchpad\.stroke\.
