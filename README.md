@@ -15,9 +15,22 @@
 ![LVGL_main](images/LVGL_main.png)
 
 **The Ubuntu system currently only supports PAD and GIF interfaces** 
-+ **WIFI**: Configure the SSID and password for Wi-Fi. This button will not be displayed on the Luckfox Pico Ultra.
-+ **PAD**: Touchscreen handwriting test.
-+ **MUSIC**: Music playback, supports only `.mp3` format. Music files need to be placed in `/music`.
++ **WIFI**: Configure the SSID and password for Wi-Fi. This button will not be displayed on the Luckfox Pico Ultra. **Scan** asks `wpa_supplicant` to scan and lists the results about 3 seconds later.
+    + Prerequisite: `/etc/wpa_supplicant.conf` must follow the template in the [Luckfox Wi-Fi guide](https://wiki.luckfox.com/Luckfox-Pico-Ultra/WiFi-BT/): the control interface lines plus one `network={}` block. At boot, `rkwifi_server` copies it to `/data/wpa_supplicant.conf` and starts `wpa_supplicant` with that copy, so reboot after editing.
+        ```
+        ctrl_interface=/var/run/wpa_supplicant
+        ap_scan=1
+        update_config=1
+
+        network={
+                ssid="luckfox"
+                psk="12345678"
+                key_mgmt=WPA-PSK
+        }
+        ```
+    + **Load** replaces the `ssid` and `psk` of that `network={}` block with the values entered on the page; the placeholder values above are only a starting point. Without the block, the page shows `No network block in wpa_supplicant.conf`. If the file is empty, `wpa_cli` cannot reach `wpa_supplicant` and the page shows `wpa_supplicant not reachable`.
++ **PAD**: Touchscreen handwriting test. A tap leaves a dot; strokes follow the first finger that touches the screen, and other fingers or the palm are ignored.
++ **MUSIC**: Music playback, supports only `.mp3` format. Music files need to be placed in `/music`. Files added or removed while the application is running are picked up the next time the MUSIC page is opened.
 + **GIF**: Animated GIF frame rate test.
 + **OFF**: Close the application.
 

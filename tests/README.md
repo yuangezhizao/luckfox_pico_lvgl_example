@@ -22,7 +22,7 @@ ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
 | `main/` | 主屏与时间（含亮度滑条、SDIO 板型判定） | `custom_main.c`、`custom_brightness.c`、`widgets_init.c`、`lv_conf.h` |
 | `wifi/` | WiFi | `custom_wifi.c`、`setup_scr_WIFI.c` |
 | `music/` | 音乐页 | `custom_musicplayer.c`、`setup_scr_Music_player.c` |
-| `sketchpad/` | 画板 | `custom_sketchpad.c`、`setup_scr_Sketchpad.c` |
+| `sketchpad/` | 画板（含触摸读取） | `custom_sketchpad.c`、`custom_touch.c`、`setup_scr_Sketchpad.c` |
 | `exit/` | OFF 退出 | `custom/custom_fb.c`，调用点 `src/main.c` |
 | `gif/` | GIF 页 | `setup_scr_Gif.c` |
 
@@ -57,6 +57,7 @@ ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
 - 音乐源码的 `MUSIC_DIR_PATH=tst_music_dir()` 也通过源文件 `COMPILE_DEFINITIONS` 和 `-include support/fake_fs.h` 覆盖；`unit_list_alloc.c` 在包含源码前用 `#define` 做相同覆盖，目录由本进程独享；`MPV_SOCKET_PATH=tst_mpv_socket_path()` 使用同样的源文件属性与 UNIT 宏覆盖，假 mpv 的套接字也在本进程临时目录。
 - `custom_fb.c` 的 `FB_CLEAR_MAX_BYTES=tst_fb_clear_max_bytes` 通过源文件 `COMPILE_DEFINITIONS` 和 `-include support/fake_fs.h` 覆盖，用例可修改该变量缩小清屏上限。路径宏是运行期 `const char *` 表达式，不能拼接字符串字面量或用 `sizeof` 计算路径长度。
 - libdrm、cjson 头文件使用系统路径 `/usr/include/libdrm`、`/usr/include/cjson`（Debian/Ubuntu 布局）。
+- 触摸读取 `custom_touch.c` 的用例经 FIFO 逐帧喂入 `struct input_event`；`touch_step*.txt` 是板上 `evdev_probe` 录到的多指事件原文，用例按文本回放。
 - `custom_brightness.c` 在测试构建中以 `BACKLIGHT_SYSFS_DIR=tst_backlight_root()` 编译，背光目录位于本进程临时目录，`ctest -j` 并行互不干扰。
 
 ## 手动目标

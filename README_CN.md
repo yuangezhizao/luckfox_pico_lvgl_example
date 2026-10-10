@@ -15,9 +15,22 @@
 ![LVGL_main](images/LVGL_main.png)
 
 **Ubuntu 系统目前仅支持PAD和GIF界面**
-+ **WIFI**：配置 Wi-Fi 的SSID和密码，在 Luckfox Pico Ultra 上不会显示该按键
-+ **PAD**：触摸屏手写测试
-+ **MUSIC**：音乐播放，仅支持 `.mp3` 格式，需要将播放的音乐文件放置到 `/music` 中
++ **WIFI**：配置 Wi-Fi 的SSID和密码，在 Luckfox Pico Ultra 上不会显示该按键。按 **Scan** 会请求 `wpa_supplicant` 扫描，约 3 秒后列出结果
+    + 前提：`/etc/wpa_supplicant.conf` 须按 [Luckfox Wi-Fi 文档](https://wiki.luckfox.com/zh/Luckfox-Pico-Ultra/WiFi-BT/) 的模板编写，包含控制接口配置和一个 `network={}` 块。开机时 `rkwifi_server` 把它复制为 `/data/wpa_supplicant.conf` 并以该副本启动 `wpa_supplicant`，修改后需重启
+        ```
+        ctrl_interface=/var/run/wpa_supplicant
+        ap_scan=1
+        update_config=1
+
+        network={
+                ssid="luckfox"
+                psk="12345678"
+                key_mgmt=WPA-PSK
+        }
+        ```
+    + 按 **Load** 会把这个 `network={}` 块里的 `ssid`、`psk` 替换为页面上输入的值，上面的占位值只是起点。没有这个块时页面提示 `No network block in wpa_supplicant.conf`；文件为空时 `wpa_cli` 连不上 `wpa_supplicant`，页面提示 `wpa_supplicant not reachable`
++ **PAD**：触摸屏手写测试。轻点会留下一个点；笔迹只跟随第一根按下的手指，其他手指或手掌的接触会被忽略
++ **MUSIC**：音乐播放，仅支持 `.mp3` 格式，需要将播放的音乐文件放置到 `/music` 中。运行中放入或删除的文件，下次进入 MUSIC 页面时生效
 + **GIF**：动图帧率测试
 + **OFF**：关闭程序
 
