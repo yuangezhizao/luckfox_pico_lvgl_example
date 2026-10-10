@@ -1,5 +1,5 @@
 id: MUSIC-C2
 file: custom/custom_musicplayer.c
-old:                 continue;
-new:                 /* 改坏：继续接纳含换行的名字。 */
+old:     if (entry->d_type != DT_REG || strchr(entry->d_name,
+new:     if (entry->d_type != DT_REG || 0 && strchr(entry->d_name,
 tests: ^music\.list\.

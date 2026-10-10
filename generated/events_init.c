@@ -16,6 +16,7 @@
 #endif
 
 extern int MUSIC_ENABLE;
+void music_recheck_enable(void);
 
 static void Main_Wifi_btn_event_handler (lv_event_t *e)
 {
@@ -52,6 +53,7 @@ static void Main_Music_btn_event_handler (lv_event_t *e)
 	switch (code) {
 	case LV_EVENT_CLICKED:
 	{
+		music_recheck_enable();
 		if(MUSIC_ENABLE == 1)
 			ui_load_scr_animation(&guider_ui, &guider_ui.Music_player, guider_ui.Music_player_del, &guider_ui.Main_del, setup_scr_Music_player, LV_SCR_LOAD_ANIM_FADE_ON, 100, 100, false, false);
 		else 
