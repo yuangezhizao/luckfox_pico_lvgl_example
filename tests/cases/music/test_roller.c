@@ -29,7 +29,8 @@ static void select_long_name(void)
     for (i = 0; i < cnt; i++) {
         lv_roller_set_selected(roller, i, LV_ANIM_OFF);
         lv_roller_get_selected_str(roller, buf, sizeof(buf));
-        if (strcmp(buf, longname) == 0)
+        /* roller 显示缩写名（spec §5.1 F4）：以 L 开头的那项就是长文件名。 */
+        if (buf[0] == 'L')
             break;
     }
     CHECK(i < cnt);

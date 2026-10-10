@@ -133,6 +133,103 @@ const char *music_roller_options(void)
     return music_roller_str != NULL ? music_roller_str : "";
 }
 
+static size_t utf8_next(const char *s, size_t i, size_t len)
+{
+    for (i++; i < len && ((unsigned char)s[i] & 0xc0) == 0x80; i++)
+        ;
+    return i;
+}
+
+static size_t utf8_prev(const char *s, size_t i)
+{
+    for (i--; i > 0 && ((unsigned char)s[i] & 0xc0) == 0x80; i--)
+        ;
+    return i;
+}
+
+static lv_coord_t music_text_width(const char *s, const lv_font_t *font, lv_coord_t letter_space)
+{
+    return lv_txt_get_width(s, (uint32_t)strlen(s), font, letter_space, LV_TEXT_FLAG_NONE);
+}
+
+/* 显示名：整名不超过 max_w 时原样；否则头尾按 UTF-8 字符交替保留，中间用 ...（字体没有 U+2026）。
+ * roller 每项是一整行，超宽部分两侧都会被裁掉，前缀相同的长文件名会无法区分。 */
+int music_display_name(const char *name, char *out, size_t size, const lv_font_t *font, lv_coord_t letter_space, lv_coord_t max_w)
+{
+    size_t len = strlen(name), keep_head = 0, keep_tail = len;
+    char buf[MAX_FILENAME_LEN + 4];
+    int turn = 0, stuck = 0;
+
+    if (size == 0 || len >= MAX_FILENAME_LEN)
+        return -1;
+    if (music_text_width(name, font, letter_space) <= max_w) {
+        snprintf(out, size, "%s", name);
+        return 0;
+    }
+    snprintf(out, size, "...");
+    /* 先头后尾交替加一个字符，加不下的一侧停下，两侧都加不下为止。 */
+    while (stuck < 2 && keep_head < keep_tail) {
+        size_t h = keep_head, t = keep_tail;
+
+        if (turn == 0)
+            h = utf8_next(name, keep_head, keep_tail);
+        else
+            t = utf8_prev(name, keep_tail);
+        if (h > t)
+            break;
+        snprintf(buf, sizeof(buf), "%.*s...%s", (int)h, name, name + t);
+        if (music_text_width(buf, font, letter_space) <= max_w && strlen(buf) < size) {
+            keep_head = h;
+            keep_tail = t;
+            memcpy(out, buf, strlen(buf) + 1);
+            stuck = 0;
+        } else {
+            stuck++;
+        }
+        turn ^= 1;
+    }
+    return 0;
+}
+
+/* 按 roller 选中项的字体与内容宽度设置显示名；下标仍对应链表 id，选中项不变。 */
+void music_roller_apply(lv_obj_t *roller)
+{
+    const lv_font_t *font;
+    lv_coord_t letter_space, max_w;
+    struct Music_Node *cur = head;
+    size_t total = 1, used = 0;
+    uint16_t sel;
+    char *buf;
+
+    if (roller == NULL || head == NULL)
+        return;
+    lv_obj_update_layout(roller);
+    font = lv_obj_get_style_text_font(roller, LV_PART_SELECTED);
+    letter_space = lv_obj_get_style_text_letter_space(roller, LV_PART_SELECTED);
+    max_w = lv_obj_get_content_width(roller);
+    do {
+        total += strlen(cur->filename) + 4;
+        cur = cur->next;
+    } while (cur != head);
+    buf = malloc(total);
+    if (buf == NULL)
+        return;
+    buf[0] = '\0';
+    cur = head;
+    do {
+        char shown[MAX_FILENAME_LEN + 4];
+
+        if (music_display_name(cur->filename, shown, sizeof(shown), font, letter_space, max_w) != 0)
+            snprintf(shown, sizeof(shown), "%s", cur->filename);
+        used += (size_t)snprintf(buf + used, total - used, "%s%s", cur == head ? "" : "\n", shown);
+        cur = cur->next;
+    } while (cur != head);
+    sel = lv_roller_get_selected(roller);
+    lv_roller_set_options(roller, buf, LV_ROLLER_MODE_INFINITE);
+    lv_roller_set_selected(roller, sel, LV_ANIM_OFF);
+    free(buf);
+}
+
 /* MSG_NOSIGNAL 只作用于本次发送；否决 signal(SIGPIPE, SIG_IGN)（进程级，会影响 WiFi 的 popen 等路径）。 */
 static int mpv_send(const char *buf, size_t len)
 {
