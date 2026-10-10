@@ -15,3 +15,27 @@ file: custom/custom_musicplayer.c
 old:         if (nl == NULL)\n            return;
 new:         if (nl == NULL) {\n            monitor_len = 0;\n            return;\n        }
 tests: ^music\.monitor\.
+
+id: MUSIC-UI-direct-call
+file: custom/custom_musicplayer.c
+old:             music_time_dirty = 1;
+new:             music_time_dirty = 1;\n            lv_slider_set_value(guider_ui.Music_player_progress_slider, value, LV_ANIM_OFF);
+tests: ^music\.monitor\.
+
+id: MUSIC-UI-no-set
+file: custom/custom_musicplayer.c
+old:         lv_slider_set_value(slider, time_value, LV_ANIM_OFF);
+new:         (void)time_value;
+tests: ^music\.monitor\.
+
+id: MUSIC-UI-no-timer
+file: custom/custom_musicplayer.c
+old:         music_ui_timer = lv_timer_create(music_ui_timer_cb, MUSIC_UI_PERIOD_MS, NULL);
+new:         (void)music_ui_timer_cb;
+tests: ^music\.monitor\.
+
+id: MUSIC-UI-ignore-pressed
+file: custom/custom_musicplayer.c
+old:     if (time_dirty && !slider_pressed)
+new:     if (time_dirty)
+tests: ^music\.monitor\.

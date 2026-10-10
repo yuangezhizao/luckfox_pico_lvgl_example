@@ -312,7 +312,36 @@ static void _music_set_mode(int mode)
     mpv_send(cmd, strlen(cmd));
 }
 
-/* 解析 mpv 的一行 JSON 事件。 */
+/* LVGL 不是线程安全的：监听线程只在锁内记录数值与脏标志，由 UI 线程的定时器设置控件。 */
+#define MUSIC_UI_PERIOD_MS 200
+static pthread_mutex_t music_state_lock = PTHREAD_MUTEX_INITIALIZER;
+static int music_time_value, music_duration_value;
+static int music_time_dirty, music_duration_dirty;
+static lv_timer_t *music_ui_timer;
+
+static void music_ui_timer_cb(lv_timer_t *tmr)
+{
+    int time_value, duration_value, time_dirty, duration_dirty;
+    lv_obj_t *slider = guider_ui.Music_player_progress_slider;
+
+    LV_UNUSED(tmr);
+    pthread_mutex_lock(&music_state_lock);
+    time_value = music_time_value;
+    duration_value = music_duration_value;
+    time_dirty = music_time_dirty;
+    duration_dirty = music_duration_dirty;
+    music_time_dirty = 0;
+    music_duration_dirty = 0;
+    pthread_mutex_unlock(&music_state_lock);
+    if (slider == NULL)
+        return;
+    if (duration_dirty)
+        lv_slider_set_range(slider, 0, duration_value);
+    if (time_dirty && !slider_pressed)
+        lv_slider_set_value(slider, time_value, LV_ANIM_OFF);
+}
+
+/* 解析 mpv 的一行 JSON 事件（监听线程）。 */
 static void music_monitor_line(const char *line)
 {
     cJSON *root = cJSON_Parse(line);
@@ -328,15 +357,18 @@ static void music_monitor_line(const char *line)
     {
         /* 与旧实现一致："data": null（属性不可用）按 0 处理。 */
         value = cJSON_IsNumber(data) ? (int)data->valuedouble : 0;
+        pthread_mutex_lock(&music_state_lock);
         if (id->valueint == 1)
         {
-            if(!slider_pressed)
-                lv_slider_set_value(guider_ui.Music_player_progress_slider, value, LV_ANIM_OFF);
+            music_time_value = value;
+            music_time_dirty = 1;
         }
         else if (id->valueint == 2)
         {
-            lv_slider_set_range(guider_ui.Music_player_progress_slider, 0, value);
+            music_duration_value = value;
+            music_duration_dirty = 1;
         }
+        pthread_mutex_unlock(&music_state_lock);
     }
     cJSON_Delete(root);
 }
@@ -672,6 +704,8 @@ int music_player_thread_init()
 
 int music_app_init()
 {
+    if (music_ui_timer == NULL)
+        music_ui_timer = lv_timer_create(music_ui_timer_cb, MUSIC_UI_PERIOD_MS, NULL);
     if (playing_music_node == NULL)
         return -1;
     _music_set_pos(0);
