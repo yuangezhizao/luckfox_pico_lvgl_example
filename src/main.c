@@ -11,6 +11,7 @@
 #include "gui_guider.h"
 #include "events_init.h"
 #include "custom.h"
+#include "custom_touch.h"
 
 lv_ui guider_ui;
 
@@ -73,12 +74,13 @@ int main()
     /*Initialize and register a Input driver*/
     //luckfox_get_input_device_info(&TSDEV);
     //evdev_set_file(TSDEV);
-    evdev_init();
+    /* 替代 evdev_init()/evdev_read：只跟随第一根按下的手指，见 custom/custom_touch.c。 */
+    custom_touch_init(EVDEV_NAME);
     static lv_indev_drv_t indev_drv;
     lv_indev_drv_init(&indev_drv); /*Basic initialization*/
     indev_drv.type = LV_INDEV_TYPE_POINTER;
     /*This function will be called periodically (by the library) to get the mouse position and state*/
-    indev_drv.read_cb = evdev_read;
+    indev_drv.read_cb = custom_touch_read;
     lv_indev_drv_register(&indev_drv);
 
     /*Create a GUI-Guider app */

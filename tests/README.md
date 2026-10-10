@@ -22,7 +22,7 @@ ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
 | `main/` | 主屏与时间（含亮度滑条、SDIO 板型判定） | `custom_main.c`、`custom_brightness.c`、`widgets_init.c`、`lv_conf.h` |
 | `wifi/` | WiFi | `custom_wifi.c`、`setup_scr_WIFI.c` |
 | `music/` | 音乐页 | `custom_musicplayer.c`、`setup_scr_Music_player.c` |
-| `sketchpad/` | 画板 | `custom_sketchpad.c`、`setup_scr_Sketchpad.c` |
+| `sketchpad/` | 画板（含触摸读取） | `custom_sketchpad.c`、`custom_touch.c`、`setup_scr_Sketchpad.c` |
 | `exit/` | OFF 退出 | `custom/custom_fb.c`，调用点 `src/main.c` |
 | `gif/` | GIF 页 | `setup_scr_Gif.c` |
 
@@ -57,13 +57,14 @@ ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
 - 音乐源码的 `MUSIC_DIR_PATH=tst_music_dir()` 也通过源文件 `COMPILE_DEFINITIONS` 和 `-include support/fake_fs.h` 覆盖；`unit_list_alloc.c` 在包含源码前用 `#define` 做相同覆盖，目录由本进程独享；`MPV_SOCKET_PATH=tst_mpv_socket_path()` 使用同样的源文件属性与 UNIT 宏覆盖，假 mpv 的套接字也在本进程临时目录。
 - `custom_fb.c` 的 `FB_CLEAR_MAX_BYTES=tst_fb_clear_max_bytes` 通过源文件 `COMPILE_DEFINITIONS` 和 `-include support/fake_fs.h` 覆盖，用例可修改该变量缩小清屏上限。路径宏是运行期 `const char *` 表达式，不能拼接字符串字面量或用 `sizeof` 计算路径长度。
 - libdrm、cjson 头文件使用系统路径 `/usr/include/libdrm`、`/usr/include/cjson`（Debian/Ubuntu 布局）。
+- 触摸读取 `custom_touch.c` 的用例经 FIFO 逐帧喂入 `struct input_event`；`touch_step*.txt` 是板上 `evdev_probe` 录到的多指事件原文，用例按文本回放。
 - `custom_brightness.c` 在测试构建中以 `BACKLIGHT_SYSFS_DIR=tst_backlight_root()` 编译，背光目录位于本进程临时目录，`ctest -j` 并行互不干扰。
 
 ## 手动目标
 
 不进默认构建、不注册为 ctest：
 
-- `cmake --build build-tests --target screenshots`：以 480、720 输出主屏初始、滑条拖到最左、音乐弹窗、无背光设备四类截图到 `build-tests/screenshots/`（PPM；装了 `ffmpeg` 时另存 PNG）。
+- `cmake --build build-tests --target screenshots`：以 480、720 输出主屏初始、滑条拖到最左、音乐弹窗、无背光设备、音乐页（含列表）、画板六类截图到 `build-tests/screenshots/`（PPM；装了 `ffmpeg` 时另存 PNG）。
 - `cmake --build build-tests --target preview` 后 `PREVIEW_RES=480 PREVIEW_BACKLIGHT=255:204 DISPLAY=:1 ./build-tests/preview`：SDL 开窗，鼠标即触摸，点 OFF 退出；需要 SDL2（`libsdl2-dev`），找不到时不生成该目标。`PREVIEW_RES` 默认 480；不设 `PREVIEW_BACKLIGHT` 时没有背光设备，亮度控件隐藏；用 xdotool 等自动化点击时需按住约 150 ms 再抬起，否则点击可能被丢掉。
 
 | 方面 | 本工程 | 真机 |

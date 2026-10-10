@@ -241,7 +241,7 @@ void setup_scr_Music_player(lv_ui *ui)
 	ui->Music_player_progress_slider = lv_slider_create(ui->Music_player);
 	lv_slider_set_range(ui->Music_player_progress_slider, 0, 100);
 	lv_slider_set_mode(ui->Music_player_progress_slider, LV_SLIDER_MODE_NORMAL);
-	lv_slider_set_value(ui->Music_player_progress_slider, 50, LV_ANIM_OFF);
+	lv_slider_set_value(ui->Music_player_progress_slider, 0, LV_ANIM_OFF);
 	luckfox_lv_obj_set_pos(ui->Music_player_progress_slider, 76, 417);
 	luckfox_lv_obj_set_size(ui->Music_player_progress_slider, 328, 11);
 
@@ -301,7 +301,7 @@ void setup_scr_Music_player(lv_ui *ui)
 	//Write codes Music_player_music_name
 	ui->Music_player_music_name = lv_label_create(ui->Music_player);
 	lv_label_set_text(ui->Music_player_music_name, "music.mp3\n");
-	lv_label_set_long_mode(ui->Music_player_music_name, LV_LABEL_LONG_WRAP);
+	lv_label_set_long_mode(ui->Music_player_music_name, LV_LABEL_LONG_SCROLL_CIRCULAR);
 	luckfox_lv_obj_set_pos(ui->Music_player_music_name, 140, 68);
 	luckfox_lv_obj_set_size(ui->Music_player_music_name, 200, 22);
 
@@ -444,6 +444,7 @@ void setup_scr_Music_player(lv_ui *ui)
 	lv_obj_set_style_text_align(ui->Music_player_roller_1, LV_TEXT_ALIGN_CENTER, LV_PART_SELECTED|LV_STATE_DEFAULT);
 
 	lv_roller_set_visible_row_count(ui->Music_player_roller_1, 6);
+	music_roller_apply(ui->Music_player_roller_1);
 	//The custom code of Music_player.
 	
 	lv_obj_add_event_cb(ui->Music_player_play_mode_btn, Music_player_mode_btn_event_handler, LV_EVENT_ALL, ui);

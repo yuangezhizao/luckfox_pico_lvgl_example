@@ -1,4 +1,4 @@
-/* 音乐列表选项串：总长超过 255 字节不溢出，内容逐项正确（spec D3、D4）。 */
+/* 音乐列表选项串：总长超过 255 字节不溢出，内容逐项正确（PR #8 spec D3、D4）；roller 显示缩写名（spec §5.1 F4）。 */
 #include <string.h>
 #include "capture.h"
 int music_scan_list(void);
@@ -31,7 +31,8 @@ static void options_over_255(void)
     for (i = 0; i < 12; i++) {
         lv_roller_set_selected(roller, i, LV_ANIM_OFF);
         lv_roller_get_selected_str(roller, buf, sizeof(buf));
-        CHECK_EQ_INT(strlen(buf), 200);
+        /* roller 显示的是按宽度缩写的名字（spec §5.1 F4），完整名字由 music_roller_options() 校验。 */
+        CHECK(strlen(buf) < 200 && strstr(buf, "...") != NULL);
         if (buf[0] >= 'a' && buf[0] < 'a' + 12)
             seen[buf[0] - 'a'] = 1;
     }

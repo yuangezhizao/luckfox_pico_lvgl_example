@@ -1,0 +1,6 @@
+# Load 前检查配置里有 network={} 块（spec Q31）。
+id: WIFI-Q31-no-block-check
+file: custom/custom_wifi.c
+old:         if (wifi_conf_has_network() == 0) {
+new:         if (0) {
+tests: ^wifi\.load\.
