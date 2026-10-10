@@ -1,0 +1,30 @@
+# 列表显示名缩写（spec §5.1 F4）。
+id: MUSIC-F4-no-abbrev
+file: custom/custom_musicplayer.c
+old:         if (music_display_name(cur->filename, shown, sizeof(shown), font, letter_space, max_w) != 0)
+new:         if (1)
+tests: ^music\.display_name\.
+
+id: MUSIC-F4-no-tail
+file: custom/custom_musicplayer.c
+old:         turn ^= 1;
+new:         turn = 0;
+tests: ^music\.display_name\.
+
+id: MUSIC-F4-next-mid-char
+file: custom/custom_musicplayer.c
+old:     for (i++; i < len && ((unsigned char)s[i] & 0xc0) == 0x80; i++)
+new:     for (i++; 0; i++)
+tests: ^music\.display_name\.
+
+id: MUSIC-F4-prev-mid-char
+file: custom/custom_musicplayer.c
+old:     for (i--; i > 0 && ((unsigned char)s[i] & 0xc0) == 0x80; i--)
+new:     for (i--; 0; i--)
+tests: ^music\.display_name\.
+
+id: MUSIC-F4-no-width-check
+file: custom/custom_musicplayer.c
+old:         if (music_text_width(buf, font, letter_space) <= max_w && strlen(buf) < size) {
+new:         if (strlen(buf) < size) {
+tests: ^music\.display_name\.
