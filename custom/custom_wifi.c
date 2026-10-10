@@ -528,6 +528,23 @@ static void wifi_update_timer_cb(lv_timer_t * tmr)
 /**********************
  *  GLOBAL FUNCTIONS
  **********************/
+/* Load 用 wpa_cli set_network 0，并只改写配置里已有 network={} 块的 ssid=、psk= 行：
+ * 没有块时 set_network 0 返回 FAIL、配置也无处可写，旧实现静默失败。
+ * 返回 1 有块，0 没有块，-1 读不了（读不了时保持旧行为，仍交给 wpa_cli）。 */
+static int wifi_conf_has_network(void)
+{
+    char line[MAX_LINE_LEN];
+    FILE *fp = fopen(WPA_FILE_PATH, "r");
+    int found = 0;
+
+    if (fp == NULL)
+        return -1;
+    while (!found && fgets(line, sizeof(line), fp) != NULL)
+        found = wifi_conf_is_block_start(line);
+    fclose(fp);
+    return found;
+}
+
 void WIFI_load_btn_event_handler(lv_event_t *e)
 { 
     lv_event_code_t code = lv_event_get_code(e);
@@ -541,6 +558,10 @@ void WIFI_load_btn_event_handler(lv_event_t *e)
 
         if (err != NULL) {
             wifi_hint_show(err);
+            return;
+        }
+        if (wifi_conf_has_network() == 0) {
+            wifi_hint_show("No network block in wpa_supplicant.conf");
             return;
         }
         _wifi_conf_load(ssid, passwd);
