@@ -84,6 +84,7 @@ int music_scan_list(void);
 const char *music_roller_options(void);
 int music_display_name(const char *name, char *out, size_t size, const lv_font_t *font, lv_coord_t letter_space, lv_coord_t max_w);
 void music_roller_apply(lv_obj_t *roller);
+void music_recheck_enable(void);
 
 void Music_player_list_roller_event_handler(lv_event_t *e);
 void Music_player_next_btn_event_handler(lv_event_t *e);

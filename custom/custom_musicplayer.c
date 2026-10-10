@@ -57,6 +57,7 @@ int slider_pressed = 0;
  *  GLOBAL VARIABLES
  **********************/
 extern lv_ui guider_ui;
+extern int MUSIC_ENABLE;
 /**********************
  *  STATIC FUNCTIONS
  **********************/
@@ -456,6 +457,111 @@ void *get_music_playback_time(void *arg)
  *  GLOBAL FUNCTIONS
  **********************/
 
+/* 歌曲的筛选规则（扫描与目录比较共用）：普通文件、扩展名 .mp3、名字不含换行
+ * （lv_roller 按 \n 计选项，含 \n 的名字会占两项并让下标整体错位）。 */
+static int music_is_track(const struct dirent *entry)
+{
+    const char *ext;
+
+    if (entry->d_type != DT_REG || strchr(entry->d_name, '\n') != NULL)
+        return 0;
+    ext = strrchr(entry->d_name, '.');
+    return ext != NULL && strcmp(ext, ".mp3") == 0;
+}
+
+/* 目录中的歌曲名按 readdir 顺序以 \n 连接，格式与 music_roller_options() 相同；目录打不开时为 ""，分配失败返回 NULL。 */
+static char *music_dir_signature(void)
+{
+    DIR *dir = opendir(MUSIC_DIR_PATH);
+    struct dirent *entry;
+    size_t used = 0, cap = 256;
+    char *sig = malloc(cap);
+
+    if (sig == NULL) {
+        if (dir != NULL)
+            closedir(dir);
+        return NULL;
+    }
+    sig[0] = '\0';
+    if (dir == NULL)
+        return sig;
+    while ((entry = readdir(dir)) != NULL) {
+        size_t need;
+
+        if (!music_is_track(entry))
+            continue;
+        need = used + strlen(entry->d_name) + 2;
+        if (need > cap) {
+            char *bigger;
+
+            while (cap < need)
+                cap *= 2;
+            bigger = realloc(sig, cap);
+            if (bigger == NULL) {
+                free(sig);
+                closedir(dir);
+                return NULL;
+            }
+            sig = bigger;
+        }
+        used += (size_t)snprintf(sig + used, cap - used, "%s%s", used ? "\n" : "", entry->d_name);
+    }
+    closedir(dir);
+    return sig;
+}
+
+/* MUSIC 按钮回调先调用：MUSIC_ENABLE 原来只在启动时算一次，运行中放入的音乐要重启才能进入。2（Ubuntu，隐藏音乐）不变。 */
+void music_recheck_enable(void)
+{
+    char *sig;
+
+    if (MUSIC_ENABLE == 2)
+        return;
+    sig = music_dir_signature();
+    if (sig == NULL)
+        return;
+    MUSIC_ENABLE = sig[0] != '\0';
+    free(sig);
+}
+
+/* 音乐页只建一次：每次进入时重新扫描，目录有变化才重建列表与 mpv 播放列表，回到第一首并暂停；没变化不打断播放。 */
+static void music_refresh_list(void)
+{
+    char *sig = music_dir_signature();
+    static const char stop_cmd[] = "{ \"command\": [\"stop\"] }\n";
+
+    if (sig == NULL)
+        return;
+    if (strcmp(sig, music_roller_options()) == 0) {
+        free(sig);
+        return;
+    }
+    free(sig);
+    /* stop 停止播放并清空 mpv 播放列表，随后 music_scan_list() 逐个 loadfile append。 */
+    mpv_send(stop_cmd, strlen(stop_cmd));
+    music_scan_list();
+    lv_roller_set_options(guider_ui.Music_player_roller_1, music_roller_options(), LV_ROLLER_MODE_INFINITE);
+    music_roller_apply(guider_ui.Music_player_roller_1);
+    pthread_mutex_lock(&music_state_lock);
+    music_time_dirty = 0;
+    music_duration_dirty = 0;
+    pthread_mutex_unlock(&music_state_lock);
+    lv_slider_set_value(guider_ui.Music_player_progress_slider, 0, LV_ANIM_OFF);
+    lv_obj_clear_state(guider_ui.Music_player_start_btn, LV_STATE_CHECKED);
+    if (playing_music_node != NULL) {
+        _music_set_pos(0);
+        _music_pause(1);
+    } else {
+        lv_label_set_text(guider_ui.Music_player_music_name, "");
+    }
+}
+
+static void music_screen_load_cb(lv_event_t *e)
+{
+    LV_UNUSED(e);
+    music_refresh_list();
+}
+
 int music_scan_list(void)
 {
     DIR *dir;
@@ -472,22 +578,16 @@ int music_scan_list(void)
 
     // Read files from music dir
     while ((entry = readdir(dir)) != NULL) {
-        if (entry->d_type == DT_REG) { // common file
-            /* lv_roller 按 \n 计选项，含 \n 的名字会占两项并让下标整体错位。 */
-            if (strchr(entry->d_name, '\n') != NULL) {
+        if (!music_is_track(entry)) {
+            if (entry->d_type == DT_REG && strchr(entry->d_name, '\n') != NULL)
                 printf("skip music file with newline in name\n");
-                continue;
-            }
-            // check .mp3
-            char *ext = strrchr(entry->d_name, '.');
-            if (ext != NULL && strcmp(ext, ".mp3") == 0) {
-                // insert Music Node
-                insert_music_node(&head, entry->d_name,id_num);
-                id_num++;
-                //add to mpv list            
-                music_mpv_loadfile(entry->d_name);
-            }
+            continue;
         }
+        // insert Music Node
+        insert_music_node(&head, entry->d_name,id_num);
+        id_num++;
+        //add to mpv list
+        music_mpv_loadfile(entry->d_name);
     }
     closedir(dir);
     
@@ -724,8 +824,14 @@ int music_player_thread_init()
 
 int music_app_init()
 {
+    static lv_obj_t *load_cb_screen;
+
     if (music_ui_timer == NULL)
         music_ui_timer = lv_timer_create(music_ui_timer_cb, MUSIC_UI_PERIOD_MS, NULL);
+    if (guider_ui.Music_player != NULL && load_cb_screen != guider_ui.Music_player) {
+        lv_obj_add_event_cb(guider_ui.Music_player, music_screen_load_cb, LV_EVENT_SCREEN_LOAD_START, NULL);
+        load_cb_screen = guider_ui.Music_player;
+    }
     if (playing_music_node == NULL)
         return -1;
     _music_set_pos(0);
