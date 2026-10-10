@@ -1,4 +1,4 @@
-/* mpv 监听线程：解析后释放 cJSON；读满缓冲区时补 NUL（PR #8 spec §5.4 ⑤⑥）；跨两次 read 的行拼接后解析、不用 strtok（spec §5.1 F5、R1）。 */
+/* mpv 监听线程：解析后释放 cJSON；读满缓冲区时补 NUL（PR #8 spec §5.4 ⑤⑥）；跨两次 read 的行拼接后解析、不用 strtok，只在 UI 线程设置控件（spec §5.1 F5、R1）。 */
 #include <pthread.h>
 #include <string.h>
 #include <sys/ioctl.h>
@@ -124,9 +124,38 @@ static void no_strtok(void)
     CHECK_EQ_INT(strtok_in_thread, 0);
 }
 
+/* LVGL 不是线程安全的：监听线程只能记录数值，由 UI 线程的定时器设置控件。没运行 LVGL 定时器之前控件不应变化。 */
+static void ui_thread_only(void)
+{
+    int peer = start_page_and_monitor();
+
+    write_all(peer, EV_DURATION EV_TIME_A EV_TIME_B);
+    wait_drained();
+    CHECK_EQ_INT(lv_bar_get_max_value(guider_ui.Music_player_progress_slider), 100);
+    CHECK_EQ_INT(lv_slider_get_value(guider_ui.Music_player_progress_slider), 0);
+    tst_run_ms(300);
+    CHECK_EQ_INT(lv_bar_get_max_value(guider_ui.Music_player_progress_slider), 200);
+    CHECK_EQ_INT(lv_slider_get_value(guider_ui.Music_player_progress_slider), 12);
+}
+
+/* 用户正在拖动进度滑块时，mpv 的进度事件不覆盖滑块值。 */
+extern int slider_pressed;
+static void pressed_keeps_value(void)
+{
+    int peer = start_page_and_monitor();
+
+    slider_pressed = 1;
+    write_all(peer, EV_DURATION EV_TIME_A EV_TIME_B);
+    wait_drained();
+    tst_run_ms(300);
+    CHECK_EQ_INT(lv_bar_get_max_value(guider_ui.Music_player_progress_slider), 200);
+    CHECK_EQ_INT(lv_slider_get_value(guider_ui.Music_player_progress_slider), 0);
+}
+
 int main(int argc, char **argv)
 {
     static const tst_case_t cases[] = {{"no_leak", no_leak}, {"full_buffer_line", full_buffer_line},
-                                       {"split_line", split_line}, {"no_strtok", no_strtok}};
+                                       {"split_line", split_line}, {"no_strtok", no_strtok},
+                                       {"ui_thread_only", ui_thread_only}, {"pressed_keeps_value", pressed_keeps_value}};
     return tst_run_case(cases, TST_COUNT(cases), argc, argv);
 }
