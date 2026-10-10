@@ -3,3 +3,9 @@ file: custom/custom_musicplayer.c
 old:         _exit(127);
 new:         return 0;
 tests: ^music\.player\.
+
+id: MUSIC-R3-no-cloexec
+file: custom/custom_musicplayer.c
+old: socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0)
+new: socket(AF_UNIX, SOCK_STREAM, 0)
+tests: ^music\.player\.socket_cloexec$

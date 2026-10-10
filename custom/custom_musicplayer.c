@@ -741,7 +741,8 @@ static int mpv_wait_connect(pid_t child, const char *sock_path)
             printf("mpv exited before its IPC socket appeared (status 0x%x)\n", status);
             return -2;
         }
-        fd = socket(AF_UNIX, SOCK_STREAM, 0);
+        /* CLOEXEC：之后 popen、system 起的子进程（常驻的 udhcpc 等）不继承 mpv 套接字。 */
+        fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
         if (fd < 0) {
             perror("Create socket failed");
             return -1;

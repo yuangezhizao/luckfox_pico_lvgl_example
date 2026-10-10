@@ -87,7 +87,7 @@ static int fbfd = 0;
 void fbdev_init(void)
 {
     // Open the file for reading and writing
-    fbfd = open(FBDEV_PATH, O_RDWR);
+    fbfd = open(FBDEV_PATH, O_RDWR | O_CLOEXEC); /* 本仓修改：子进程不继承帧缓冲 fd */
     if(fbfd == -1) {
         perror("Error: cannot open framebuffer device");
         return;

@@ -161,8 +161,19 @@ static void stale_socket(void)
     close(old);
 }
 
+/* 之后 popen、system 起的子进程（常驻的 udhcpc 等）不应继承 mpv 套接字（R3）。 */
+static void socket_cloexec(void)
+{
+    int flags;
+
+    install_fake_mpv();
+    CHECK_EQ_INT(music_player_thread_init(), 0);
+    flags = fcntl(fd_mpv, F_GETFD);
+    CHECK(flags >= 0 && (flags & FD_CLOEXEC));
+}
+
 int main(int argc, char **argv)
 {
-    static const tst_case_t cases[] = {{"exec_failure", exec_failure}, {"slow_socket", slow_socket}, {"timeout_reaps_child", timeout_reaps_child}, {"mpv_missing_fast", mpv_missing_fast}, {"stdin_kept", stdin_kept}, {"stale_socket", stale_socket}};
+    static const tst_case_t cases[] = {{"exec_failure", exec_failure}, {"slow_socket", slow_socket}, {"timeout_reaps_child", timeout_reaps_child}, {"mpv_missing_fast", mpv_missing_fast}, {"stdin_kept", stdin_kept}, {"stale_socket", stale_socket}, {"socket_cloexec", socket_cloexec}};
     return tst_run_case(cases, TST_COUNT(cases), argc, argv);
 }
