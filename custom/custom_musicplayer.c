@@ -312,6 +312,66 @@ static void _music_set_mode(int mode)
     mpv_send(cmd, strlen(cmd));
 }
 
+/* 解析 mpv 的一行 JSON 事件。 */
+static void music_monitor_line(const char *line)
+{
+    cJSON *root = cJSON_Parse(line);
+    cJSON *event, *data, *id;
+    int value;
+
+    if (root == NULL)
+        return;
+    event = cJSON_GetObjectItem(root, "event");
+    data = cJSON_GetObjectItem(root, "data");
+    id = cJSON_GetObjectItem(root, "id"); //可以用id,也可以用name
+    if (cJSON_IsString(event) && strcmp(event->valuestring, "property-change") == 0 && id != NULL && data != NULL)
+    {
+        /* 与旧实现一致："data": null（属性不可用）按 0 处理。 */
+        value = cJSON_IsNumber(data) ? (int)data->valuedouble : 0;
+        if (id->valueint == 1)
+        {
+            if(!slider_pressed)
+                lv_slider_set_value(guider_ui.Music_player_progress_slider, value, LV_ANIM_OFF);
+        }
+        else if (id->valueint == 2)
+        {
+            lv_slider_set_range(guider_ui.Music_player_progress_slider, 0, value);
+        }
+    }
+    cJSON_Delete(root);
+}
+
+/* mpv 一次输出多条事件，一行可能被两次 read 拆开：按 \n 累积成整行再解析；
+ * 不用 strtok（与 UI 线程日历的 strtok 共用 libc 静态游标）。超过缓冲区的行整行丢弃到下一个 \n。 */
+static char monitor_line[2048];
+static size_t monitor_len;
+static int monitor_overflow;
+
+static void music_monitor_feed(const char *data, size_t n)
+{
+    while (n > 0) {
+        const char *nl = memchr(data, '\n', n);
+        size_t seg = nl != NULL ? (size_t)(nl - data) : n;
+
+        if (!monitor_overflow && monitor_len + seg < sizeof(monitor_line)) {
+            memcpy(monitor_line + monitor_len, data, seg);
+            monitor_len += seg;
+        } else {
+            monitor_overflow = 1;
+        }
+        if (nl == NULL)
+            return;
+        if (!monitor_overflow) {
+            monitor_line[monitor_len] = '\0';
+            music_monitor_line(monitor_line);
+        }
+        monitor_len = 0;
+        monitor_overflow = 0;
+        data = nl + 1;
+        n -= seg + 1;
+    }
+}
+
 void *get_music_playback_time(void *arg)
 {
     pthread_detach(pthread_self());
@@ -321,57 +381,19 @@ void *get_music_playback_time(void *arg)
     // get sum-time 
     char cmd1[] = "{\"command\": [\"observe_property\", 2,\"duration\"]}\n ";
     
-    cJSON *root;
-    cJSON *event;
-    cJSON *cjson_obj;
     char buf[512];
 
     mpv_send(cmd, strlen(cmd));
     mpv_send(cmd1, strlen(cmd1));
+    monitor_len = 0;
+    monitor_overflow = 0;
     while (1)
     {
-        memset(buf, 0, sizeof(buf));
         ssize_t n = read(fd_mpv, buf, sizeof(buf) - 1);
         if (n > 0)
         {
             buf[n] = '\0';
-            // printf("%s len:%d", buf, strlen(buf));
-            // Get one line data
-			char *temp = strtok(buf, "\n"); 
-            while (temp)
-            {
-                root = cJSON_Parse(temp);
-                if (root != NULL)
-                {
-                    if (cJSON_HasObjectItem(root, "event"))
-                    {
-                        event = cJSON_GetObjectItem(root, "event");
-                        if (event != NULL)
-                        {
-                            if (strcmp(event->valuestring, "property-change") == 0)
-                            {
-                                cjson_obj = cJSON_GetObjectItem(root, "data");
-                                cJSON *id = cJSON_GetObjectItem(root, "id"); //可以用id,也可以用name
-                                if ((id != NULL) && (cjson_obj != NULL))
-                                {
-                                    if (id->valueint == 1)
-                                    {
-                                        if(!slider_pressed)
-                                            lv_slider_set_value(guider_ui.Music_player_progress_slider, (int)cjson_obj->valuedouble,LV_ANIM_OFF);
-                                    }
-                                    else if (id->valueint == 2) 
-                                    {
-                                        lv_slider_set_range(guider_ui.Music_player_progress_slider, 0, (int)cjson_obj->valuedouble);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    cJSON_Delete(root);
-                }
-
-                temp = strtok(NULL, "\n");
-            }
+            music_monitor_feed(buf, (size_t)n);
         }
         usleep(10000);
     }

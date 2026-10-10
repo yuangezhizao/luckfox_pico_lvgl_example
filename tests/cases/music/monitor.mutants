@@ -1,11 +1,17 @@
 id: MUSIC-5
 file: custom/custom_musicplayer.c
-old:                     cJSON_Delete(root);\n
-new:
+old:     cJSON_Delete(root);\n}\n\n/* mpv 一次输出多条事件
+new: }\n\n/* mpv 一次输出多条事件
 tests: ^music\.monitor\.
 
 id: MUSIC-6
 file: custom/custom_musicplayer.c
 old:         ssize_t n = read(fd_mpv, buf, sizeof(buf) - 1);
 new:         ssize_t n = read(fd_mpv, buf, sizeof(buf));
+tests: ^music\.monitor\.
+
+id: MUSIC-F5-split-lost
+file: custom/custom_musicplayer.c
+old:         if (nl == NULL)\n            return;
+new:         if (nl == NULL) {\n            monitor_len = 0;\n            return;\n        }
 tests: ^music\.monitor\.
