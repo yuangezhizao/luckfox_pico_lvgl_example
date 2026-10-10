@@ -1,10 +1,13 @@
-/* mpv 监听线程：解析后释放 cJSON；读满缓冲区时补 NUL（spec §5.4 ⑤⑥）。 */
+/* mpv 监听线程：解析后释放 cJSON；读满缓冲区时补 NUL（PR #8 spec §5.4 ⑤⑥）；跨两次 read 的行拼接后解析、不用 strtok（spec §5.1 F5、R1）。 */
 #include <pthread.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 
+#include "app_env.h"
 #include "check.h"
+#include "gui_guider.h"
+#include "lvgl.h"
 #include "music_env.h"
 
 void *get_music_playback_time(void *arg);
@@ -52,8 +55,78 @@ static void full_buffer_line(void)
     feed_and_drain(data, sizeof(data));
 }
 
+/* 监听线程与 UI 线程（日历）共用 strtok 的静态游标会互相打乱；统计非主线程的调用。 */
+static pthread_t main_thread;
+static volatile int strtok_in_thread;
+char *__real_strtok(char *str, const char *delim);
+char *__wrap_strtok(char *str, const char *delim);
+char *__wrap_strtok(char *str, const char *delim)
+{
+    if (!pthread_equal(pthread_self(), main_thread))
+        strtok_in_thread++;
+    return __real_strtok(str, delim);
+}
+
+/* 音乐页 + 监听线程；返回对端。 */
+static int start_page_and_monitor(void)
+{
+    pthread_t th;
+    int peer = music_env_socketpair();
+
+    main_thread = pthread_self();
+    music_env_file("a.mp3");
+    tst_app_init(480, 0, 1);
+    setup_scr_Music_player(&guider_ui);
+    CHECK(pthread_create(&th, NULL, get_music_playback_time, NULL) == 0);
+    usleep(20000);
+    return peer;
+}
+
+static void write_all(int fd, const char *s)
+{
+    CHECK_EQ_INT(write(fd, s, strlen(s)), (long)strlen(s));
+}
+
+static void wait_drained(void)
+{
+    int i;
+
+    for (i = 0; i < 2000 && fionread(fd_mpv) != 0; i++)
+        usleep(1000);
+    usleep(100000);
+}
+
+#define EV_DURATION "{\"event\":\"property-change\",\"id\":2,\"name\":\"duration\",\"data\":200.0}\n"
+#define EV_TIME_A   "{\"event\":\"property-change\",\"id\":1,\"name\":\"playback"
+#define EV_TIME_B   "-time\",\"data\":12.5}\n"
+
+/* mpv 一次输出多条事件，一行可能被两次 read 拆开；旧实现两半都解析失败，进度事件丢失。 */
+static void split_line(void)
+{
+    int peer = start_page_and_monitor();
+
+    write_all(peer, EV_DURATION EV_TIME_A);
+    usleep(50000);
+    write_all(peer, EV_TIME_B);
+    wait_drained();
+    tst_run_ms(300);
+    CHECK_EQ_INT(lv_bar_get_max_value(guider_ui.Music_player_progress_slider), 200);
+    CHECK_EQ_INT(lv_slider_get_value(guider_ui.Music_player_progress_slider), 12);
+}
+
+static void no_strtok(void)
+{
+    int peer = start_page_and_monitor();
+
+    write_all(peer, EV_DURATION EV_TIME_A EV_TIME_B);
+    wait_drained();
+    printf("strtok calls in monitor thread: %d\n", strtok_in_thread);
+    CHECK_EQ_INT(strtok_in_thread, 0);
+}
+
 int main(int argc, char **argv)
 {
-    static const tst_case_t cases[] = {{"no_leak", no_leak}, {"full_buffer_line", full_buffer_line}};
+    static const tst_case_t cases[] = {{"no_leak", no_leak}, {"full_buffer_line", full_buffer_line},
+                                       {"split_line", split_line}, {"no_strtok", no_strtok}};
     return tst_run_case(cases, TST_COUNT(cases), argc, argv);
 }
