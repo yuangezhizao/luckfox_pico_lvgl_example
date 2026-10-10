@@ -1,6 +1,6 @@
 luckfox_add_test(backend_release CASES without_timer twice)
 luckfox_add_test(validate CASES rules utf8)
-luckfox_add_test(load CASES invalid_no_wpa_call dropdown_utf8 dropdown_overlong edit_hides_hint)
+luckfox_add_test(load CASES invalid_no_wpa_call dropdown_utf8 dropdown_overlong edit_hides_hint no_network_block)
 luckfox_add_test(conf_write UNIT unit_wifi.c CASES same_dir_atomic io_failures only_ssid_psk_lines brace_in_value crlf_block_end)
 luckfox_add_test(conf_get UNIT unit_wifi.c CASES long_and_quoted)
 luckfox_add_test(scan UNIT unit_wifi.c CASES parse parse_all_discarded parse_cap append_truncated append_error)
