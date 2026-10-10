@@ -11,3 +11,4 @@ target_compile_definitions(music_player PRIVATE TST_MUSIC_SRC_DIR="${CMAKE_CURRE
 target_link_options(music_player PRIVATE -Wl,--wrap=clock_gettime)
 luckfox_add_test(list_alloc UNIT unit_list_alloc.c CASES options_alloc_failure)
 luckfox_add_test(display_name CASES short_unchanged long_keeps_head_tail utf8_boundary roller_fits_480 roller_fits_720)
+luckfox_add_test(progress CASES initial_zero)

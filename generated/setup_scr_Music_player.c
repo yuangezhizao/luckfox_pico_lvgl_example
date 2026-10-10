@@ -241,7 +241,7 @@ void setup_scr_Music_player(lv_ui *ui)
 	ui->Music_player_progress_slider = lv_slider_create(ui->Music_player);
 	lv_slider_set_range(ui->Music_player_progress_slider, 0, 100);
 	lv_slider_set_mode(ui->Music_player_progress_slider, LV_SLIDER_MODE_NORMAL);
-	lv_slider_set_value(ui->Music_player_progress_slider, 50, LV_ANIM_OFF);
+	lv_slider_set_value(ui->Music_player_progress_slider, 0, LV_ANIM_OFF);
 	luckfox_lv_obj_set_pos(ui->Music_player_progress_slider, 76, 417);
 	luckfox_lv_obj_set_size(ui->Music_player_progress_slider, 328, 11);
 
