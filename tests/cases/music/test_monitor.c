@@ -1,5 +1,7 @@
 /* mpv 监听线程：解析后释放 cJSON；读满缓冲区时补 NUL（PR #8 spec §5.4 ⑤⑥）；跨两次 read 的行拼接后解析、不用 strtok，只在 UI 线程设置控件（spec §5.1 F5、R1）。 */
+#include <errno.h>
 #include <pthread.h>
+#include <sys/wait.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
@@ -152,10 +154,36 @@ static void pressed_keeps_value(void)
     CHECK_EQ_INT(lv_slider_get_value(guider_ui.Music_player_progress_slider), 0);
 }
 
+/* mpv 退出（套接字对端关闭）后：监听线程回收子进程、关闭并置空 fd_mpv、退出，不留僵尸也不空转（R2）。 */
+extern pid_t pid;
+static void peer_exit_reaps(void)
+{
+    pthread_t th;
+    pid_t child;
+    int peer = music_env_socketpair();
+    int i;
+
+    child = fork();
+    if (child == 0)
+        _exit(0);
+    CHECK(child > 0);
+    pid = child;
+    CHECK(pthread_create(&th, NULL, get_music_playback_time, NULL) == 0);
+    usleep(50000);
+    close(peer);
+    for (i = 0; i < 200 && fd_mpv != -1; i++)
+        usleep(10000);
+    CHECK_EQ_INT(fd_mpv, -1);
+    errno = 0;
+    CHECK_EQ_INT(waitpid(child, NULL, WNOHANG), -1);
+    CHECK_EQ_INT(errno, ECHILD);
+}
+
 int main(int argc, char **argv)
 {
     static const tst_case_t cases[] = {{"no_leak", no_leak}, {"full_buffer_line", full_buffer_line},
                                        {"split_line", split_line}, {"no_strtok", no_strtok},
-                                       {"ui_thread_only", ui_thread_only}, {"pressed_keeps_value", pressed_keeps_value}};
+                                       {"ui_thread_only", ui_thread_only}, {"pressed_keeps_value", pressed_keeps_value},
+                                       {"peer_exit_reaps", peer_exit_reaps}};
     return tst_run_case(cases, TST_COUNT(cases), argc, argv);
 }

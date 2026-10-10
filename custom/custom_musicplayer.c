@@ -231,12 +231,20 @@ void music_roller_apply(lv_obj_t *roller)
 }
 
 /* MSG_NOSIGNAL 只作用于本次发送；否决 signal(SIGPIPE, SIG_IGN)（进程级，会影响 WiFi 的 popen 等路径）。 */
+/* fd_mpv 的关闭（监听线程发现 mpv 退出时）与发送（UI 线程）在同一把锁内，不会写进已关闭或被复用的 fd。 */
+static pthread_mutex_t mpv_fd_lock = PTHREAD_MUTEX_INITIALIZER;
+
 static int mpv_send(const char *buf, size_t len)
 {
-    if (fd_mpv < 0)
-        return -1;
-    ssize_t n = send(fd_mpv, buf, len, MSG_NOSIGNAL);
+    ssize_t n;
 
+    pthread_mutex_lock(&mpv_fd_lock);
+    if (fd_mpv < 0) {
+        pthread_mutex_unlock(&mpv_fd_lock);
+        return -1;
+    }
+    n = send(fd_mpv, buf, len, MSG_NOSIGNAL);
+    pthread_mutex_unlock(&mpv_fd_lock);
     if (n != (ssize_t)len) {
         perror("mpv_send");
         return -1;
@@ -427,9 +435,21 @@ void *get_music_playback_time(void *arg)
             buf[n] = '\0';
             music_monitor_feed(buf, (size_t)n);
         }
+        else if (n == 0 || (errno != EINTR && errno != EAGAIN))
+        {
+            break;
+        }
         usleep(10000);
     }
-    pthread_exit(NULL);
+    /* mpv 退出（对端关闭）：关闭并置空 fd_mpv，之后的发送直接返回 -1；回收 mpv，不留僵尸（R2）。 */
+    printf("mpv connection closed\n");
+    pthread_mutex_lock(&mpv_fd_lock);
+    close(fd_mpv);
+    fd_mpv = -1;
+    pthread_mutex_unlock(&mpv_fd_lock);
+    if (pid > 0)
+        waitpid(pid, NULL, 0);
+    return NULL;
 }
 
 /**********************
