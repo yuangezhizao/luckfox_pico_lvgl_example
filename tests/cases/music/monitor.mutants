@@ -39,3 +39,21 @@ file: custom/custom_musicplayer.c
 old:     if (time_dirty && !slider_pressed)
 new:     if (time_dirty)
 tests: ^music\.monitor\.
+
+id: MUSIC-R2-no-waitpid
+file: custom/custom_musicplayer.c
+old:     if (pid > 0)\n        waitpid(pid, NULL, 0);\n    return NULL;
+new:     return NULL;
+tests: ^music\.monitor\.
+
+id: MUSIC-R2-keep-fd
+file: custom/custom_musicplayer.c
+old:     close(fd_mpv);\n    fd_mpv = -1;\n
+new:
+tests: ^music\.monitor\.
+
+id: MUSIC-R2-spin
+file: custom/custom_musicplayer.c
+old:         else if (n == 0 || (errno != EINTR && errno != EAGAIN))\n        {\n            break;\n        }\n
+new:
+tests: ^music\.monitor\.
