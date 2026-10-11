@@ -226,7 +226,7 @@ void music_roller_apply(lv_obj_t *roller)
         cur = cur->next;
     } while (cur != head);
     sel = lv_roller_get_selected(roller);
-    lv_roller_set_options(roller, buf, LV_ROLLER_MODE_INFINITE);
+    lv_roller_set_options(roller, buf, LV_ROLLER_MODE_NORMAL);
     lv_roller_set_selected(roller, sel, LV_ANIM_OFF);
     free(buf);
 }
@@ -540,7 +540,7 @@ static void music_refresh_list(void)
     /* stop 停止播放并清空 mpv 播放列表，随后 music_scan_list() 逐个 loadfile append。 */
     mpv_send(stop_cmd, strlen(stop_cmd));
     music_scan_list();
-    lv_roller_set_options(guider_ui.Music_player_roller_1, music_roller_options(), LV_ROLLER_MODE_INFINITE);
+    lv_roller_set_options(guider_ui.Music_player_roller_1, music_roller_options(), LV_ROLLER_MODE_NORMAL);
     music_roller_apply(guider_ui.Music_player_roller_1);
     pthread_mutex_lock(&music_state_lock);
     music_time_dirty = 0;

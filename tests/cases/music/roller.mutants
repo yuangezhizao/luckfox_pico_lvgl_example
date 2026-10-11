@@ -3,3 +3,16 @@ file: custom/custom_musicplayer.c
 old:             if (node->id == sel) {
 new:             if (node->id == sel + 1) {
 tests: ^music\.roller\.
+
+# 歌曲列表不循环重复（spec Q32、N5）：custom/ 两处各一个改回循环模式；generated/ 那一处不能配变体，靠 no_repeat_rows 的空目录场景守护。
+id: MUSIC-N5-apply-infinite
+file: custom/custom_musicplayer.c
+old:     lv_roller_set_options(roller, buf, LV_ROLLER_MODE_NORMAL);
+new:     lv_roller_set_options(roller, buf, LV_ROLLER_MODE_INFINITE);
+tests: ^music\.roller\.
+
+id: MUSIC-N5-refresh-infinite
+file: custom/custom_musicplayer.c
+old:     lv_roller_set_options(guider_ui.Music_player_roller_1, music_roller_options(), LV_ROLLER_MODE_NORMAL);
+new:     lv_roller_set_options(guider_ui.Music_player_roller_1, music_roller_options(), LV_ROLLER_MODE_INFINITE);
+tests: ^music\.roller\.
