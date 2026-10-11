@@ -77,11 +77,20 @@ static void insert_music_node(struct Music_Node** head, char* filename, int id) 
         newNode->prev = newNode;
         newNode->next = newNode;
     } else {
-        struct Music_Node* tail = (*head)->prev;
-        tail->next = newNode;
-        newNode->prev = tail;
-        newNode->next = *head;
-        (*head)->prev = newNode;
+        /* 按 strcmp 升序插到第一个比它大的节点之前；没有更大的则绕回 head，即插在末尾（spec Q33）。 */
+        struct Music_Node* pos = *head;
+
+        do {
+            if (strcmp(filename, pos->filename) < 0)
+                break;
+            pos = pos->next;
+        } while (pos != *head);
+        newNode->next = pos;
+        newNode->prev = pos->prev;
+        pos->prev->next = newNode;
+        pos->prev = newNode;
+        if (pos == *head && strcmp(filename, (*head)->filename) < 0)
+            *head = newNode;
     }
 }
 
@@ -469,7 +478,44 @@ static int music_is_track(const struct dirent *entry)
     return ext != NULL && strcmp(ext, ".mp3") == 0;
 }
 
-/* 目录中的歌曲名按 readdir 顺序以 \n 连接，格式与 music_roller_options() 相同；目录打不开时为 ""，分配失败返回 NULL。 */
+/* name 与 \n 分隔的一行 line（长度 len）按 strcmp 的规则比较。 */
+static int music_name_cmp(const char *name, const char *line, size_t len)
+{
+    int c = strncmp(name, line, len);
+
+    if (c != 0)
+        return c;
+    return name[len] != '\0';
+}
+
+/* 把 name 按 strcmp 升序插入 \n 分隔的 sig（已用 used 字节），返回新长度；调用方保证容量至少 used + strlen(name) + 2。 */
+static size_t music_sig_insert(char *sig, size_t used, const char *name)
+{
+    size_t len = strlen(name), pos = 0;
+
+    while (pos < used) {
+        const char *nl = memchr(sig + pos, '\n', used - pos);
+        size_t line = nl != NULL ? (size_t)(nl - (sig + pos)) : used - pos;
+
+        if (music_name_cmp(name, sig + pos, line) < 0)
+            break;
+        pos += line + (nl != NULL);
+    }
+    if (used == 0) {
+        memcpy(sig, name, len + 1);
+    } else if (pos < used) {
+        memmove(sig + pos + len + 1, sig + pos, used - pos + 1);
+        memcpy(sig + pos, name, len);
+        sig[pos + len] = '\n';
+    } else {
+        sig[used] = '\n';
+        memcpy(sig + used + 1, name, len + 1);
+    }
+    return used + len + 1 - (used == 0);
+}
+
+/* 目录中的歌曲名按文件名 strcmp 升序以 \n 连接，与 music_scan_list() 建出的 music_roller_options() 同序（spec Q33）；
+ * 目录打不开时为 ""，分配失败返回 NULL。 */
 static char *music_dir_signature(void)
 {
     DIR *dir = opendir(MUSIC_DIR_PATH);
@@ -504,7 +550,7 @@ static char *music_dir_signature(void)
             }
             sig = bigger;
         }
-        used += (size_t)snprintf(sig + used, cap - used, "%s%s", used ? "\n" : "", entry->d_name);
+        used = music_sig_insert(sig, used, entry->d_name);
     }
     closedir(dir);
     return sig;
@@ -583,13 +629,22 @@ int music_scan_list(void)
                 printf("skip music file with newline in name\n");
             continue;
         }
-        // insert Music Node
+        // insert Music Node（按文件名排序插入，编号与 mpv 播放列表在排好后统一处理）
         insert_music_node(&head, entry->d_name,id_num);
         id_num++;
-        //add to mpv list
-        music_mpv_loadfile(entry->d_name);
     }
     closedir(dir);
+    /* 排好序后再按链表顺序编号并 loadfile，roller 下标、节点 id 与 mpv playlist-pos 一致（spec Q33）。 */
+    if (head != NULL) {
+        struct Music_Node *cur = head;
+        int i = 0;
+
+        do {
+            cur->id = i++;
+            music_mpv_loadfile(cur->filename);
+            cur = cur->next;
+        } while (cur != head);
+    }
     
     playing_music_node = head;
     return music_build_roller_options(id_num);

@@ -97,6 +97,27 @@ static void unchanged_keeps_playlist(void)
     CHECK(strstr(sent, "loadfile") == NULL);
 }
 
+/* 目录未变时再次进入不重建（spec Q33）：目录签名与列表必须同样按文件名排序，否则每次进入都会 stop 并重新加载。 */
+static void sorted_keeps_playlist(void)
+{
+    const char *sent;
+
+    music_env_file("song_03.mp3");
+    music_env_file("song_01.mp3");
+    music_env_file("song_04.mp3");
+    music_env_file("song_02.mp3");
+    start(1);
+    click(guider_ui.Main_Music_btn);
+    click(guider_ui.Music_player_back_btn);
+    drain_peer();
+    click(guider_ui.Main_Music_btn);
+    CHECK(lv_scr_act() == guider_ui.Music_player);
+    sent = drain_peer();
+    printf("sent=[%s]\n", sent);
+    CHECK(strstr(sent, "\"stop\"") == NULL);
+    CHECK(strstr(sent, "loadfile") == NULL);
+}
+
 static void remove_music(const char *name)
 {
     char rel[256], path[1024];
@@ -139,6 +160,7 @@ static void remove_one_rescans(void)
 int main(int argc, char **argv)
 {
     static const tst_case_t cases[] = {{"enable_recheck", enable_recheck}, {"rescan", rescan}, {"unchanged_keeps_playlist", unchanged_keeps_playlist},
-                                       {"remove_all_blocks_entry", remove_all_blocks_entry}, {"remove_one_rescans", remove_one_rescans}};
+                                       {"remove_all_blocks_entry", remove_all_blocks_entry}, {"remove_one_rescans", remove_one_rescans},
+                                       {"sorted_keeps_playlist", sorted_keeps_playlist}};
     return tst_run_case(cases, TST_COUNT(cases), argc, argv);
 }
