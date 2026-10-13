@@ -17,6 +17,8 @@
 
 extern int MUSIC_ENABLE;
 void music_recheck_enable(void);
+void music_list_toggle(void);
+void music_list_close(void);
 
 static void Main_Wifi_btn_event_handler (lv_event_t *e)
 {
@@ -176,7 +178,7 @@ static void Music_player_event_handler (lv_event_t *e)
 	switch (code) {
 	case LV_EVENT_CLICKED:
 	{
-		lv_obj_add_flag(guider_ui.Music_player_cont_1, LV_OBJ_FLAG_HIDDEN);
+		music_list_close();
 		break;
 	}
 	default:
@@ -190,7 +192,7 @@ static void Music_player_music_list_btn_event_handler (lv_event_t *e)
 	switch (code) {
 	case LV_EVENT_CLICKED:
 	{
-		lv_obj_clear_flag(guider_ui.Music_player_cont_1, LV_OBJ_FLAG_HIDDEN);
+		music_list_toggle();
 		break;
 	}
 	default:

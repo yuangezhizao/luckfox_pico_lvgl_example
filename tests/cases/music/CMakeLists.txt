@@ -1,5 +1,6 @@
 luckfox_add_test(list CASES options_over_255 newline_name_skipped missing_dir sorted_by_name)
 luckfox_add_test(mpv_cmd CASES escaping_and_length)
+luckfox_add_test(list_btn CASES toggle background_close checked_image)
 luckfox_add_test(roller CASES select_long_name no_repeat_rows no_repeat_after_rescan fits_song_count fits_after_rescan fits_720)
 luckfox_add_test(empty_list UNIT unit_list_alloc.c CASES no_crash alloc_failure_no_crash)
 luckfox_add_test(mpv_send CASES peer_closed negative_fd_no_send)

@@ -207,6 +207,7 @@ int music_display_name(const char *name, char *out, size_t size, const lv_font_t
 #define MUSIC_LIST_BTN_GAP 5
 
 extern float SCALE;
+LV_IMG_DECLARE(_icn_chart_checked_alpha_32x32);
 
 /* roller 总把选中项放在正中：可见行取奇数（2n-1，最多 MUSIC_LIST_MAX_ROWS），上下都是整行，不会切掉半行；
  * 外层面板四周各留 MUSIC_LIST_MARGIN，从列表按钮向上弹出：底边在按钮顶边上方 MUSIC_LIST_BTN_GAP、水平中心对准按钮（spec Q38）。 */
@@ -586,6 +587,48 @@ static char *music_dir_signature(void)
     return sig;
 }
 
+/* 外层面板的显示与列表按钮的选中状态一起设置：按钮设了 LV_OBJ_FLAG_CHECKABLE，松开时会自行切换 CHECKED，
+ * 点背景收起时却不会，所以由这里统一设置；imgbtn 的状态按官方文档用 lv_imgbtn_set_state()（spec Q50、N11）。 */
+static void music_list_set_open(bool open)
+{
+    lv_obj_t *cont = guider_ui.Music_player_cont_1;
+    lv_obj_t *btn = guider_ui.Music_player_music_list_btn;
+
+    if (cont != NULL) {
+        if (open)
+            lv_obj_clear_flag(cont, LV_OBJ_FLAG_HIDDEN);
+        else
+            lv_obj_add_flag(cont, LV_OBJ_FLAG_HIDDEN);
+    }
+    if (btn != NULL)
+        lv_imgbtn_set_state(btn, open ? LV_IMGBTN_STATE_CHECKED_RELEASED : LV_IMGBTN_STATE_RELEASED);
+}
+
+/* 歌曲列表按钮：外层面板收起时展开，展开时收起。 */
+void music_list_toggle(void)
+{
+    if (guider_ui.Music_player_cont_1 == NULL)
+        return;
+    music_list_set_open(lv_obj_has_flag(guider_ui.Music_player_cont_1, LV_OBJ_FLAG_HIDDEN));
+}
+
+/* 点音乐页背景：收起外层面板，按钮同步退出选中状态。 */
+void music_list_close(void)
+{
+    music_list_set_open(false);
+}
+
+/* 列表按钮选中（展开）时用橙色线条的图；原图白底是画进图里的，整图着色会变成橙色方块（spec Q50）。 */
+static void music_list_btn_init(void)
+{
+    lv_obj_t *btn = guider_ui.Music_player_music_list_btn;
+
+    if (btn == NULL)
+        return;
+    lv_imgbtn_set_src(btn, LV_IMGBTN_STATE_CHECKED_RELEASED, NULL, &_icn_chart_checked_alpha_32x32, NULL);
+    lv_imgbtn_set_src(btn, LV_IMGBTN_STATE_CHECKED_PRESSED, NULL, &_icn_chart_checked_alpha_32x32, NULL);
+}
+
 /* MUSIC 按钮回调先调用：MUSIC_ENABLE 原来只在启动时算一次，运行中放入的音乐要重启才能进入。2（Ubuntu，隐藏音乐）不变。 */
 void music_recheck_enable(void)
 {
@@ -913,6 +956,7 @@ int music_app_init()
 
     if (music_ui_timer == NULL)
         music_ui_timer = lv_timer_create(music_ui_timer_cb, MUSIC_UI_PERIOD_MS, NULL);
+    music_list_btn_init();
     if (guider_ui.Music_player != NULL && load_cb_screen != guider_ui.Music_player) {
         lv_obj_add_event_cb(guider_ui.Music_player, music_screen_load_cb, LV_EVENT_SCREEN_LOAD_START, NULL);
         load_cb_screen = guider_ui.Music_player;
