@@ -201,6 +201,35 @@ int music_display_name(const char *name, char *out, size_t size, const lv_font_t
     return 0;
 }
 
+#define MUSIC_LIST_MAX_ROWS 5
+/* 外层面板四周与内层列表的边距；面板底边与列表按钮顶边的间隙。均为 480 屏的值，按 SCALE 缩放。 */
+#define MUSIC_LIST_MARGIN 10
+#define MUSIC_LIST_BTN_GAP 5
+
+extern float SCALE;
+
+/* roller 总把选中项放在正中：可见行取奇数（2n-1，最多 MUSIC_LIST_MAX_ROWS），上下都是整行，不会切掉半行；
+ * 外层面板四周各留 MUSIC_LIST_MARGIN，从列表按钮向上弹出：底边在按钮顶边上方 MUSIC_LIST_BTN_GAP、水平中心对准按钮（spec Q38）。 */
+static void music_list_fit(lv_obj_t *roller)
+{
+    lv_obj_t *cont = lv_obj_get_parent(roller);
+    uint16_t cnt = lv_roller_get_option_cnt(roller);
+    uint16_t rows = cnt * 2 - 1;
+    lv_coord_t margin = (lv_coord_t)(MUSIC_LIST_MARGIN * SCALE);
+
+    if (cont == NULL || cnt == 0)
+        return;
+    if (rows > MUSIC_LIST_MAX_ROWS)
+        rows = MUSIC_LIST_MAX_ROWS;
+    /* 每行含 16 px 行距，1 行时也放得下选中项的大字体（480：30 >= 20，720：36 >= 26），无需另行加高。 */
+    lv_roller_set_visible_row_count(roller, (uint8_t)rows);
+    lv_obj_update_layout(roller);
+    lv_obj_set_size(cont, lv_obj_get_width(roller) + 2 * margin, lv_obj_get_height(roller) + 2 * margin);
+    if (guider_ui.Music_player_music_list_btn != NULL)
+        lv_obj_align_to(cont, guider_ui.Music_player_music_list_btn, LV_ALIGN_OUT_TOP_MID, 0,
+                        -(lv_coord_t)(MUSIC_LIST_BTN_GAP * SCALE));
+}
+
 /* 按 roller 选中项的字体与内容宽度设置显示名；下标仍对应链表 id，选中项不变。 */
 void music_roller_apply(lv_obj_t *roller)
 {
@@ -238,6 +267,7 @@ void music_roller_apply(lv_obj_t *roller)
     lv_roller_set_options(roller, buf, LV_ROLLER_MODE_NORMAL);
     lv_roller_set_selected(roller, sel, LV_ANIM_OFF);
     free(buf);
+    music_list_fit(roller);
 }
 
 /* MSG_NOSIGNAL 只作用于本次发送；否决 signal(SIGPIPE, SIG_IGN)（进程级，会影响 WiFi 的 popen 等路径）。 */
