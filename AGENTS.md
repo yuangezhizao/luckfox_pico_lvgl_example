@@ -52,3 +52,9 @@ mkdir -p build && cd build && cmake .. && make -j && make install
 没有硬件时可用 `tests/` 的手动目标做 native 渲染：`cmake --build build-tests --target screenshots` 输出 480/720 主屏截图，`--target preview`（需 SDL2）后 `DISPLAY=:1 ./build-tests/preview` 开窗、鼠标当触摸。二者与测试共用 `tests/support/`：`generated/`、`custom/` 没有 `main()`，还 `extern` 引用仅在 `src/main.c` 定义的 5 个全局量，而 `src/main.c` 会拉入 DRM/fbdev/evdev 硬件驱动，所以由 `tests/support/app_env.c` 提供这 5 个定义与内存帧缓冲显示；编译单元与 include 路径的来历见 [`docs/superpowers/specs/2026-07-24-lvgl-example-cloudagent-env-design.md`](docs/superpowers/specs/2026-07-24-lvgl-example-cloudagent-env-design.md) §6.1。此为可选手段，权威验证仍以部署到物理 Luckfox Pico Ultra 为准。
 
 板型判据另有一坑：SDK `824b817f` 起 Luckfox Pico Ultra 与 Luckfox Pico Ultra W 共用设备树，`/proc/device-tree/model` 恒为 `Luckfox Pico Ultra`，不能据此区分是否带 WiFi；例程按 `/sys/bus/sdio/devices/*/uevent` 中的 `SDIO_ID=C8A1:C18D`（板载 AIC8800DC，与 SDK `insmod_wifi.sh` 加载驱动所用 ID 相同）判定，仅旧固件 `model` 为 `Luckfox Pico Ultra W` 时直接视为带 WiFi。背景见 [`docs/superpowers/specs/2026-09-25-lvgl-example-luckfox-pico-ultra-w-wifi-detect-design.md`](docs/superpowers/specs/2026-09-25-lvgl-example-luckfox-pico-ultra-w-wifi-detect-design.md) §2。
+
+### 文档（spec 与 plan）
+- `docs/superpowers/specs/`、`docs/superpowers/plans/` 的标题编号：`## 2. 背景`、`### 2.2 小节`、`#### 2.2.1 小节`，最多四级，引用写成 §2.2.1；代码块内以 `#` 开头的行不是标题。
+- plan 的 Task 标题写成 `### Task N：…`（全角冒号），Task 号即序号，不叠章节号；Task 号只用数字，从 0 或 1 起逐个加 1，精简 plan 删掉 Task 后，后面的 Task 重新编号；执行中途插入 Task 时按位置插入，后面的 Task 顺延并同步引用，不确定时用 grilling 询问；Task 放在单独的 Task 章（如 `## 3. Tasks`），Task 以外的小节照常编号，不与 Task 混在同一章。
+- 附录写成 `## 附录 A`，附录内小节写成 `### A.1`，与正文分开编号；设计决策 QA 条目用加粗的 `**Q1. …**`。
+- 历史文档按此补号、Task 连号的经过与两个特例见 [`docs/superpowers/specs/2026-10-14-lvgl-example-heading-numbers-design.md`](docs/superpowers/specs/2026-10-14-lvgl-example-heading-numbers-design.md) §3。
