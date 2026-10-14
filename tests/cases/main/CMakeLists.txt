@@ -1,3 +1,4 @@
+luckfox_add_test(font CASES scale_720_18 scale_480_18)
 luckfox_add_test(sdio_detect UNIT unit_sdio_detect.c
     CASES absent empty func1_only ultra_w hidden no_newline prefix)
 luckfox_add_test(brightness

@@ -1,4 +1,5 @@
-/* WiFi 用例公共环境：配置写到 tst_wpa_conf_path()，PATH 前置假 wpa_cli、udhcpc、pkill，命令行记进 <临时目录>/cmd.log。 */
+/* WiFi 用例公共环境：配置写到 tst_wpa_conf_path()，PATH 前置假 wpa_cli、udhcpc、pkill，命令行记进 <临时目录>/cmd.log；
+ * 假 wpa_cli 对 scan_results 输出 scan.txt，对 scan 输出 scan_reply.txt（不存在时为 OK）。 */
 #ifndef WIFI_ENV_H
 #define WIFI_ENV_H
 
@@ -16,8 +17,8 @@ static inline void wifi_env_setup(const char *conf)
     if (conf != NULL)
         tst_write_file("wpa_supplicant.conf", conf);
     tst_fmt(script, sizeof(script),
-            "#!/bin/sh\necho \"wpa_cli $*\" >> '%s/cmd.log'\ncase \"$*\" in\n*scan_results*) cat '%s/scan.txt' 2>/dev/null ;;\n'') cat >> '%s/wpa_cli.stdin' ;;\nesac\nexit 0\n",
-            dir, dir, dir);
+            "#!/bin/sh\necho \"wpa_cli $*\" >> '%s/cmd.log'\ncase \"$*\" in\n*scan_results*) cat '%s/scan.txt' 2>/dev/null ;;\n*' scan') if [ -f '%s/scan_reply.txt' ]; then cat '%s/scan_reply.txt'; else echo OK; fi ;;\n'') cat >> '%s/wpa_cli.stdin' ;;\nesac\nexit 0\n",
+            dir, dir, dir, dir, dir);
     tst_fake_exec("wpa_cli", script);
     tst_fmt(script, sizeof(script), "#!/bin/sh\necho \"udhcpc $*\" >> '%s/cmd.log'\nexit 0\n", dir);
     tst_fake_exec("udhcpc", script);

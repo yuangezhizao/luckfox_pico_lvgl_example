@@ -1,11 +1,59 @@
 id: MUSIC-5
 file: custom/custom_musicplayer.c
-old:                     cJSON_Delete(root);\n
-new:
+old:     cJSON_Delete(root);\n}\n\n/* mpv 一次输出多条事件
+new: }\n\n/* mpv 一次输出多条事件
 tests: ^music\.monitor\.
 
 id: MUSIC-6
 file: custom/custom_musicplayer.c
 old:         ssize_t n = read(fd_mpv, buf, sizeof(buf) - 1);
 new:         ssize_t n = read(fd_mpv, buf, sizeof(buf));
+tests: ^music\.monitor\.
+
+id: MUSIC-F5-split-lost
+file: custom/custom_musicplayer.c
+old:         if (nl == NULL)\n            return;
+new:         if (nl == NULL) {\n            monitor_len = 0;\n            return;\n        }
+tests: ^music\.monitor\.
+
+id: MUSIC-UI-direct-call
+file: custom/custom_musicplayer.c
+old:             music_time_dirty = 1;
+new:             music_time_dirty = 1;\n            lv_slider_set_value(guider_ui.Music_player_progress_slider, value, LV_ANIM_OFF);
+tests: ^music\.monitor\.
+
+id: MUSIC-UI-no-set
+file: custom/custom_musicplayer.c
+old:         lv_slider_set_value(slider, time_value, LV_ANIM_OFF);
+new:         (void)time_value;
+tests: ^music\.monitor\.
+
+id: MUSIC-UI-no-timer
+file: custom/custom_musicplayer.c
+old:         music_ui_timer = lv_timer_create(music_ui_timer_cb, MUSIC_UI_PERIOD_MS, NULL);
+new:         (void)music_ui_timer_cb;
+tests: ^music\.monitor\.
+
+id: MUSIC-UI-ignore-pressed
+file: custom/custom_musicplayer.c
+old:     if (time_dirty && !slider_pressed)
+new:     if (time_dirty)
+tests: ^music\.monitor\.
+
+id: MUSIC-R2-no-waitpid
+file: custom/custom_musicplayer.c
+old:     if (pid > 0)\n        waitpid(pid, NULL, 0);\n    return NULL;
+new:     return NULL;
+tests: ^music\.monitor\.
+
+id: MUSIC-R2-keep-fd
+file: custom/custom_musicplayer.c
+old:     close(fd_mpv);\n    fd_mpv = -1;\n
+new:
+tests: ^music\.monitor\.
+
+id: MUSIC-R2-spin
+file: custom/custom_musicplayer.c
+old:         else if (n == 0 || (errno != EINTR && errno != EAGAIN))\n        {\n            break;\n        }\n
+new:
 tests: ^music\.monitor\.

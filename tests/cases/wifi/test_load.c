@@ -124,8 +124,40 @@ static void edit_hides_hint(void)
     }
 }
 
+/* 配置里没有 network={} 块时，set_network 0 必然 FAIL、改写配置也无处可写：不调用 wpa_cli、不改配置、提示（spec Q31）。 */
+static void no_network_block(void)
+{
+    static const char conf[] = "ctrl_interface=/var/run/wpa_supplicant\nap_scan=1\nupdate_config=1\n";
+    lv_obj_t *btn;
+    char *log, *in, *after;
+
+    wifi_env_setup(conf);
+    tst_app_init(480, 1, 0);
+    setup_scr_WIFI(&guider_ui);
+    wifi_env_reset_logs();
+    lv_textarea_set_text(guider_ui.WIFI_ssid_ta, "home");
+    lv_textarea_set_text(guider_ui.WIFI_psw_ta, "homepass1");
+    btn = lv_btn_create(lv_scr_act());
+    lv_obj_add_event_cb(btn, WIFI_load_btn_event_handler, LV_EVENT_ALL, NULL);
+    lv_event_send(btn, LV_EVENT_RELEASED, NULL);
+    tst_run_ms(300);
+    log = wifi_env_read("cmd.log");
+    in = wifi_env_read("wpa_cli.stdin");
+    after = wifi_env_read("wpa_supplicant.conf");
+    printf("log=[%s] stdin=[%s]\n", log, in);
+    CHECK(log[0] == '\0');
+    CHECK(in[0] == '\0');
+    CHECK(strcmp(after, conf) == 0);
+    CHECK(wifi_test_hint() != NULL && !lv_obj_has_flag(wifi_test_hint(), LV_OBJ_FLAG_HIDDEN));
+    if (wifi_test_hint() != NULL)
+        CHECK_STR_CONTAINS(lv_label_get_text(wifi_test_hint()), "No network block");
+    free(log);
+    free(in);
+    free(after);
+}
+
 int main(int argc, char **argv)
 {
-    static const tst_case_t cases[] = {{"invalid_no_wpa_call", invalid_no_wpa_call}, {"dropdown_utf8", dropdown_utf8}, {"dropdown_overlong", dropdown_overlong}, {"edit_hides_hint", edit_hides_hint}};
+    static const tst_case_t cases[] = {{"invalid_no_wpa_call", invalid_no_wpa_call}, {"dropdown_utf8", dropdown_utf8}, {"dropdown_overlong", dropdown_overlong}, {"edit_hides_hint", edit_hides_hint}, {"no_network_block", no_network_block}};
     return tst_run_case(cases, TST_COUNT(cases), argc, argv);
 }

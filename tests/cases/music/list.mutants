@@ -9,3 +9,28 @@ file: custom/custom_musicplayer.c
 old:         music_list_clear();\n        free(music_roller_str);\n        music_roller_str = NULL;
 new:         /* 改坏：保留旧选项与新链表。 */
 tests: ^music\.list_alloc\.
+
+# 按文件名排序（spec Q33、N6）。
+id: MUSIC-N6-list-unsorted
+file: custom/custom_musicplayer.c
+old:             if (strcmp(filename, pos->filename) < 0)\n                break;
+new:             if (0)\n                break;
+tests: ^music\.list\.
+
+id: MUSIC-N6-head-not-updated
+file: custom/custom_musicplayer.c
+old:         if (pos == *head && strcmp(filename, (*head)->filename) < 0)\n            *head = newNode;
+new:         (void)0;
+tests: ^music\.list\.
+
+id: MUSIC-N6-stale-id
+file: custom/custom_musicplayer.c
+old:             cur->id = i++;
+new:             i++;
+tests: ^music\.list\.
+
+id: MUSIC-N6-sig-unsorted
+file: custom/custom_musicplayer.c
+old:         if (music_name_cmp(name, sig + pos, line) < 0)
+new:         if (0)
+tests: ^music\.reenter\.

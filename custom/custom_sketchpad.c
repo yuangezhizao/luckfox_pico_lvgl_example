@@ -92,6 +92,21 @@ static void lv_sketchpad_destructor(const lv_obj_class_t * class_p, lv_obj_t * o
     sketchpad->buf = NULL;
 }
 
+/* 当前触点换算为画布坐标；没有画布缓冲或输入设备时返回 LV_RES_INV。 */
+static lv_res_t sketchpad_canvas_point(lv_obj_t * obj, lv_point_t * point)
+{
+    lv_sketchpad_t * sketchpad = (lv_sketchpad_t *)obj;
+    lv_indev_t * indev = lv_indev_get_act();
+    lv_area_t coords;
+
+    if (sketchpad->buf == NULL || indev == NULL)  return LV_RES_INV;
+    lv_indev_get_point(indev, point);
+    lv_obj_get_coords(obj, &coords);
+    point->x -= coords.x1;
+    point->y -= coords.y1;
+    return LV_RES_OK;
+}
+
 void lv_sketchpad_event(const lv_obj_class_t * class_p, lv_event_t * e)
 {
     LV_UNUSED(class_p);
@@ -105,20 +120,30 @@ void lv_sketchpad_event(const lv_obj_class_t * class_p, lv_event_t * e)
     lv_obj_t * obj = lv_event_get_target(e);
     lv_sketchpad_t * sketchpad = (lv_sketchpad_t *)obj;
 
-    static lv_coord_t last_x, last_y = LAST_VALUE;
+    static lv_coord_t last_x = LAST_VALUE, last_y = LAST_VALUE;
 
-    if (code == LV_EVENT_PRESSING)
+    /* 原地轻点时后续 PRESSING 两点相同，lv_draw_sw_line() 不画；按下时先画一个直径等于线宽的点。 */
+    if (code == LV_EVENT_PRESSED)
     {
-        if (sketchpad->buf == NULL)  return;
-        lv_indev_t * indev = lv_indev_get_act();
-        if(indev == NULL)  return;
-
         lv_point_t point;
-        lv_indev_get_point(indev, &point);
-        lv_area_t coords;
-        lv_obj_get_coords(obj, &coords);
-        point.x -= coords.x1;
-        point.y -= coords.y1;
+        lv_draw_rect_dsc_t dot_dsc;
+        lv_coord_t d = sketchpad->line_rect_dsc.width;
+
+        if (sketchpad_canvas_point(obj, &point) != LV_RES_OK)  return;
+        lv_draw_rect_dsc_init(&dot_dsc);
+        /* 线宽 2 时圆角会被抗锯齿成灰点，与线条颜色不一致；2×2 方点本身就接近圆点。 */
+        dot_dsc.radius = d > 2 ? LV_RADIUS_CIRCLE : 0;
+        dot_dsc.bg_color = sketchpad->line_rect_dsc.color;
+        dot_dsc.bg_opa = sketchpad->line_rect_dsc.opa;
+        lv_canvas_draw_rect(obj, point.x - d / 2, point.y - d / 2, d, d, &dot_dsc);
+        last_x = point.x;
+        last_y = point.y;
+    }
+    else if (code == LV_EVENT_PRESSING)
+    {
+        lv_point_t point;
+
+        if (sketchpad_canvas_point(obj, &point) != LV_RES_OK)  return;
 
         lv_color_t c0;
         c0.full = 10;

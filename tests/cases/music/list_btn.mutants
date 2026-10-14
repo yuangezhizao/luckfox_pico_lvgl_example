@@ -1,0 +1,36 @@
+# 歌曲列表按钮切换展开与收起，展开时按钮为选中状态并换用橙色线条图（spec Q50、N11）；generated/events_init.c 的两处调用 mutate.sh 不支持，手动检验。
+id: MUSIC-N11-show-only
+file: custom/custom_musicplayer.c
+old:     music_list_set_open(lv_obj_has_flag(guider_ui.Music_player_cont_1, LV_OBJ_FLAG_HIDDEN));
+new:     music_list_set_open(true);
+tests: ^music\.list_btn\.
+
+id: MUSIC-N11-hide-only
+file: custom/custom_musicplayer.c
+old:     music_list_set_open(lv_obj_has_flag(guider_ui.Music_player_cont_1, LV_OBJ_FLAG_HIDDEN));
+new:     music_list_set_open(false);
+tests: ^music\.list_btn\.
+
+id: MUSIC-N11-state-not-synced
+file: custom/custom_musicplayer.c
+old:     if (btn != NULL)\n        lv_imgbtn_set_state(
+new:     if (0)\n        lv_imgbtn_set_state(
+tests: ^music\.list_btn\.
+
+id: MUSIC-N11-state-inverted
+file: custom/custom_musicplayer.c
+old: open ? LV_IMGBTN_STATE_CHECKED_RELEASED : LV_IMGBTN_STATE_RELEASED
+new: open ? LV_IMGBTN_STATE_RELEASED : LV_IMGBTN_STATE_CHECKED_RELEASED
+tests: ^music\.list_btn\.
+
+id: MUSIC-N11-no-checked-src
+file: custom/custom_musicplayer.c
+old:     music_list_btn_init();
+new:     (void)0;
+tests: ^music\.list_btn\.
+
+id: MUSIC-N11-no-checked-pressed-src
+file: custom/custom_musicplayer.c
+old:     lv_imgbtn_set_src(btn, LV_IMGBTN_STATE_CHECKED_PRESSED, NULL, &_icn_chart_checked_alpha_32x32, NULL);
+new:     (void)0;
+tests: ^music\.list_btn\.

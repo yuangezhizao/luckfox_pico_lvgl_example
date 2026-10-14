@@ -23,6 +23,9 @@
 #define MAX_CONF_LEN 128
 #define MAX_LINE_LEN 1024
 #define MAX_NETWORKS 10
+/* 请求扫描后等多久再读结果；wpa_supplicant 一轮全信道扫描通常 2–3 秒。 */
+#define WIFI_SCAN_READ_DELAY_MS 3000
+#define WIFI_UNREACHABLE_HINT "wpa_supplicant not reachable"
 #ifndef WPA_FILE_PATH
 #define WPA_FILE_PATH "/etc/wpa_supplicant.conf"
 #endif
@@ -41,6 +44,7 @@ extern lv_ui guider_ui;
  **********************/
 pthread_t wifi_status_update_thread;
 lv_timer_t *wifi_update_timer;
+static lv_timer_t *wifi_scan_read_timer;
 static lv_obj_t *wifi_hint_label;
 /**********************
  *  STATIC FUNCTIONS
@@ -451,8 +455,9 @@ static int _wifi_scanning_ssid()
     }
 
     char line[MAX_LINE_LEN];
-    // Skip the first two lines as they contain header information
-    fgets(line, MAX_LINE_LEN, fp);
+    // 第一行是表头；wpa_cli 连不上守护进程时只有这一行错误信息
+    if (fgets(line, MAX_LINE_LEN, fp) != NULL && strstr(line, "Failed to connect") != NULL)
+        wifi_hint_show(WIFI_UNREACHABLE_HINT);
 
     // scan_results 每行为 bssid\tfreq\tsignal\tflags\tssid；按 TAB 位置取第 5 个字段
     while (fgets(line, MAX_LINE_LEN, fp) != NULL) {
@@ -523,6 +528,23 @@ static void wifi_update_timer_cb(lv_timer_t * tmr)
 /**********************
  *  GLOBAL FUNCTIONS
  **********************/
+/* Load 用 wpa_cli set_network 0，并只改写配置里已有 network={} 块的 ssid=、psk= 行：
+ * 没有块时 set_network 0 返回 FAIL、配置也无处可写，旧实现静默失败。
+ * 返回 1 有块，0 没有块，-1 读不了（读不了时保持旧行为，仍交给 wpa_cli）。 */
+static int wifi_conf_has_network(void)
+{
+    char line[MAX_LINE_LEN];
+    FILE *fp = fopen(WPA_FILE_PATH, "r");
+    int found = 0;
+
+    if (fp == NULL)
+        return -1;
+    while (!found && fgets(line, sizeof(line), fp) != NULL)
+        found = wifi_conf_is_block_start(line);
+    fclose(fp);
+    return found;
+}
+
 void WIFI_load_btn_event_handler(lv_event_t *e)
 { 
     lv_event_code_t code = lv_event_get_code(e);
@@ -536,6 +558,10 @@ void WIFI_load_btn_event_handler(lv_event_t *e)
 
         if (err != NULL) {
             wifi_hint_show(err);
+            return;
+        }
+        if (wifi_conf_has_network() == 0) {
+            wifi_hint_show("No network block in wpa_supplicant.conf");
             return;
         }
         _wifi_conf_load(ssid, passwd);
@@ -554,6 +580,45 @@ void WIFI_clear_btn_event_handler(lv_event_t *e)
     } 
 }
 
+static void wifi_scan_read_timer_cb(lv_timer_t *tmr)
+{
+    LV_UNUSED(tmr);
+    /* 一次性定时器：本回调返回后 LVGL 删除它。 */
+    wifi_scan_read_timer = NULL;
+    _wifi_scanning_ssid();
+}
+
+/* wpa_supplicant 没有启用网络时不会自己扫描（hostap scan.c「No enabled networks - do not scan」），
+ * 所以先发起一次扫描（立即返回，不等扫描完成），稍后再读结果；连续按下只重置等待时间。 */
+static void _wifi_scan_request(void)
+{
+    char reply[MAX_LINE_LEN] = "";
+    FILE *fp = popen("wpa_cli -i wlan0 scan", "r");
+
+    if (fp == NULL) {
+        perror("popen");
+        wifi_hint_show(WIFI_UNREACHABLE_HINT);
+        return;
+    }
+    if (fgets(reply, sizeof(reply), fp) == NULL)
+        reply[0] = '\0';
+    pclose(fp);
+    /* FAIL-BUSY：上一轮扫描还在进行，照样稍后读结果。 */
+    if (strncmp(reply, "OK", 2) != 0 && strncmp(reply, "FAIL-BUSY", 9) != 0) {
+        printf("wpa_cli scan: %s", reply);
+        wifi_hint_show(WIFI_UNREACHABLE_HINT);
+        return;
+    }
+    if (guider_ui.WIFI_wifi_list != NULL)
+        lv_dropdown_set_options(guider_ui.WIFI_wifi_list, "scanning");
+    if (wifi_scan_read_timer != NULL) {
+        lv_timer_reset(wifi_scan_read_timer);
+        return;
+    }
+    wifi_scan_read_timer = lv_timer_create(wifi_scan_read_timer_cb, WIFI_SCAN_READ_DELAY_MS, NULL);
+    lv_timer_set_repeat_count(wifi_scan_read_timer, 1);
+}
+
 void WIFI_scanning_btn_event_handler(lv_event_t *e)
 {
     lv_event_code_t code = lv_event_get_code(e);
@@ -561,7 +626,7 @@ void WIFI_scanning_btn_event_handler(lv_event_t *e)
     
     if (code == LV_EVENT_RELEASED)
     {
-        _wifi_scanning_ssid();
+        _wifi_scan_request();
     } 
 }
 

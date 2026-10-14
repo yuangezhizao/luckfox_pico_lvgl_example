@@ -3,3 +3,90 @@ file: custom/custom_musicplayer.c
 old:             if (node->id == sel) {
 new:             if (node->id == sel + 1) {
 tests: ^music\.roller\.
+
+# 歌曲列表不循环重复（spec Q32、N5）：custom/ 两处各一个改回循环模式；generated/ 那一处不能配变体，靠 no_repeat_rows 的空目录场景守护。
+id: MUSIC-N5-apply-infinite
+file: custom/custom_musicplayer.c
+old:     lv_roller_set_options(roller, buf, LV_ROLLER_MODE_NORMAL);
+new:     lv_roller_set_options(roller, buf, LV_ROLLER_MODE_INFINITE);
+tests: ^music\.roller\.
+
+id: MUSIC-N5-refresh-infinite
+file: custom/custom_musicplayer.c
+old:     lv_roller_set_options(guider_ui.Music_player_roller_1, music_roller_options(), LV_ROLLER_MODE_NORMAL);
+new:     lv_roller_set_options(guider_ui.Music_player_roller_1, music_roller_options(), LV_ROLLER_MODE_INFINITE);
+tests: ^music\.roller\.
+
+# 列表随歌曲数收缩，外层面板从列表按钮向上弹出（spec Q38、N8）。
+id: MUSIC-N8-no-fit
+file: custom/custom_musicplayer.c
+old:     free(buf);\n    music_list_fit(roller);
+new:     free(buf);
+tests: ^music\.roller\.
+
+id: MUSIC-N8-even-rows
+file: custom/custom_musicplayer.c
+old:     uint16_t rows = cnt * 2 - 1;
+new:     uint16_t rows = cnt;
+tests: ^music\.roller\.
+
+id: MUSIC-N8-no-cap
+file: custom/custom_musicplayer.c
+old:         rows = MUSIC_LIST_MAX_ROWS;
+new:         (void)0;
+tests: ^music\.roller\.
+
+id: MUSIC-N8-cont-fixed
+file: custom/custom_musicplayer.c
+old:     lv_obj_set_size(cont, lv_obj_get_width(roller) + 2 * margin, lv_obj_get_height(roller) + 2 * margin);
+new:     (void)margin;
+tests: ^music\.roller\.
+
+# 外层面板四周边距 10 px 并按屏幕缩放（spec Q38）。
+id: MUSIC-N8-margin-design
+file: custom/custom_musicplayer.c
+old: #define MUSIC_LIST_MARGIN 10
+new: #define MUSIC_LIST_MARGIN 25
+tests: ^music\.roller\.
+
+id: MUSIC-N8-margin-unscaled
+file: custom/custom_musicplayer.c
+old: (lv_coord_t)(MUSIC_LIST_MARGIN * SCALE);
+new: (lv_coord_t)(MUSIC_LIST_MARGIN);
+tests: ^music\.roller\.
+
+id: MUSIC-N8-width-fixed
+file: custom/custom_musicplayer.c
+old: lv_obj_set_size(cont, lv_obj_get_width(roller) + 2 * margin,
+new: lv_obj_set_size(cont, lv_obj_get_width(cont),
+tests: ^music\.roller\.
+
+id: MUSIC-N8-top-anchored
+file: custom/custom_musicplayer.c
+old:     if (guider_ui.Music_player_music_list_btn != NULL)\n        lv_obj_align_to(
+new:     if (0)\n        lv_obj_align_to(
+tests: ^music\.roller\.
+
+id: MUSIC-N8-no-gap
+file: custom/custom_musicplayer.c
+old: -(lv_coord_t)(MUSIC_LIST_BTN_GAP * SCALE)
+new: 0
+tests: ^music\.roller\.
+
+id: MUSIC-N8-gap-unscaled
+file: custom/custom_musicplayer.c
+old: (lv_coord_t)(MUSIC_LIST_BTN_GAP * SCALE)
+new: (lv_coord_t)(MUSIC_LIST_BTN_GAP)
+tests: ^music\.roller\.
+
+id: MUSIC-N8-gap-sign
+file: custom/custom_musicplayer.c
+old: -(lv_coord_t)(MUSIC_LIST_BTN_GAP * SCALE)
+new: (lv_coord_t)(MUSIC_LIST_BTN_GAP * SCALE)
+tests: ^music\.roller\.
+
+id: MUSIC-N8-align-left
+file: custom/custom_musicplayer.c
+old: LV_ALIGN_OUT_TOP_MID
+new: LV_ALIGN_OUT_TOP_LEFT
+tests: ^music\.roller\.

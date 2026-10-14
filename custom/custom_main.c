@@ -479,6 +479,8 @@ void luckfox_lv_obj_set_style_text_font(struct _lv_obj_t * obj, const lv_font_t 
         case 18:
             lv_obj_set_style_text_font(obj, &lv_font_montserratMedium_18, selector);
             break;
+        /* 18 号在 720 屏为 27，没有 27 号字，用 24 号（spec Q45、N10）；不补时不设置字体，退回普通项的字体。 */
+        case 27:
         case 24:
             lv_obj_set_style_text_font(obj, &lv_font_montserratMedium_24, selector);
             break;
@@ -517,6 +519,8 @@ void luckfox_lv_style_set_text_font(lv_style_t * style, const lv_font_t * value)
         case 18:
             lv_style_set_text_font(style, &lv_font_montserratMedium_18);
             break;
+        /* 同 luckfox_lv_obj_set_style_text_font()：27 号用 24 号（spec Q45、N10）。 */
+        case 27:
         case 24:
             lv_style_set_text_font(style, &lv_font_montserratMedium_24);
             break;
