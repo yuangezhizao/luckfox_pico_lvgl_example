@@ -4,7 +4,7 @@
 
 **Goal:** 确认 PR #8 真机验证遗留的 F1–F6（及复核遗留 R1–R3）是历史问题还是 PR #8 引入，然后按 spec §9 QA 定下的范围修复，每个修复配修复前失败的测试。
 
-**Architecture:** 先在多个对比点编 uClibc 二进制交给作者板上对比（Task 0–1），再逐个问题 TDD 修复（Task 2 起），最后跑无界面 `ctest`、带界面截图与 `preview`、两条交叉编译，并请作者真机复测（Task 13）。
+**Architecture:** 先在多个对比点编 uClibc 二进制交给作者板上对比（Task 0–1），再逐个问题 TDD 修复（Task 2 起），最后跑无界面 `ctest`、带界面截图与 `preview`、两条交叉编译，并请作者真机复测（结果见 spec §3.5）。
 
 **Tech Stack:** C（gnu99）、LVGL 8.3.10、lv_drivers 8.1、CMake、uClibc 工具链 `arm-rockchip830-linux-uclibcgnueabihf`、`qemu-arm`、gcc + ASan/UBSan、SDL2 + Xvfb 或云端桌面、xdotool、ImageMagick。
 
@@ -32,23 +32,25 @@
 | Task | 提交 | 问题 | 测试（`<类别>.<对象>.<用例>`） |
 |---|---|---|---|
 | 2 | WiFi [1/2] | F1、N1 | `wifi.scan_trigger.requests_then_reads`、`.repeat_single_read`、`.unreachable_hint` |
-| 2b | WiFi [2/2] | N4 | `wifi.load.no_network_block` |
-| 3 | 画板 [1/2] | F3 | `sketchpad.stroke.tap_draws_dot` |
-| 4 | 画板 [2/2] | F2（含 R3 的 evdev 部分） | `sketchpad.touch.*`（5 条） |
-| 5 | 音乐 [1/10] | F4 | `music.display_name.*`、`music.roller.long_names_fit` |
-| 6 | 音乐 [2/10] | F5 初值 | `music.progress.initial_zero` |
-| 7 | 音乐 [3/10] | F5 跨 `read` 丢行、R1 | `music.monitor.split_line`、`music.monitor.no_strtok` |
-| 8 | 音乐 [4/10] | 跨线程调用 LVGL | `music.monitor.ui_thread_only` |
-| 9 | 音乐 [5/10] | R2 | `music.monitor.peer_exit_reaps` |
-| 10 | 音乐 [6/10] | F6 | `music.reenter.enable_recheck`、`.rescan`、`.remove_all_blocks_entry`、`.remove_one_rescans` |
-| 14 | 音乐 [7/10] | N5 | `music.roller.no_repeat_rows`、`music.roller.no_repeat_after_rescan` |
-| 15 | 音乐 [8/10] | N6 | `music.list.sorted_by_name`、`music.reenter.sorted_keeps_playlist` |
-| 17 | 音乐 [9/10] | N8 | `music.roller.fits_song_count`、`.fits_after_rescan`、`.fits_720` |
-| 21 | 音乐 [10/10] | N11 | `music.list_btn.toggle`、`.background_close`、`.checked_image` |
-| 11 | 全局 [1/2] | R3 | `music.player.socket_cloexec`（evdev 部分已随 Task 4） |
-| 18 | 全局 [2/2] | N10 | `main.font.scale_720_18`、`main.font.scale_480_18` |
-| 12 | `docs(readme)` | N1、N4 | 无（README 写明 `/etc/wpa_supplicant.conf` 前提与官方完整模板；同步 `tests/README.md` 与 `AGENTS.md` 告警基线） |
-| 13 | 收尾（`test(tests)`） | — | `screenshots` 新增音乐页列表与画板场景；全量 `ctest`、截图与 `preview`、两条交叉编译、`mutate.sh` 全量、逐提交测试（仓库外的脚本见附录 C）；作者按 spec §3.5 真机复测与补测 |
+| 3 | WiFi [2/2] | N4 | `wifi.load.no_network_block` |
+| 4 | 画板 [1/2] | F3 | `sketchpad.stroke.tap_draws_dot` |
+| 5 | 画板 [2/2] | F2（含 R3 的 evdev 部分） | `sketchpad.touch.*`（5 条） |
+| 6 | 音乐 [1/10] | F4 | `music.display_name.*`、`music.roller.long_names_fit` |
+| 7 | 音乐 [2/10] | F5 初值 | `music.progress.initial_zero` |
+| 8 | 音乐 [3/10] | F5 跨 `read` 丢行、R1 | `music.monitor.split_line`、`music.monitor.no_strtok` |
+| 9 | 音乐 [4/10] | 跨线程调用 LVGL | `music.monitor.ui_thread_only` |
+| 10 | 音乐 [5/10] | R2 | `music.monitor.peer_exit_reaps` |
+| 11 | 音乐 [6/10] | F6 | `music.reenter.enable_recheck`、`.rescan`、`.remove_all_blocks_entry`、`.remove_one_rescans` |
+| 13 | 音乐 [7/10] | N5 | `music.roller.no_repeat_rows`、`music.roller.no_repeat_after_rescan` |
+| 14 | 音乐 [8/10] | N6 | `music.list.sorted_by_name`、`music.reenter.sorted_keeps_playlist` |
+| 15 | 音乐 [9/10] | N8 | `music.roller.fits_song_count`、`.fits_after_rescan`、`.fits_720` |
+| 17 | 音乐 [10/10] | N11 | `music.list_btn.toggle`、`.background_close`、`.checked_image` |
+| 12 | 全局 [1/2] | R3 | `music.player.socket_cloexec`（evdev 部分已随 Task 5） |
+| 16 | 全局 [2/2] | N10 | `main.font.scale_720_18`、`main.font.scale_480_18` |
+| — | `docs(readme)` | N1、N4 | 无（README 写明 `/etc/wpa_supplicant.conf` 前提与官方完整模板；同步 `tests/README.md` 与 `AGENTS.md` 告警基线） |
+| — | 收尾（`test(tests)`） | — | `screenshots` 新增音乐页列表与画板场景；全量 `ctest`、截图与 `preview`、两条交叉编译、`mutate.sh` 全量、逐提交测试（仓库外的脚本见附录 C）；作者按 spec §3.5 真机复测与补测 |
+
+「—」两行在改号前为 Task 12、13（文档与收尾），精简 plan 时删去了标题，结果见 §4。
 
 ## 3. Tasks
 
@@ -75,66 +77,66 @@
 - 修复 `custom/custom_wifi.c`：Scan 回调 `popen("wpa_cli -i wlan0 scan")` 读输出；含 `OK` 或 `FAIL-BUSY` 时下拉框置 `scanning` 并启动或重置一个 3000 ms 一次性 `lv_timer`，到时调用 `_wifi_scanning_ssid()`；含 `Failed to connect`、`popen` 失败或其他输出时显示提示。`_wifi_scanning_ssid()` 读到 `Failed to connect` 也显示提示。
 - 变体：删掉 `scan` 请求、定时器改为立即读、去掉重复按下时的重置、去掉提示。
 
-### Task 2b：Load 前检查 `network={}` 块（N4）✅
+### Task 3：Load 前检查 `network={}` 块（N4）✅
 
 - 测试 `wifi.load.no_network_block`：配置只有三行、输入合法，按 Load 后 `cmd.log` 与 `wpa_cli.stdin` 为空、配置不变、提示含 `No network block`。
 - 修复：`wifi_conf_has_network()`，能读且没有块时提示并返回；读不了时保持旧行为。
 - 变体：`WIFI-Q31-no-block-check`（`tests/cases/wifi/load.mutants`）。
 
-### Task 3：画板轻点出点（F3）✅
+### Task 4：画板轻点出点（F3）✅
 
 - 测试 `sketchpad.stroke.tap_draws_dot`：按下、保持 100 ms、原地抬起，落点 3×3 内有笔迹色像素。
 - 修复：`LV_EVENT_PRESSED` 时在落点用 `lv_canvas_draw_rect()` 画直径等于线宽的圆点并记为起点；`last_x`、`last_y` 都初始化为 `LAST_VALUE`。
 - 变体：删掉画点调用。
 
-### Task 4：画板多点触控（F2）✅
+### Task 5：画板多点触控（F2）✅
 
 - 测试 `tests/cases/sketchpad/test_touch.c`（UNIT `unit_touch.c` 读 `touch_fd`）：经 FIFO 逐帧回放 `touch_step1.txt`、`touch_step2.txt`（板上 §2.5 第 1、2 步的原始事件），另有 `primary_lift_waits_all_up`、`single_touch_fallback`、`fd_cloexec`。
 - 修复：新增 `custom/custom_touch.{c,h}`，`src/main.c` 用 `custom_touch_init(EVDEV_NAME)` 与 `custom_touch_read` 替换 `evdev_init()`、`evdev_read`。
 - 变体：`TOUCH-newest-primary`、`-any-lift-releases`、`-no-wait-all-up`、`-release-at-emulated`、`-no-fallback`、`-no-cloexec`。
 
-### Task 5：音乐列表显示名（F4）✅
+### Task 6：音乐列表显示名（F4）✅
 
 - 新增 `custom/` 函数 `music_display_name(name, out, size, font, letter_space, max_w)`：整名宽度不超过 `max_w` 时原样，否则按 UTF-8 字符从头尾交替保留，中间用 `...`，结果宽度不超过 `max_w`；`music_roller_apply(roller)` 用 roller `LV_PART_SELECTED` 的字体与内容宽度生成显示选项并设置，保持选中下标。`generated/setup_scr_Music_player.c` 在 roller 样式设置之后调用它；歌曲名标签改 `LV_LABEL_LONG_SCROLL_CIRCULAR`。
 - 测试：`music.display_name.short_unchanged`、`.long_keeps_head_tail`、`.utf8_boundary`；`music.roller.long_names_fit`（3 个 68 字节、前 63 字节相同的文件名，各选项宽度不超过 roller 内容宽度且互不相同，480 与 720 都测）。
 - 变体：不缩写、尾部保留 0 个字符。
 
-### Task 6：进度初值（F5）✅
+### Task 7：进度初值（F5）✅
 
 - 测试 `music.progress.initial_zero`：`setup_scr_Music_player()` 后进度滑块值为 0。修复：生成代码初值 50 改为 0。生成代码不配变体（PR #8 spec §2.6）。
 
-### Task 7：监听线程按行缓冲（F5、R1）✅
+### Task 8：监听线程按行缓冲（F5、R1）✅
 
 - 测试：`split_line`：一行 `property-change` 分两次写入（间隔 50 ms），UI 定时器运行后进度为该值；`no_strtok`：`-Wl,--wrap=strtok` 统计监听线程内的调用为 0。
 - 修复：监听线程用累积缓冲区按 `\n` 切行（`memchr`），不再用 `strtok`；无换行且缓冲区满的超长行整行丢弃直到下一个 `\n`。
 - 变体：每次 `read` 前清空累积缓冲区。
 
-### Task 8：只在 UI 线程更新控件（跨线程）✅
+### Task 9：只在 UI 线程更新控件（跨线程）✅
 
 - 测试 `ui_thread_only`：写入完整一行后不运行 LVGL 定时器，等 100 ms 滑块值不变；运行 300 ms 后为新值。
 - 修复：监听线程加锁写 `playback-time`、`duration` 与脏标志；`music_app_init()` 创建 200 ms 的 `lv_timer` 在 UI 线程读出并设置滑块（`slider_pressed` 时不设值）。
 - 变体：定时器回调不设值。
 
-### Task 9：mpv 退出后回收（R2）✅
+### Task 10：mpv 退出后回收（R2）✅
 
 - 测试 `peer_exit_reaps`：`pid` 指向测试 `fork` 的已退出子进程，对端关闭套接字后，监听线程 `waitpid` 回收（测试侧 `waitpid(pid, WNOHANG)` 得 `ECHILD`），`fd_mpv` 变为 -1，`mpv_send()` 返回 -1。
 - 修复：`read` 返回 0 或不可恢复错误时，在锁内关闭 `fd_mpv` 并置 -1，`waitpid(pid, NULL, 0)`，线程退出；`mpv_send()` 在同一把锁内发送。
 - 变体：删掉 `waitpid`。
 
-### Task 10：运行中加入音乐（F6）✅
+### Task 11：运行中加入音乐（F6）✅
 
 - 测试：`enable_recheck`：启动时目录为空、`MUSIC_ENABLE=0`，放入文件后点 MUSIC 进入音乐页；`rescan`：进入后返回，再加一个文件，再进入时 roller 有 2 项，对端收到 `stop` 与新文件的 `loadfile`；`remove_all_blocks_entry`：删光后点 MUSIC 不进入；`remove_one_rescans`：删掉 1 首后再进入列表少 1 项。
 - 修复：`custom/` 新增 `music_recheck_enable()`（`MUSIC_ENABLE != 2` 时重新检查目录），`generated/events_init.c` 的 MUSIC 回调先调用它；`music_app_init()` 给音乐页注册 `LV_EVENT_SCREEN_LOAD_START`，重新扫描，列表变化时 `stop`、重新 `loadfile`、`playlist-pos 0`、暂停、进度归零、重建 roller。
 - 变体：去掉重新检查、去掉列表比较后的重建。
 
-### Task 11：文件描述符 CLOEXEC（R3）✅
+### Task 12：文件描述符 CLOEXEC（R3）✅
 
 - 板上实际顺序：`custom_init()` 先启动 mpv，之后才打开 fb 与 evdev，所以 mpv 本身不继承它们；会继承的是之后 `popen`、`system()` 起的子进程（其中 `udhcpc` 常驻），继承 `fd_mpv`、`/dev/fb0`、`/dev/input/event0`。
-- 修复：mpv 套接字 `SOCK_CLOEXEC`；`lib/lv_drivers/display/fbdev.c` 的 `open` 加 `O_CLOEXEC`。触摸设备已由 Task 4 的 `custom_touch.c` 以 `O_CLOEXEC` 打开（`sketchpad.touch.fd_cloexec`），`lib/lv_drivers/indev/evdev.c` 不再使用，不改。
+- 修复：mpv 套接字 `SOCK_CLOEXEC`；`lib/lv_drivers/display/fbdev.c` 的 `open` 加 `O_CLOEXEC`。触摸设备已由 Task 5 的 `custom_touch.c` 以 `O_CLOEXEC` 打开（`sketchpad.touch.fd_cloexec`），`lib/lv_drivers/indev/evdev.c` 不再使用，不改。
 - 测试：`music.player.socket_cloexec`（连上假 mpv 后 `fcntl(fd_mpv, F_GETFD)` 含 `FD_CLOEXEC`）。fbdev 打开 `/dev/fb0` 后立即 ioctl，主机无法测，靠代码审查与板上复测 R3。
 - 变体：去掉 `SOCK_CLOEXEC`（`lib/` 不能配变体，PR #8 spec §2.6）。
 
-### Task 14：歌曲列表不再循环重复（N5，spec Q32）✅
+### Task 13：歌曲列表不再循环重复（N5，spec Q32）✅
 
 - 现状：`generated/setup_scr_Music_player.c`、`music_roller_apply()`（`custom/custom_musicplayer.c`）、`music_refresh_list()` 三处 `lv_roller_set_options(..., LV_ROLLER_MODE_INFINITE)`；LVGL 8.3 循环模式把选项复制 `LV_ROLLER_INF_PAGES`（7）份，可见 6 行，1 首也显示多行。
 - 测试：`music.roller.no_repeat_rows`：空目录、1 首、4 首时 roller 实际显示的行数（`lv_roller_get_options()` 的行数）等于歌曲数，选中末项后按 `LV_KEY_DOWN` 仍停在末项；`music.roller.no_repeat_after_rescan`：运行中加歌重新进入后同样成立，删光后直接加载音乐页（走 `music_refresh_list()` 的空列表分支）也只有 1 个空行。
@@ -142,14 +144,14 @@
 - 变体：`MUSIC-N5-apply-infinite`、`MUSIC-N5-refresh-infinite`；`generated/` 那一处 `mutate.sh` 不支持（见 §5），改为手动检验。
 - 截图：`screenshots` 的音乐列表场景每首一行；`preview` 看 1 首与运行中补到 4 首时的列表。
 
-### Task 15：列表按文件名排序（N6，spec Q33）✅
+### Task 14：列表按文件名排序（N6，spec Q33）✅
 
 - 现状：`music_scan_list()` 按 `readdir` 顺序建链表、发 `loadfile`，`music_dir_signature()` 也按 `readdir` 顺序拼签名；`music_refresh_list()` 用签名与 `music_roller_options()` 比较判断目录是否变化。
 - 测试：`music.list.sorted_by_name`：按 03、01、04、02 的顺序创建文件，列表与 `loadfile` 顺序都是 01、02、03、04（主机 `readdir` 顺序不受控，断言只看结果有序）；`music.reenter.sorted_keeps_playlist`：目录未变时再进入不发 `stop`（签名与列表同序，否则每次都会重建并打断播放）。
 - 修复：`insert_music_node()` 按 `strcmp` 升序插入；`music_scan_list()` 建完链表后再按顺序编号、`loadfile`；`music_dir_signature()` 用 `music_sig_insert()` 按同一规则插入拼接。不新增内存分配（见 §5）。
 - 变体：`MUSIC-N6-list-unsorted`、`MUSIC-N6-head-not-updated`、`MUSIC-N6-stale-id`、`MUSIC-N6-sig-unsorted`（后者由 `sorted_keeps_playlist` 杀死）。
 
-### Task 17：歌曲列表按歌曲数收缩、从列表按钮弹出（N8，spec Q38）✅
+### Task 15：歌曲列表按歌曲数收缩、从列表按钮弹出（N8，spec Q38）✅
 
 - 现状：生成代码把可见行写死为 6、外层面板 `Music_player_cont_1` 写死为 (−1.5, 92)、313×221，roller（宽 272）在面板中居中；面板底边 313 压住列表按钮（(139, 310)、32×32）顶边 3 px，水平中心对准按钮。roller 总把选中项放在正中，6 行时上下各 2.5 行，边缘那行只显示一半。
 - 测试 `check_fit_at(songs, rows, margin, bottom)`：行数为 2n−1、最多 5；roller 高度按 `lv_roller_set_visible_row_count()` 的公式计算，1 行时放得下选中项字体；面板宽高为 roller 宽高加两倍边距，roller 在面板内左、上边距都等于 `margin`；面板底边等于 `bottom`，水平中心与按钮中心相差不超过 1 px。
@@ -159,14 +161,14 @@
 - 修复：`music_roller_apply()` 末尾调用新增的 `music_list_fit()`：可见行 2n−1、最多 `MUSIC_LIST_MAX_ROWS`（5）；面板尺寸为 roller 尺寸加两倍 `MUSIC_LIST_MARGIN`（10 × `SCALE`）；`lv_obj_align_to(cont, 列表按钮, LV_ALIGN_OUT_TOP_MID, 0, -MUSIC_LIST_BTN_GAP × SCALE)`（5 px 间隙）。
 - 变体：`MUSIC-N8-no-fit`、`-even-rows`、`-no-cap`、`-cont-fixed`、`-margin-design`、`-margin-unscaled`、`-width-fixed`、`-top-anchored`、`-no-gap`、`-gap-unscaled`、`-gap-sign`、`-align-left`。
 
-### Task 18：720 屏 27 号字改用 24 号（N10，spec Q45）✅
+### Task 16：720 屏 27 号字改用 24 号（N10，spec Q45）✅
 
 - 现状：`luckfox_lv_obj_set_style_text_font()` 与 `luckfox_lv_style_set_text_font()` 按「行高 × SCALE」查表，表里只有 12、16、18、20、24、30、42、63；720 屏 18 号换算为 27，不设置字体，音乐列表选中项退回普通项的 18 号。720 屏用到 18 号字的只有这一处。
 - 测试：`main.font.scale_720_18`：720 屏两个函数传入 18 号都得到 24 号；`main.font.scale_480_18`：480 屏仍为 18 号。
 - 修复：两个函数的 `switch` 都加 `case 27:`，与 `case 24:` 共用 24 号字。
 - 变体：`MAIN-N10-obj-no-27`、`MAIN-N10-style-no-27`。
 
-### Task 21：列表按钮再点一次收起，展开时高亮（N11，spec Q50）✅
+### Task 17：列表按钮再点一次收起，展开时高亮（N11，spec Q50）✅
 
 - 现状：`generated/events_init.c` 的列表按钮回调只清除外层面板的 `HIDDEN`，点音乐页背景才设置 `HIDDEN`；按钮设了 `LV_OBJ_FLAG_CHECKABLE`，松开时自行切换 CHECKED，点背景收起时不清除；4 种状态用同一张图 `_icn_chart_alpha_32x32`（全不透明，白底画在图里）。
 - 测试（`tests/cases/music/test_list_btn.c`，点按钮时先发 `LV_EVENT_RELEASED` 再发 `LV_EVENT_CLICKED`，与板上一致）：
@@ -187,41 +189,41 @@
 | 第 1 轮板上对比 | F1–F6 来源 | F1、F3、F4、F6 确认历史问题；F5 两版均为 0，未复现；F2 单指三版均跟手，触摸范围 0–479、无 `ABS_MT_SLOT` 事件，最大帧间跳变 5 像素；`a2fee6d` 无 `cat: write error` |
 | Task 2 修复前 | 3 条新用例失败 | `requests_then_reads`：`cmd.log` 只有 `scan_results`、无 `scan`；`repeat_single_read`：`scan` 0 次、`scan_results` 3 次；`unreachable_hint`：提示不可见 |
 | Task 2 修复后 | 全过；变体全 `KILLED` | WiFi 26/26；`WIFI-F1-no-request`、`-read-now`、`-no-reset`、`-many-timers`、`WIFI-N1-no-hint` 5 个 `KILLED`；全量 81/81 |
-| Task 3 修复前 | 新用例失败 | `tap_draws_dot`：`pen_near(240, 180)` 失败 |
-| Task 3 修复后 | 全过；变体全 `KILLED` | 画板 5/5；`SKETCH-F3-no-dot`、`SKETCH-18`、`SKETCH-19` 3 个 `KILLED`；全量 82/82 |
-| Task 4 修复前 | 回放复现板上现象 | 临时桩调用旧 `evdev_set_file` + `evdev_read`（不提交）：第 2 步 1 帧跳到 (388,207)、21 帧松开、最后 x=388；第 1 步 12 帧跳到第二根手指、5 帧松开；合成用例因旧驱动只认 `TRACKING_ID == 0` 而按不下；fd 无 `FD_CLOEXEC`；单点退回用例通过（旧行为本身支持单点） |
-| Task 4 修复后 | 全过；变体全 `KILLED`；交叉编译通过 | 画板 10/10；6 个 `TOUCH-*` 变体 `KILLED`；全量 87/87；glibc rc=0 告警 120、uClibc rc=0 告警 119 |
-| Task 5 修复前 | 新用例失败 | 临时桩（原样复制文件名，不提交）：`long_keeps_head_tail` 宽度超过 272 且无 `...`；`utf8_boundary` 31 处失败；`roller_fits_480/720` 宽度超过 270/406，歌曲名标签仍为 `LONG_WRAP` |
-| Task 5 修复后 | 全过；变体全 `KILLED` | 92/92；`MUSIC-F4-*` 5 个与 PR #8 的 `MUSIC-2`、`MUSIC-4` `KILLED`；显示名如 `luckfox_rolle...lmnopq_01.mp3`（270 px） |
-| Task 2b 修复前 | 新用例失败 | `no_network_block`：`cmd.log` 有 `wpa_cli`、`wpa_cli.stdin` 有 `set_network 0`，提示不可见 |
-| Task 2b 修复后 | 全过；变体 `KILLED` | 105/105；`WIFI-Q31-no-block-check` `KILLED` |
-| Task 6 修复前 / 后 | `initial_zero` | 修复前 got 50；修复后 93/93 |
-| Task 7 修复前 | 新用例失败 | `split_line`：进度 got 0（拆开的 `playback-time` 丢失）；`no_strtok`：监听线程 `strtok` 3 次 |
-| Task 7 修复后 | 全过；变体全 `KILLED` | 95/95；`MUSIC-5`、`MUSIC-6`、`MUSIC-F5-split-lost` `KILLED` |
-| Task 8 修复前 | 新用例失败 | `ui_thread_only`：未运行 LVGL 定时器时 max 已为 200、值已为 12 |
-| Task 8 修复后 | 全过；变体全 `KILLED` | 97/97；`MUSIC-UI-*` 4 个 `KILLED` |
-| Task 9 修复前 | 新用例失败 | `peer_exit_reaps`：`fd_mpv` 仍为 4，测试侧 `waitpid` 收到子进程（未被回收） |
-| Task 9 修复后 | 全过；变体全 `KILLED` | 98/98；`MUSIC-R2-*` 3 个 `KILLED` |
-| Task 10 修复前 | 新用例失败 | `enable_recheck`：仍在主屏、`MUSIC_ENABLE` 为 0；`rescan`：再次进入 roller 仍 1 项，未发 `stop` 与 `loadfile`；`unchanged_keeps_playlist` 修复前即通过（守护修复后的行为） |
-| Task 10 修复后 | 全过；音乐页变体全 `KILLED` | 101/101（含 `remove_all_blocks_entry`、`remove_one_rescans`）；音乐页 35 个变体全 `KILLED`（含更新后的 `MUSIC-7`、`MUSIC-14`、`MUSIC-C2`） |
-| Task 11 修复前 / 后 | `socket_cloexec` | 修复前 `FD_CLOEXEC` 未置位；修复后 102/102，`MUSIC-R3-no-cloexec` `KILLED` |
+| Task 4 修复前 | 新用例失败 | `tap_draws_dot`：`pen_near(240, 180)` 失败 |
+| Task 4 修复后 | 全过；变体全 `KILLED` | 画板 5/5；`SKETCH-F3-no-dot`、`SKETCH-18`、`SKETCH-19` 3 个 `KILLED`；全量 82/82 |
+| Task 5 修复前 | 回放复现板上现象 | 临时桩调用旧 `evdev_set_file` + `evdev_read`（不提交）：第 2 步 1 帧跳到 (388,207)、21 帧松开、最后 x=388；第 1 步 12 帧跳到第二根手指、5 帧松开；合成用例因旧驱动只认 `TRACKING_ID == 0` 而按不下；fd 无 `FD_CLOEXEC`；单点退回用例通过（旧行为本身支持单点） |
+| Task 5 修复后 | 全过；变体全 `KILLED`；交叉编译通过 | 画板 10/10；6 个 `TOUCH-*` 变体 `KILLED`；全量 87/87；glibc rc=0 告警 120、uClibc rc=0 告警 119 |
+| Task 6 修复前 | 新用例失败 | 临时桩（原样复制文件名，不提交）：`long_keeps_head_tail` 宽度超过 272 且无 `...`；`utf8_boundary` 31 处失败；`roller_fits_480/720` 宽度超过 270/406，歌曲名标签仍为 `LONG_WRAP` |
+| Task 6 修复后 | 全过；变体全 `KILLED` | 92/92；`MUSIC-F4-*` 5 个与 PR #8 的 `MUSIC-2`、`MUSIC-4` `KILLED`；显示名如 `luckfox_rolle...lmnopq_01.mp3`（270 px） |
+| Task 3 修复前 | 新用例失败 | `no_network_block`：`cmd.log` 有 `wpa_cli`、`wpa_cli.stdin` 有 `set_network 0`，提示不可见 |
+| Task 3 修复后 | 全过；变体 `KILLED` | 105/105；`WIFI-Q31-no-block-check` `KILLED` |
+| Task 7 修复前 / 后 | `initial_zero` | 修复前 got 50；修复后 93/93 |
+| Task 8 修复前 | 新用例失败 | `split_line`：进度 got 0（拆开的 `playback-time` 丢失）；`no_strtok`：监听线程 `strtok` 3 次 |
+| Task 8 修复后 | 全过；变体全 `KILLED` | 95/95；`MUSIC-5`、`MUSIC-6`、`MUSIC-F5-split-lost` `KILLED` |
+| Task 9 修复前 | 新用例失败 | `ui_thread_only`：未运行 LVGL 定时器时 max 已为 200、值已为 12 |
+| Task 9 修复后 | 全过；变体全 `KILLED` | 97/97；`MUSIC-UI-*` 4 个 `KILLED` |
+| Task 10 修复前 | 新用例失败 | `peer_exit_reaps`：`fd_mpv` 仍为 4，测试侧 `waitpid` 收到子进程（未被回收） |
+| Task 10 修复后 | 全过；变体全 `KILLED` | 98/98；`MUSIC-R2-*` 3 个 `KILLED` |
+| Task 11 修复前 | 新用例失败 | `enable_recheck`：仍在主屏、`MUSIC_ENABLE` 为 0；`rescan`：再次进入 roller 仍 1 项，未发 `stop` 与 `loadfile`；`unchanged_keeps_playlist` 修复前即通过（守护修复后的行为） |
+| Task 11 修复后 | 全过；音乐页变体全 `KILLED` | 101/101（含 `remove_all_blocks_entry`、`remove_one_rescans`）；音乐页 35 个变体全 `KILLED`（含更新后的 `MUSIC-7`、`MUSIC-14`、`MUSIC-C2`） |
+| Task 12 修复前 / 后 | `socket_cloexec` | 修复前 `FD_CLOEXEC` 未置位；修复后 102/102，`MUSIC-R3-no-cloexec` `KILLED` |
 | 真机复测（spec §3.5.1） | 12 项 | 全部通过；新发现 N5、N6、N7 |
-| Task 14 修复前 | 新用例失败 | `no_repeat_rows`：显示行数空目录 7、1 首 7、4 首 28（应为 1、1、4），4 首时选中末项按下后绕回 0；`no_repeat_after_rescan`：1 首 7 行、2 首 14 行，末项按下绕回 0 |
-| Task 14 修复后 | 全过；变体全 `KILLED` | 107/107；`MUSIC-N5-apply-infinite`、`MUSIC-N5-refresh-infinite` `KILLED`；手动把 `generated/` 那一处改回 `INFINITE`，`no_repeat_rows` 失败（空目录 7 行），还原后通过；`screenshots` 音乐列表每首一行 |
-| Task 15 修复前 | 新用例失败 | `sorted_by_name`：主机 `readdir` 第一项为 `song_04.mp3`，`music_roller_options()` 不是升序，`loadfile` 顺序断言失败；`sorted_keeps_playlist` 修复前即通过（守护签名与列表同序） |
-| Task 15 修复后 | 全过；变体全 `KILLED` | 109/109；`MUSIC-N6-*` 4 个 `KILLED`；音乐页 42 个变体全 `KILLED` |
+| Task 13 修复前 | 新用例失败 | `no_repeat_rows`：显示行数空目录 7、1 首 7、4 首 28（应为 1、1、4），4 首时选中末项按下后绕回 0；`no_repeat_after_rescan`：1 首 7 行、2 首 14 行，末项按下绕回 0 |
+| Task 13 修复后 | 全过；变体全 `KILLED` | 107/107；`MUSIC-N5-apply-infinite`、`MUSIC-N5-refresh-infinite` `KILLED`；手动把 `generated/` 那一处改回 `INFINITE`，`no_repeat_rows` 失败（空目录 7 行），还原后通过；`screenshots` 音乐列表每首一行 |
+| Task 14 修复前 | 新用例失败 | `sorted_by_name`：主机 `readdir` 第一项为 `song_04.mp3`，`music_roller_options()` 不是升序，`loadfile` 顺序断言失败；`sorted_keeps_playlist` 修复前即通过（守护签名与列表同序） |
+| Task 14 修复后 | 全过；变体全 `KILLED` | 109/109；`MUSIC-N6-*` 4 个 `KILLED`；音乐页 42 个变体全 `KILLED` |
 | 音乐列表补测（spec §3.5.2） | 3 项 | 全部通过；新发现 N8、N10 |
 | N10 来源 | 是否上游即有 | `origin/dev` 临时工作树中给截图工具加音乐列表场景（不提交）：480 屏选中项行高 18、普通项 12；720 屏两者同为 18，且是同一个字体对象；本 PR 未改字体换算与 roller 字体设置 |
-| Task 17 修复前 | 新用例失败 | `fits_song_count`：roller 高度恒为 170（6 行），面板恒为 313×221；`fits_after_rescan`：1 首与补到 4 首后同样不变 |
-| Task 17 修复后 | 全过；变体全 `KILLED` | `MUSIC-N8-*` 12 个 `KILLED`（`-margin-unscaled`、`-gap-unscaled` 只由 `fits_720` 杀死）；`preview` 截 480、720 两种分辨率下 1、2、4、8 首：1、3、5、5 行、没有半行，面板水平居中，四周边距 10 px（720 屏 15 px），底边 480 屏 y=305、720 屏 y=458，与按钮顶边留 5 px（7 px）间隙；实测 1 行高 480 屏 30 px、720 屏 36 px |
-| Task 18 修复前 | 新用例失败 | `scale_720_18`：两个换算函数得到的都不是 24 号（第 25、28 行断言失败，`switch` 没有 27 号分支，不设置字体）；`scale_480_18` 通过 |
-| Task 18 修复后 | 全过；变体全 `KILLED` | 113/113；`MAIN-N10-obj-no-27`、`MAIN-N10-style-no-27` `KILLED`；`screenshots` 720 屏音乐列表选中项为 24 号，缩写名放得下 |
+| Task 15 修复前 | 新用例失败 | `fits_song_count`：roller 高度恒为 170（6 行），面板恒为 313×221；`fits_after_rescan`：1 首与补到 4 首后同样不变 |
+| Task 15 修复后 | 全过；变体全 `KILLED` | `MUSIC-N8-*` 12 个 `KILLED`（`-margin-unscaled`、`-gap-unscaled` 只由 `fits_720` 杀死）；`preview` 截 480、720 两种分辨率下 1、2、4、8 首：1、3、5、5 行、没有半行，面板水平居中，四周边距 10 px（720 屏 15 px），底边 480 屏 y=305、720 屏 y=458，与按钮顶边留 5 px（7 px）间隙；实测 1 行高 480 屏 30 px、720 屏 36 px |
+| Task 16 修复前 | 新用例失败 | `scale_720_18`：两个换算函数得到的都不是 24 号（第 25、28 行断言失败，`switch` 没有 27 号分支，不设置字体）；`scale_480_18` 通过 |
+| Task 16 修复后 | 全过；变体全 `KILLED` | 113/113；`MAIN-N10-obj-no-27`、`MAIN-N10-style-no-27` `KILLED`；`screenshots` 720 屏音乐列表选中项为 24 号，缩写名放得下 |
 | `wifi.scan_trigger` 负载压测 | 高负载下稳定 | 12 个空转进程占满 8 核：旧写法 5 轮中 3 轮失败（`repeat_single_read` 在 t≈3.2 s 已读到 `scan_results`）；改为按 LVGL tick 等待后，两条用例各重复 20 次全部通过；新写法在 `origin/dev` 的 `custom_wifi.c` 上 3 条用例全部失败，与 Task 2 修复前一致 |
 | 列表收缩补测（spec §3.5.3） | 3 项 | 全部通过；新发现外层面板边距与位置问题、N11 |
 | 外层面板与按钮补测（spec §3.5.4） | 3 项 | 全部通过；新发现面板与按钮太近、展开时按钮不变色 |
 | 背景收起（主机） | 点音乐页背景能否收起 | `preview` 中展开列表后点击背景空白处 (420, 160)，外层面板收起 |
-| Task 21 修复前 | 新用例失败 | `background_close`：点背景收起后按钮仍为 CHECKED，再点按钮展开时反而退出 CHECKED；`checked_image`：选中状态与普通状态是同一张图；`toggle` 修复前即通过（CHECKABLE 自行切换恰好一致），守护切换 |
-| Task 21 修复后 | 全过；变体全 `KILLED` | 117/117；`MUSIC-N11-*` 6 个 `KILLED`；把 `generated/events_init.c` 的背景回调改回直接隐藏面板，`background_close` 失败，还原后通过；`preview` 在 480、720 屏展开时按钮线条为橙色，点背景或按按钮收起后恢复灰色 |
+| Task 17 修复前 | 新用例失败 | `background_close`：点背景收起后按钮仍为 CHECKED，再点按钮展开时反而退出 CHECKED；`checked_image`：选中状态与普通状态是同一张图；`toggle` 修复前即通过（CHECKABLE 自行切换恰好一致），守护切换 |
+| Task 17 修复后 | 全过；变体全 `KILLED` | 117/117；`MUSIC-N11-*` 6 个 `KILLED`；把 `generated/events_init.c` 的背景回调改回直接隐藏面板，`background_close` 失败，还原后通过；`preview` 在 480、720 屏展开时按钮线条为橙色，点背景或按按钮收起后恢复灰色 |
 | F1 解析差分 | 两版显示 `scanning` 的条件是否相同 | 相同：只有表头、`wpa_cli` 连不上、只有隐藏网络三种输入两版都是 `scanning`；有可见 SSID 时两版都有选项，旧版按空格截断并粘连 |
 | 补测二进制 | uClibc 产物，`qemu-arm` 冒烟停在 `cannot open /dev/dri/card0` | 均在 `/cursor/stores/self/board-retest-20261010/`，同目录 `SHA256SUMS`：复测用 `luckfox_lvgl_demo-pr10-7fc0af3`（未含 WiFi [2/2]）与 `-pr10-d02c5eb`（`b21a205ae8dd16faa4c6faebc14416ea6320435deff7cfa4cd43cc41e3abf916`）；音乐列表补测用 `-pr10-8ef1654`（`25db53aab7b1b3d346faaa584899a9a71f01f662e62b5333794cdac6a217b516`）；列表收缩补测用 `-pr10-08984b7`（`ce1c36fc86e8084ecdeea9e28b2bfe57222a1d6fa9ca570e6b189721261ef1a2`）；外层面板与按钮补测用 `-pr10-9b40919`（`bd6a26ea03fdb9ced5c140c2c6d1eec27a87b2781096b2d6bd384e113e7e1680`）；spec §3.5.5 用 `-pr10-1b4dbbd`（`b6e9c73c1ef4bc6490b48ef04de08ee631ab34018053ecc7ab54b42501ed3663`） |
 | 收尾 主机 | 全量 `ctest`、变体 | 117/117（arm32 2 条）；`mutate.sh` 全量 119/119 `KILLED`（PR #8 的 62 个加本 PR 57 个），rc=0；`preview` 在 480、720 屏核对面板底边 y=305、y=458，展开时按钮为橙色，点背景或按按钮收起后为灰色 |
@@ -233,29 +235,31 @@
 ## 5. 与计划的偏离
 
 - Task 2：高负载（多个构建并行）下 `repeat_single_read` 偶发失败。`tst_run_ms()`（PR #7）按循环次数计时，而 LVGL tick 取自 `CLOCK_MONOTONIC`，负载高时实际经过时间比名义长，3 秒定时器在检查点之前到期。本 PR 新增的 `test_scan_trigger.c` 改为按 LVGL tick 等待（`run_until()`），`tst_run_ms()` 不改；全量检验与逐提交测试先后执行，不并行。
-- Task 3：线宽 2 的圆角 2×2 点被抗锯齿成灰色（`0x464646`），与线条的纯黑不一致；线宽不大于 2 时改画方点，大于 2 时才用 `LV_RADIUS_CIRCLE`。
-- Task 3：触点换算抽成 `sketchpad_canvas_point()`，原有变体 `SKETCH-19` 的 `old` 由 `point.y -= coords.y1;` 改为 `point->y -= coords.y1;`。
-- Task 4：多点模式下松开时若报告 `ABS_X/ABS_Y`，内核单点模拟会把它换到另一指，松开坐标落在另一指处可能误触按钮；改为单独保存主触点位置 `pen_x/pen_y`，并补断言与变体 `TOUCH-release-at-emulated`。
-- Task 4、21：新编译单元 `custom_touch.c`、`_icn_chart_checked_alpha_32x32.c` 包含 `lvgl.h` 后各重复一次既有的 `lib/lv_conf.h` `-Wundef`（`LV_USE_GPU_NXP_PXP`），交叉编译告警各 +2，基线变为 glibc 121、uClibc 120，不是新类别；`AGENTS.md` 的基线随 `docs(readme)` 更新。新文件要放在 `custom/` 顶层：主工程 `CMakeLists.txt` 只收集 `custom/*.c`，不递归子目录。
-- Task 4：R3 中 evdev 的 `O_CLOEXEC` 随新读取模块一并实现并测试，Task 11 只剩 mpv 套接字与 fbdev。
-- Task 5：PR #8 的 `music.list.options_over_255`、`music.roller.select_long_name` 用 roller 显示文字比对完整文件名，改为按显示名开头辨认；完整名字仍由 `music_roller_options()` 与歌曲名标签校验。
-- Task 5：变体 `MUSIC-F4-no-tail` 写成 `t = tail` 会让被测代码死循环、靠 120 s 超时判定，改为 `turn = 0`（只增长头部）；`utf8_boundary` 头尾要用字体中有字形的 3 字节符号（U+F001、U+F00C），否则头部截断点落不到多字节字符上，`MUSIC-F4-next-mid-char` 存活。
-- Task 5：局部变量不能叫 `head`、`tail`，会遮蔽链表全局 `head`，交叉编译多出 1 条 `-Wshadow`；用 `keep_head`、`keep_tail`。
-- Task 7：`"data": null` 仍按 0 处理，保持旧语义；解析抽成 `music_monitor_line()`，PR #8 的 `MUSIC-5` 的 `old` 随之更新。
-- Task 9：`mpv_send()` 加锁后 PR #8 的 `MUSIC-7`、`MUSIC-14` 的 `old` 随之更新。
-- Task 10：筛选规则抽成 `music_is_track()`，扫描循环只保留跳过时的打印；PR #8 的 `MUSIC-C2` 改为针对 `music_is_track()` 的换行检查（变体文件中 `\n` 会被解析为换行，`old` 取不含反斜杠的片段）。
-- Task 11：板上 `custom_init()` 先启动 mpv，之后才打开 fb 与触摸设备，mpv 并不继承它们；PR #8 复核「mpv 继承 DRM、fb、evdev」的说法不成立，实际继承者是之后的 `popen`、`system` 子进程。
-- Task 14、17、21：`mutate.sh` 只复制 `custom/` 到工作目录，变体的 `file` 必须在 `custom/` 下；`generated/` 中的改动（Task 14 的滚轮模式、Task 21 的列表按钮回调与音乐页背景回调）改为手动检验：改回原样后对应测试失败，还原后通过。
-- Task 14：`music_refresh_list()` 设置选项后紧接着 `music_roller_apply()` 会以普通模式再设一次，该处的模式只在重建后列表为空时生效；`no_repeat_after_rescan` 要包含「删光后直接加载音乐页」的场景，否则 `MUSIC-N5-refresh-infinite` 存活。
-- Task 15：不先收集文件名再 `qsort`：会新增内存分配，打乱 `music.list_alloc`、`music.empty_list` 按调用次数注入失败的计数；改为链表按序插入、签名按序插入，分配次数不变。
-- Task 15：`sorted_by_name` 逐项选中检查歌曲名与 `playlist-pos`：主机 `readdir` 第 2 项恰好是 `song_02.mp3`，只查一项时 `MUSIC-N6-stale-id` 存活。
-- Task 21：`custom/` 中新增的非 `static` 函数要在 `custom/custom.h` 声明，否则 `-Wmissing-prototypes` 使两条交叉编译告警各 +1；`music_list_toggle()`、`music_list_close()` 与 `music_recheck_enable()` 声明在同处。
-- Task 21：测试里点按钮要先发 `LV_EVENT_RELEASED` 再发 `LV_EVENT_CLICKED`：`LV_OBJ_FLAG_CHECKABLE` 的自行切换发生在松开时，只发 `CLICKED` 测不到 CHECKED 与面板错位。
-- Task 21：GUI Guider 导出的 8 位、16 位分支带抖动，同一颜色在不同位置量化结果不同，无法逐字节复现；生成脚本只核对 32 位分支与原图一致（本项目 `LV_COLOR_DEPTH 32`），8 位、16 位分支按四舍五入量化。
+- Task 4：线宽 2 的圆角 2×2 点被抗锯齿成灰色（`0x464646`），与线条的纯黑不一致；线宽不大于 2 时改画方点，大于 2 时才用 `LV_RADIUS_CIRCLE`。
+- Task 4：触点换算抽成 `sketchpad_canvas_point()`，原有变体 `SKETCH-19` 的 `old` 由 `point.y -= coords.y1;` 改为 `point->y -= coords.y1;`。
+- Task 5：多点模式下松开时若报告 `ABS_X/ABS_Y`，内核单点模拟会把它换到另一指，松开坐标落在另一指处可能误触按钮；改为单独保存主触点位置 `pen_x/pen_y`，并补断言与变体 `TOUCH-release-at-emulated`。
+- Task 5、17：新编译单元 `custom_touch.c`、`_icn_chart_checked_alpha_32x32.c` 包含 `lvgl.h` 后各重复一次既有的 `lib/lv_conf.h` `-Wundef`（`LV_USE_GPU_NXP_PXP`），交叉编译告警各 +2，基线变为 glibc 121、uClibc 120，不是新类别；`AGENTS.md` 的基线随 `docs(readme)` 更新。新文件要放在 `custom/` 顶层：主工程 `CMakeLists.txt` 只收集 `custom/*.c`，不递归子目录。
+- Task 5：R3 中 evdev 的 `O_CLOEXEC` 随新读取模块一并实现并测试，Task 12 只剩 mpv 套接字与 fbdev。
+- Task 6：PR #8 的 `music.list.options_over_255`、`music.roller.select_long_name` 用 roller 显示文字比对完整文件名，改为按显示名开头辨认；完整名字仍由 `music_roller_options()` 与歌曲名标签校验。
+- Task 6：变体 `MUSIC-F4-no-tail` 写成 `t = tail` 会让被测代码死循环、靠 120 s 超时判定，改为 `turn = 0`（只增长头部）；`utf8_boundary` 头尾要用字体中有字形的 3 字节符号（U+F001、U+F00C），否则头部截断点落不到多字节字符上，`MUSIC-F4-next-mid-char` 存活。
+- Task 6：局部变量不能叫 `head`、`tail`，会遮蔽链表全局 `head`，交叉编译多出 1 条 `-Wshadow`；用 `keep_head`、`keep_tail`。
+- Task 8：`"data": null` 仍按 0 处理，保持旧语义；解析抽成 `music_monitor_line()`，PR #8 的 `MUSIC-5` 的 `old` 随之更新。
+- Task 10：`mpv_send()` 加锁后 PR #8 的 `MUSIC-7`、`MUSIC-14` 的 `old` 随之更新。
+- Task 11：筛选规则抽成 `music_is_track()`，扫描循环只保留跳过时的打印；PR #8 的 `MUSIC-C2` 改为针对 `music_is_track()` 的换行检查（变体文件中 `\n` 会被解析为换行，`old` 取不含反斜杠的片段）。
+- Task 12：板上 `custom_init()` 先启动 mpv，之后才打开 fb 与触摸设备，mpv 并不继承它们；PR #8 复核「mpv 继承 DRM、fb、evdev」的说法不成立，实际继承者是之后的 `popen`、`system` 子进程。
+- Task 13、15、17：`mutate.sh` 只复制 `custom/` 到工作目录，变体的 `file` 必须在 `custom/` 下；`generated/` 中的改动（Task 13 的滚轮模式、Task 17 的列表按钮回调与音乐页背景回调）改为手动检验：改回原样后对应测试失败，还原后通过。
+- Task 13：`music_refresh_list()` 设置选项后紧接着 `music_roller_apply()` 会以普通模式再设一次，该处的模式只在重建后列表为空时生效；`no_repeat_after_rescan` 要包含「删光后直接加载音乐页」的场景，否则 `MUSIC-N5-refresh-infinite` 存活。
+- Task 14：不先收集文件名再 `qsort`：会新增内存分配，打乱 `music.list_alloc`、`music.empty_list` 按调用次数注入失败的计数；改为链表按序插入、签名按序插入，分配次数不变。
+- Task 14：`sorted_by_name` 逐项选中检查歌曲名与 `playlist-pos`：主机 `readdir` 第 2 项恰好是 `song_02.mp3`，只查一项时 `MUSIC-N6-stale-id` 存活。
+- Task 17：`custom/` 中新增的非 `static` 函数要在 `custom/custom.h` 声明，否则 `-Wmissing-prototypes` 使两条交叉编译告警各 +1；`music_list_toggle()`、`music_list_close()` 与 `music_recheck_enable()` 声明在同处。
+- Task 17：测试里点按钮要先发 `LV_EVENT_RELEASED` 再发 `LV_EVENT_CLICKED`：`LV_OBJ_FLAG_CHECKABLE` 的自行切换发生在松开时，只发 `CLICKED` 测不到 CHECKED 与面板错位。
+- Task 17：GUI Guider 导出的 8 位、16 位分支带抖动，同一颜色在不同位置量化结果不同，无法逐字节复现；生成脚本只核对 32 位分支与原图一致（本项目 `LV_COLOR_DEPTH 32`），8 位、16 位分支按四舍五入量化。
 
 ## 6. 后续事项
 
 ### 6.1 另开 docs PR：历史 spec 与 plan 标题补序号
+
+**状态**：已由 PR #11 完成，见 [`2026-10-14-lvgl-example-heading-numbers-design.md`](../specs/2026-10-14-lvgl-example-heading-numbers-design.md)。特例 1 最终改为原位的加粗段落，没有就地编号（该 spec §3.4）；特例 2 按规则改（§3.5）；另补了 Task 所在章与 Task 标题冒号（§3.3、§3.6）。以下为 PR #10 时的统计与暂定方案。
 
 本 PR 起执行的标题编号规则（作者个人 `~/.pi/agent/AGENTS.md`）：`## 2.`、`### 2.2`、`#### 2.2.1`，最多四级；plan 的 Task 标题保持 `### Task N：…`，Task 以外的小节不与 Task 混在同一章；附录写成 `## 附录 A`、`### A.1`。按该规则统计（2026-10-10，本 PR 两份文档除外）：
 
@@ -279,7 +283,7 @@
 
 ### 6.4 歌曲列表换成从顶部排列的列表（spec Q38）
 
-本 PR 保留 roller，按歌曲数收缩（Task 17）。roller 总把选中项放在正中，选中第一首时上方必然留白。要两端都不留白，只能换成从第一首排起的普通列表。
+本 PR 保留 roller，按歌曲数收缩（Task 15）。roller 总把选中项放在正中，选中第一首时上方必然留白。要两端都不留白，只能换成从第一首排起的普通列表。
 
 关键约束：只要「滚动停在哪里就选中哪首」，列表总有一端留白。
 
@@ -289,7 +293,7 @@
 | 最顶上 | 上方没有空白 | 下方要空出近一个框高，最后一首才能滚到顶 |
 | 最底下 | 上方要空出近一个框高 | 下方没有空白 |
 
-两端都不留白，就得把滚动与选歌分开，滚动只用来浏览，由另一个动作选歌：点一下（最常见）、长按（防误触但不直观），或用上一首、下一首按钮移动高亮。列表按钮的展开与收起已在本 PR 改为切换（Task 21）。另开 PR 时先定交互方式，再改：roller 相关的 8 处调用、生成代码、6 个测试文件与截图，列表相关的 F4、N5、F6、N8 需要重新上板。
+两端都不留白，就得把滚动与选歌分开，滚动只用来浏览，由另一个动作选歌：点一下（最常见）、长按（防误触但不直观），或用上一首、下一首按钮移动高亮。列表按钮的展开与收起已在本 PR 改为切换（Task 17）。另开 PR 时先定交互方式，再改：roller 相关的 8 处调用、生成代码、6 个测试文件与截图，列表相关的 F4、N5、F6、N8 需要重新上板。
 
 ### 6.5 CI 增加变体检验
 
@@ -336,7 +340,7 @@
 
 ## 附录 A：`evdev_probe.c`
 
-诊断工具只放在对比包里，不进仓库；F2 的修复已用板上录到的事件回放成测试（Task 4）。
+诊断工具只放在对比包里，不进仓库；F2 的修复已用板上录到的事件回放成测试（Task 5）。
 
 编译：`arm-rockchip830-linux-uclibcgnueabihf-gcc -O2 -Wall -Wextra -o evdev_probe evdev_probe.c`。
 
@@ -630,7 +634,7 @@ done
 pkill -x preview
 ```
 
-`preview_run.sh` 在 Xvfb 下截主屏、WiFi 页与画板，用于 Task 2、3、4 的带界面检验：
+`preview_run.sh` 在 Xvfb 下截主屏、WiFi 页与画板，用于 Task 2、4、5 的带界面检验：
 
 ```bash
 #!/bin/bash

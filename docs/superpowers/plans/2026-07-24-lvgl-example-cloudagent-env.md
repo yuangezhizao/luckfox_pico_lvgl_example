@@ -8,7 +8,7 @@
 
 **Tech Stack:** Docker、Ubuntu 24.04 / 22.04、`arm-linux-gnueabihf` 交叉工具链、CMake、LVGL 8.3 / lv_drivers 8.1（vendored）、`libdrm-dev`/`libcjson-dev`/`libsdl2-dev`、ffmpeg x11grab。
 
-## Global Constraints
+## 1. Global Constraints
 
 设计细节一律以 spec 为准（[`../specs/2026-07-24-lvgl-example-cloudagent-env-design.md`](../specs/2026-07-24-lvgl-example-cloudagent-env-design.md)）：依赖清单见 spec §5.1、`environment.json` 见 §5.2、官方与经验约束见 §5.3、官方镜像备选见 §5.4、诚实红线见 §5.1 与 §10、`AGENTS.md` 要求见 FR3 与 Q6。下列为执行期的硬约束：
 
@@ -21,7 +21,9 @@
 
 ---
 
-### Task 1: 收窄 `.git/info/exclude`（前置，放行 `.cursor` 环境配置进 git）
+## 2. Tasks
+
+### Task 1：收窄 `.git/info/exclude`（前置，放行 `.cursor` 环境配置进 git）
 
 **Files:** Modify `/workspace/.git/info/exclude`（git 本地私有文件，不被跟踪，本 task 无 commit）
 
@@ -39,7 +41,7 @@ git check-ignore -v .cursor/environment.json .cursor/Dockerfile .cursor/Dockerfi
 
 ---
 
-### Task 2: 在本 VM 安装 Docker（真实测试所需）
+### Task 2：在本 VM 安装 Docker（真实测试所需）
 
 **Files:** 无（仅环境安装，不进 git）
 
@@ -66,7 +68,7 @@ sudo service docker start || (sudo dockerd > /tmp/dockerd.log 2>&1 &)   # 括号
 
 ---
 
-### Task 3: 编写两个 Dockerfile + `.cursor/environment.json`
+### Task 3：编写两个 Dockerfile + `.cursor/environment.json`
 
 **Files:** Create `.cursor/Dockerfile`、`.cursor/Dockerfile.luckfox_pico`、`.cursor/environment.json`
 
@@ -92,7 +94,7 @@ sudo service docker start || (sudo dockerd > /tmp/dockerd.log 2>&1 &)   # 括号
 
 ---
 
-### Task 4: 两镜像真实构建/编译 + native 渲染验证 → commit A（`.cursor/*`）
+### Task 4：两镜像真实构建/编译 + native 渲染验证 → commit A（`.cursor/*`）
 
 **Files:** Verify + Commit `.cursor/environment.json`、`.cursor/Dockerfile`、`.cursor/Dockerfile.luckfox_pico`
 
@@ -128,7 +130,7 @@ Expected: `Class: ELF32` + `Machine: ARM`。产物固定在源码根 `/workspace
 
 ---
 
-### Task 5: 新增中文 `AGENTS.md` → commit B
+### Task 5：新增中文 `AGENTS.md` → commit B
 
 **Files:** Create `/workspace/AGENTS.md`（相对 base `dev` 为新增；执行当时分支上已有英文稿，故实际操作是改写）
 
@@ -148,7 +150,7 @@ Expected: `Class: ELF32` + `Machine: ARM`。产物固定在源码根 `/workspace
 
 ---
 
-### Task 6: 重写 PR #1 标题与中文正文
+### Task 6：重写 PR #1 标题与中文正文
 
 **Files:** 无（用 ManagePullRequest 更新 PR，不改代码）
 
@@ -166,7 +168,7 @@ Expected: `Class: ELF32` + `Machine: ARM`。产物固定在源码根 `/workspace
 
 ---
 
-### Task 7: 回填验证证据 → commit C（spec + plan）→ 最终确认
+### Task 7：回填验证证据 → commit C（spec + plan）→ 最终确认
 
 **Files:** Modify 本 plan（回填证据 + 勾选 checkbox）；Commit spec + plan
 
@@ -184,7 +186,7 @@ gh pr view 1 --json state,files          # PR open、文件集正确
 
 ---
 
-## 验证证据回填
+## 3. 验证证据回填
 
 实测时间线：2026-07-24 首测（自建版）/ 07-25 双镜像 / 07-26 复验 / 07-28 对当前提交版复测。
 
@@ -201,7 +203,7 @@ gh pr view 1 --json state,files          # PR open、文件集正确
 - **平台自动装包清单**：Aptfile `sha256=819987b7…`，07-26 复验未变、逐项一致（google-chrome 不在 Aptfile，由平台单独脚本安装）。
 - **局限**：以上均为「配置可构建、依赖可用」的代理证明；端到端「Cloud Agent 从该 `.cursor` 启动」需另起新 agent 验证（本会话未做）。
 
-## 执行结果
+## 4. 执行结果
 
 - 核心决策见 spec §4 决策表（D1–D7）与 §11 QA。
 - 分 3 提交合入现有 PR #1（`docs(agents)` → `chore(cloud-env)` → `docs(superpowers)`）；验证见上方「验证证据回填」，演示见 PR 正文；提交纪律与 grilling 排除见本文「Global Constraints」。

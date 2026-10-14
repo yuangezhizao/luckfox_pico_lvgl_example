@@ -12,7 +12,7 @@
 
 已完成的 Task 中，代码与文档以仓库为准，每个 Task 只留一行「落地」（文件、要点、提交标题）以及改坏命令、验证命令与 Expected。
 
-## Global Constraints
+## 1. Global Constraints
 
 每个 Task 默认包含 spec 全文。硬约束：
 
@@ -28,7 +28,7 @@
 - 草稿 PR 在执行前已创建；每个 Task 提交后推送到 `cursor/native-tests-cbb9`，PR 上的 CI 随之运行。
 - 截图存 Project Context `media/native-tests/`，脚本与证据存 `internal/native-tests/`（Project Context 根：`/cursor/stores/bc-5aabc2a6-3a8e-4afe-93fb-808fe19d5b10/`）。
 
-## File Structure
+## 2. File Structure
 
 | 文件 | 职责 | Task |
 |---|---|---|
@@ -56,7 +56,9 @@
 
 ---
 
-### Task 1: 恢复编译告警（`build(cmake)`）
+## 3. Tasks
+
+### Task 1：恢复编译告警（`build(cmake)`）
 
 **Files:** Modify `CMakeLists.txt:74-88`。
 
@@ -104,7 +106,7 @@ Expected：告警 glibc 132、uClibc 131；error 0；主程序 `C_FLAGS` 含 `-s
 
 ---
 
-### Task 2: 测试骨架与 SDIO 判定测试（`test(tests)`）
+### Task 2：测试骨架与 SDIO 判定测试（`test(tests)`）
 
 **Files:** Create `tests/CMakeLists.txt`、`tests/README.md`、`tests/support/{check.h,fake_fs.h,fake_fs.c,capture.h,capture.c,app_env.h,app_env.c}`、`tests/cases/main/{CMakeLists.txt,test_sdio_detect.c,unit_sdio_detect.c}`；Modify `.gitignore`（追加 `build-tests/`）；Create（仓库外）`/tmp/luckfox-red/red.sh`。
 
@@ -172,7 +174,7 @@ Expected：`main.sdio_detect.prefix` 失败（`got 1, want 0`），其余 6 条�
 
 ---
 
-### Task 3: `wifi_backend_release()` 判空回归测试（`test(tests)`）
+### Task 3：`wifi_backend_release()` 判空回归测试（`test(tests)`）
 
 **Files:** Create `tests/cases/wifi/CMakeLists.txt`、`tests/cases/wifi/test_backend_release.c`；Modify `tests/CMakeLists.txt`（末尾加 `add_subdirectory(cases/wifi)`）。
 
@@ -193,7 +195,7 @@ Expected：9 条全过。
 
 ---
 
-### Task 4: 亮度断言（`test(tests)`）
+### Task 4：亮度断言（`test(tests)`）
 
 **Files:** Create `tests/cases/main/test_brightness.c`；Modify `tests/cases/main/CMakeLists.txt`。
 
@@ -222,7 +224,7 @@ Expected：同样全过（`/dev/full` 与 inotify 不依赖权限）。容器内
 
 ---
 
-### Task 5: 32 位换算测试（`test(tests)`）
+### Task 5：32 位换算测试（`test(tests)`）
 
 **Files:** Create `tests/cases/main/test_brightness_arm32.c`、`tests/cases/main/unit_brightness_arm32.c`；Modify `tests/CMakeLists.txt`、`tests/cases/main/CMakeLists.txt`、`tests/README.md`。
 
@@ -255,7 +257,7 @@ Expected：21 条全过，输出含 `PASS sizeof(long) == 4`；`Total Tests: 1`�
 
 ---
 
-### Task 6: 手动目标与改坏检验（`test(tests)`）
+### Task 6：手动目标与改坏检验（`test(tests)`）
 
 **Files:** Create `tests/tools/{screenshots.c,preview.c,mutate.sh}`、`tests/cases/main/{brightness,brightness_arm32,sdio_detect}.mutants`、`tests/cases/wifi/backend_release.mutants`；Modify `tests/CMakeLists.txt`、`tests/README.md`。
 
@@ -291,7 +293,7 @@ Expected：12 个变体均 `KILLED`，退出码 0，与 PR #6 的对应关系为
 
 ---
 
-### Task 7: CI job `native-tests`（`ci(github-actions)`）
+### Task 7：CI job `native-tests`（`ci(github-actions)`）
 
 **Files:** Modify `.github/workflows/build-luckfox-lvgl-demo.yml`（在文件末尾追加 job）。
 
@@ -309,7 +311,7 @@ Expected：21 条全过。
 
 ---
 
-### Task 8: `AGENTS.md`（`docs(agents)`）
+### Task 8：`AGENTS.md`（`docs(agents)`）
 
 **Files:** Modify `AGENTS.md` 的 `### Cloud Agent 环境`、`### GitHub Actions`、`### Lint（代码检查）`、`### 测试`、`### 运行 / 验证 GUI（重要陷阱）`。
 
@@ -327,7 +329,7 @@ Expected：不超过 ~150 行、32 KiB（改前 52 行、7634 字节）。
 
 ---
 
-### Task 9: 精简 PR #5、#6 的 plan/spec（`docs(superpowers)`）
+### Task 9：精简 PR #5、#6 的 plan/spec（`docs(superpowers)`）
 
 **Files:** Modify `docs/superpowers/plans/2026-09-25-lvgl-example-luckfox-pico-ultra-w-wifi-detect.md`、`docs/superpowers/plans/2026-09-27-lvgl-example-brightness-slider.md`、`docs/superpowers/specs/2026-09-25-lvgl-example-luckfox-pico-ultra-w-wifi-detect-design.md`、`docs/superpowers/specs/2026-09-27-lvgl-example-brightness-slider-design.md`。
 
@@ -363,19 +365,19 @@ Expected：删除行中的表格行只来自 File Structure 表；PR #5 plan 剩
 
 ---
 
-### Task 10: 推送、PR 与 CI
+### Task 10：推送、PR 与 CI
 
 - [x] **Step 1: 推送**：草稿 PR #7 在实现前已创建；每个 Task 提交后推送到 `cursor/native-tests-cbb9`，推送触发 `pull_request` run。
 - [x] **Step 2: PR 的 `pull_request` run**（改 Dockerfile 前）：`build-image`（dest-lock 复用 dev 镜像）、glibc、uClibc、`native-tests` 四个 job 均 success；`native-tests` 日志中 `100% tests passed` 且含 32 位测试。LeakSanitizer 在容器内无 ptrace 相关致命错误，不需要 `ASAN_OPTIONS=detect_leaks=0`（spec §7）。Task 12 之后的 PR run 中 `build-image` 预期失败（spec D8）。
 - [x] **Step 3: run URL、各 job 结果与耗时**见「验证证据」。
 
-### Task 11: 回填证据与整理提交
+### Task 11：回填证据与整理提交
 
 - [x] **Step 1: 回填「验证证据」与「与计划的偏离及原因」**，已入库的完整代码正文改为指向仓库文件的一句话，各 Task 已勾选。
 - [x] **Step 2: 在最终分支上重做 Task 1 Step 3 的对比**，结果与 spec §5.1 一致，见「验证证据」。
 - [x] **Step 3: 重排提交**：spec 与本 plan 的全部 `docs(superpowers)` 提交合并为 `docs(superpowers): 📝 新增原生测试基础设施 spec 与 plan` 并位于最后，旧文档精简的提交独立位于其前；重排前后 `git diff` 为空。
 
-### Task 12: 提交格式、`qemu-user` 入 Dockerfile 与 32 位测试命名
+### Task 12：提交格式、`qemu-user` 入 Dockerfile 与 32 位测试命名
 
 - [x] **Step 1: 落地**（各改动以 fixup 归入所属提交，提交序见 spec §8）：
 
@@ -404,7 +406,7 @@ Expected：21/21 通过；`-L arm32` 只列出 `main.brightness_arm32.conversion
 
 ---
 
-### Task 13: `mutate.sh` 工作目录保护（并入 `test(tests): ✅ 新增截图、SDL 预览与改坏检验手动目标`）
+### Task 13：`mutate.sh` 工作目录保护（并入 `test(tests): ✅ 新增截图、SDL 预览与改坏检验手动目标`）
 
 - [x] **Step 1: 落地**：以仓库 `tests/tools/mutate.sh` 与 `tests/README.md`「改坏检验」节为准——脚本启动时会 `rm -rf "$MUTATE_WORK/src"`，所以先把 `MUTATE_WORK` 规范化（`realpath -m`，解析 `..` 与符号链接）并此后只用规范化路径，拒绝 `/`、仓库内的路径与仓库位于 `$MUTATE_WORK/src` 之内的目录，只使用不存在、为空或带标记文件 `.luckfox-mutate-workdir`（首次使用时创建，须为普通文件）的目录；`custom/` 含符号链接时拒绝（变体经副本写回会改到仓库）。均以退出码 2 结束。变体 `id` 限定为 `[A-Za-z0-9][A-Za-z0-9_.-]*`，避免日志路径逃出工作目录。
 - [x] **Step 2: 验证**
@@ -422,11 +424,11 @@ ln -s /etc/hostname custom/zz_link; MUTATE_WORK=/tmp/mt-ok tests/tools/mutate.sh
 
 Expected：for 循环的五个均 `exit=2` 且不删除任何文件（`/tmp/mt-guard/occupied/src/f`、`/tmp/mt-guard/marker-dir/src/f` 仍在、`/workspace/src` 完整，标记是目录不算数）；含 `..` 的路径先被规范化，`/workspace/new` 不会被创建；仓库位于 `$MUTATE_WORK/src` 之内时打印 `MUTATE_WORK/src must not contain the repository` 并退出 2，仓库副本仍在；新目录 `M1`、`S1` 均 `KILLED`、`2 run, 0 skipped`、退出 0 并生成 `.luckfox-mutate-workdir`；复用该目录 `W1` `KILLED`；含符号链接时打印 `custom/ must not contain symlinks` 并退出 2。
 
-## Execution Handoff
+## 4. Execution Handoff
 
 全部 Task 已完成。
 
-## 验证证据
+## 5. 验证证据
 
 判据见 spec §6。环境为 Cloud Agent 容器：Ubuntu 24.04、gcc 13.3.0、`arm-linux-gnueabihf-gcc` 13.3.0、CMake 3.28.3、`qemu-arm` 8.2.2。原始输出存 Project Context `internal/native-tests/final-verification/`（本表命令均可在仓库根目录复现）。
 
@@ -444,7 +446,7 @@ Expected：for 循环的五个均 `exit=2` 且不删除任何文件（`/tmp/mt-g
 | Task 12 本地验证 | 32 位测试改名与 M12 拆分后全绿，M12 由新名字抓住 | `cmake -S tests -B /tmp/v2 -DLUCKFOX_TESTS_ARM32=ON` 构建后 ctest 21/21 通过；`ctest -N -L arm32` 只有 `main.brightness_arm32.conversion`；`MUTATE_WORK=/tmp/mw-v2 tests/tools/mutate.sh M12 M1`：`[M1] KILLED by: main.brightness.drag_writes_min_and_max`、`[M12] KILLED by: main.brightness_arm32.conversion`、`2 run, 0 skipped`；重排前后 `git diff` 为空 |
 | Task 13 `mutate.sh` 工作目录保护 | 危险路径与非本脚本目录被拒绝、不删除文件；正常目录照常运行 | `MUTATE_WORK` 为 `/workspace`、`/workspace/tests/x`、`/`、含 `src/` 的非空目录、标记为目录的非空目录时均退出 2，提示原因，`/workspace/src`、`/tmp/mt-guard/occupied/src/f`、`/tmp/mt-guard/marker-dir/src/f` 完好；`/workspace/new/../../tmp/mt-guard/dd` 不再在仓库内留下 `new/`；以 `-` 开头的相对路径照常使用；仓库位于 `$MUTATE_WORK/src` 之内（含仓库本身就是 `$MUTATE_WORK/src`）时退出 2、仓库副本完好；清单里 `id: ../../esc` 被拒（退出 2）；新目录 `/tmp/mt-ok` 跑 `M1 S1` → 2 个 `KILLED`、`2 run, 0 skipped`、退出 0，生成 `.luckfox-mutate-workdir`；复用跑 `W1` → `KILLED`；`custom/` 含符号链接时退出 2；全量 `12 run, 0 skipped`、退出 0 |
 
-## 与计划的偏离及原因
+## 6. 与计划的偏离及原因
 
 - Task 4 G 用例（`writes_deduplicated`）的 inotify 监听掩码为 `IN_OPEN | IN_CLOSE_WRITE`、计数只算 `IN_CLOSE_WRITE`：内核会合并队列末尾相邻的相同事件，只监听 `IN_CLOSE_WRITE` 时拖动结束后才读取恒得 1 次，删掉去重逻辑也不失败；当前代码 11 次，删掉去重 37 次、测试失败。
 - Task 1 对比脚本把 `cmp -l` 放进 `{ …; || true; }`、`grep -c ' error:'` 后加 `|| true`：`cmp` 有差异时返回 1、`grep -c` 零匹配也返回 1，在 `set -euo pipefail` 下会让后续的段哈希、节头与符号表对比不再执行。最终分支已含改动，「改动前」取 `git archive origin/dev`。
@@ -460,7 +462,7 @@ Expected：for 循环的五个均 `exit=2` 且不删除任何文件（`/tmp/mt-g
 
 以上偏离均已在本 PR 内处理；其中第一条（亮度写入次数测试）已修复并经改坏检验确认：删掉去重逻辑（M2）时该测试失败。
 
-## 遗留问题（后续改进）
+## 7. 遗留问题（后续改进）
 
 以下问题不影响当前环境与 CI 的结论，修复会扩大本 PR 范围，留给后续 PR：
 

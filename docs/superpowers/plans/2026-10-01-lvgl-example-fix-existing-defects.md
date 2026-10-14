@@ -10,7 +10,7 @@
 
 **Spec:** [`docs/superpowers/specs/2026-10-01-lvgl-example-fix-existing-defects-design.md`](../specs/2026-10-01-lvgl-example-fix-existing-defects-design.md)
 
-## Global Constraints
+## 1. Global Constraints
 
 每个 Task 默认包含 spec 全文。硬约束：
 
@@ -26,7 +26,7 @@
 - 提交用 `git cz` 格式 `type(scope): emoji 主题`：前置提交 `test(tests): ✅ …`，修复提交 `fix(<页面>): 🐛 页面 [序号/总数] 主题`（如 `fix(wifi): 🐛 WiFi [3/9] 写配置时只替换 ssid= 与 psk= 行`）（scope 取 `main`、`wifi`、`sketchpad`、`music`、`exit`），body 用 `-` 列 why（根因、关键决策与被否决的替代），末行 `详见 spec §X`；不写实现罗列与过程来源；注释与文档单句不硬折行。
 - 提交序列属于 `cursor/fix-existing-defects-spec-6be3`；spec 与 plan 仅由 Task 31 的最后一个 `docs(superpowers)` 提交交付（spec §6）。
 
-## File Structure
+## 2. File Structure
 
 | 文件 | 职责 | Task |
 |---|---|---|
@@ -47,7 +47,7 @@
 | `custom/custom_musicplayer.c`、`generated/setup_scr_Music_player.c` | 音乐页 13 处 | 17–29 |
 | `custom/custom_fb.{h,c}`（新增）、`src/main.c` | OFF 退出清屏 | 30 |
 
-## 缺陷、Task 与失败测试对照
+## 3. 缺陷、Task 与失败测试对照
 
 ctest 名与 spec §5 逐一对应；`main.tick.monotonic_wrap` 为 32 位（标签 `arm32`），`*.compile.*` 由 `luckfox_add_compile_check()` 注册。
 
@@ -84,7 +84,7 @@ ctest 名与 spec §5 逐一对应；`main.tick.monotonic_wrap` 为 32 位（标
 | 29 | ⑪ | `music.player.stdin_kept` |
 | 30 | ⑰ | `exit.fb_clear.enospc_silent`、`exit.fb_clear.cap`、`exit.fb_clear.open_failure`、`exit.fb_clear.zero_write_silent`、`exit.fb_clear.eintr_retries` |
 
-## 变体登记
+## 4. 变体登记
 
 最终树有 78 条用例（21 条基线 + 57 条新增）与 62 个变体（12 个原有 + 50 个新增）。变体按页面计：主屏 16、WiFi 22、画板 2、音乐 18、退出 4。下表逐个登记 `tests/cases/*/*.mutants` 的 id；对应测试正则以各清单的 `tests:` 为准。
 
@@ -121,7 +121,7 @@ ctest 名与 spec §5 逐一对应；`main.tick.monotonic_wrap` 为 32 位（标
 | `tests/cases/wifi/timer.mutants` | `WIFI-24t` |
 | `tests/cases/wifi/validate.mutants` | `WIFI-20a`、`WIFI-20b`、`WIFI-20c`、`WIFI-20utf8`、`WIFI-20cont`、`WIFI-20hide`、`WIFI-20length` |
 
-## 通用命令
+## 5. 通用命令
 
 以下命令块在各 Task 中按名称引用，均在仓库根目录执行；先设 `BASE_REV=$(git merge-base origin/dev HEAD)` 定位基线。
 
@@ -157,7 +157,9 @@ Expected（[X]）：两条 `rc=0`；告警数与 `AGENTS.md` 的当前基线 gli
 
 ---
 
-### Task 0: `luckfox_add_compile_check()`（`test(tests)`）
+## 6. 前置（Task 0）
+
+### Task 0：`luckfox_add_compile_check()`（`test(tests)`）
 
 **Files:** Create `tests/tools/compile_check.cmake`；Modify `tests/CMakeLists.txt`、`tests/README.md`。
 
@@ -188,9 +190,9 @@ Expected：`main.compile.selftest_ok` 通过；`main.compile.selftest_bad` 失�
 
 ---
 
-## 主屏与时间（Task 1–5）
+## 7. 主屏与时间（Task 1–5）
 
-### Task 1: ⑮ 隐式声明（`fix(main)`）
+### Task 1：⑮ 隐式声明（`fix(main)`）
 
 **Files:** Create `custom/custom_tick.h`、`tests/cases/main/compile_fcntl_custom.c`；Modify `custom/custom.h`、`custom/custom_brightness.c`、`lib/lv_conf.h`、`tests/cases/main/CMakeLists.txt`。
 
@@ -221,7 +223,7 @@ Expected：失败；三个源文件均为 `FAIL`：`custom_main.c` 报 `implicit
 
 - [x] **Step 5: 提交** `fix(main): 🐛 主屏 [1/5] 补全 custom_tick_get 与 open 的声明`；body：`- lv_conf.h 的 LV_TICK_CUSTOM_INCLUDE 指向 <stdint.h>，lv_hal_tick.c 看不到 custom_tick_get 的声明；custom_main.c 用 open 却没有 <fcntl.h>`、`- custom.h 改含 <fcntl.h> 而不是在 custom_main.c 另加：两者同时包含会重复定义 struct flock；否决给 open 写局部 extern（绕开冲突而不解决）`、`- 声明只留在新增的 custom_tick.h 一处`、`详见 spec D8`。
 
-### Task 2: ⑬ tick 改单调时钟（`fix(main)`）
+### Task 2：⑬ tick 改单调时钟（`fix(main)`）
 
 **Files:** Create `tests/cases/main/test_tick.c`、`tests/cases/main/test_tick_arm32.c`、`tests/cases/main/tick.mutants`、`tests/cases/main/unit_tick_arm32.c`；Modify `custom/custom_main.c`、`tests/README.md`、`tests/cases/main/CMakeLists.txt`。
 
@@ -256,7 +258,7 @@ Expected：`main.tick.step_back_host` 失败（`(uint32_t)(b - a) < 1000u`，旧
 
 - [x] **Step 6: 提交** `fix(main): 🐛 主屏 [2/5] custom_tick_get 改用单调时钟与 64 位毫秒`；body：`- 32 位 time_t 下 tv_sec * 1000000 在 long 中溢出，板上 tick 每约 71.6 分钟回跳约 4.29×10^6 ms`、`- 改 CLOCK_MONOTONIC：基于墙钟时 NTP 校时会让 tick 突变；否决只补 uint64_t 转换（仍基于墙钟）`、`- 起点用独立 bool 标志，不拿 start_ms == 0 当哨兵`、`- 32 位测试加 -U_TIME_BITS -U_FILE_OFFSET_BITS：Ubuntu armhf gcc 默认 64 位 time_t，不加则旧实现不溢出`、`详见 spec D8、§2.4`。
 
-### Task 3: ⑫ 正午显示 AM（`fix(main)`）
+### Task 3：⑫ 正午显示 AM（`fix(main)`）
 
 **Files:** Create `tests/cases/main/clock.mutants`、`tests/cases/main/test_clock.c`、`tests/cases/main/unit_clock.c`；Modify `custom/custom_main.c`、`tests/cases/main/CMakeLists.txt`。
 
@@ -289,7 +291,7 @@ Expected：`main.tick.step_back_host` 失败（`(uint32_t)(b - a) < 1000u`，旧
 
 - [x] **Step 5: 提交** `fix(main): 🐛 主屏 [3/5] 修正正午与零点的 12 小时制显示`；body：`- 以 tm_hour > 12 判下午，12:00–12:59 显示 AM、0:00–0:59 显示 0`、`- 小时取 (tm_hour + 11) % 12 + 1，meridiem 改 snprintf；每秒走字的 clock_count_12() 本身正确且每 5 s 重新校准，vendored LVGL 不改`、`详见 spec §5.1`。
 
-### Task 4: ⑭ 日历高亮数组与日期解析（`fix(main)`）
+### Task 4：⑭ 日历高亮数组与日期解析（`fix(main)`）
 
 **Files:** Create `tests/cases/main/test_calendar.c`；Modify `generated/widgets_init.c`、`tests/cases/main/CMakeLists.txt`。
 
@@ -315,7 +317,7 @@ Expected：`main.tick.step_back_host` 失败（`(uint32_t)(b - a) < 1000u`，旧
 
 - [x] **Step 5: 提交** `fix(main): 🐛 主屏 [4/5] 日历高亮数组改静态并在建日历前解析日期`；body：`- highlighted_days 是局部数组，LVGL 只保存其指针，函数返回后日历读到失效栈；strtok 直接改写日期标签文本`、`- 三次 strtok 前移到置顶层可点击与 lv_calendar_create 之前，任一为 NULL 直接返回，畸形文本不调用 atoi，也不留下半成品日历和一直可点击的顶层`、`详见 spec §5.1`。
 
-### Task 5: ⑯ 主屏 `popen` 判空（`fix(main)`）
+### Task 5：⑯ 主屏 `popen` 判空（`fix(main)`）
 
 **Files:** Create `tests/cases/main/sysinfo.mutants`、`tests/cases/main/test_sysinfo.c`；Modify `custom/custom_main.c`、`tests/cases/main/CMakeLists.txt`。
 
@@ -339,18 +341,18 @@ CMake：`luckfox_add_test(sysinfo CASES popen_failure)`。
 
 - [x] **Step 5: 提交** `fix(main): 🐛 主屏 [5/5] 系统信息 popen 失败时不再读空指针`；body：`- popen 失败后仍 fgets(fp=NULL)；只在 fork 失败时可达，属防御性修复`、`- 失败按非 Ubuntu 处理（返回 0），与读不到 Ubuntu 的分支一致`、`详见 spec D18`。
 
-### 主屏回归检查点
+**主屏回归检查点**
 
 - [x] 执行 [H]：全部通过，`ctest -N -L arm32` 列出 `main.brightness_arm32.conversion` 与 `main.tick.monotonic_wrap`。
 - [x] 执行 [X]：两条 `rc=0`，告警数记入「验证证据」。
 - [x] `IDS='MAIN-13a MAIN-13b MAIN-12a MAIN-12b MAIN-16'` 执行 [M]：5 个 `KILLED`、退出 0。
 - [x] 推送：`git push -u origin cursor/fix-existing-defects-spec-6be3`。
 
-## WiFi（Task 6–14）
+## 8. WiFi（Task 6–14）
 
 WiFi 用例的公共前提：`setup_scr_WIFI(&guider_ui)` 会调用 `wifi_backend_init()` 与 `wifi_app_init()`，后者读 `WPA_FILE_PATH` 并回填文本框；`_wifi_conf_load()` 会操作 `WIFI_wifi_log_img`、`WIFI_loaded_wifi_label`，所以调用它之前必须先 `tst_app_init(480, 1, 0)` 并 `setup_scr_WIFI(&guider_ui)`。Load 按钮不依赖生成代码里的按钮字段名：测试自建一个按钮，挂上 `WIFI_load_btn_event_handler` 后发 `LV_EVENT_RELEASED`。
 
-### Task 6: ⑳ SSID/密码校验与提示标签（`fix(wifi)`）
+### Task 6：⑳ SSID/密码校验与提示标签（`fix(wifi)`）
 
 **Files:** Create `tests/cases/wifi/compile_prototypes.c`、`tests/cases/wifi/test_load.c`、`tests/cases/wifi/test_validate.c`、`tests/cases/wifi/validate.mutants`、`tests/cases/wifi/wifi_env.h`、`tests/cases/wifi/wifi_ui.h`；Modify `custom/custom.h`、`custom/custom_wifi.c`、`generated/setup_scr_WIFI.c`、`tests/CMakeLists.txt`、`tests/README.md`、`tests/cases/wifi/CMakeLists.txt`、`tests/support/fake_fs.c`、`tests/support/fake_fs.h`。
 
@@ -428,7 +430,7 @@ CMake 注册：
 
 - [x] **Step 6: 提交** `fix(wifi): 🐛 WiFi [1/9] 提交前校验 SSID 与密码并显示提示`；body：`- SSID、密码不校验就交给 wpa_cli，save_config 会让 wpa_supplicant 自己落盘，校验必须先于任何 wpa_cli 调用`、`- 按字节计长度：max_length 按字符计，且密码模式回填不受其限制`、`- " 与 \\ 合法，只拒绝 # 之前出现过 " 的值与非法 UTF-8；否决拒绝全部 " 与 \\（误伤合法口令）`、`- 提示用新增的红色标签，不复用 WIFI_loaded_wifi_label：5 秒定时器只取消隐藏不改文本，会残留成 SSID`、`- WPA_FILE_PATH 改 #ifndef 默认值，供测试指向临时目录`、`详见 spec D11、D12、D14`。
 
-### Task 7: ㉑ 配置原子写入（`fix(wifi)`）
+### Task 7：㉑ 配置原子写入（`fix(wifi)`）
 
 **Files:** Create `tests/cases/wifi/conf_write.mutants`、`tests/cases/wifi/test_conf_write.c`、`tests/cases/wifi/unit_wifi.c`；Modify `custom/custom_wifi.c`、`tests/CMakeLists.txt`、`tests/README.md`、`tests/cases/wifi/CMakeLists.txt`。
 
@@ -467,7 +469,7 @@ CMake：`luckfox_add_test(conf_write UNIT unit_wifi.c CASES same_dir_atomic io_f
 
 - [x] **Step 5: 提交** `fix(wifi): 🐛 WiFi [2/9] 配置改为同目录临时文件加 rename 原子替换`；body：`- 先 remove 再 rename，rename 失败时配置丢失；临时文件建在当前目录，可能跨文件系统而无法原子替换`、`- 临时文件用专用后缀 .luckfox.new，不用 wpa_supplicant 自己 save_config 的 .tmp`、`- fchmod 成原文件模式后 fflush + fsync 再 rename`、`详见 spec D14`。
 
-### Task 8: C3 只改 `ssid=`、`psk=` 行（`fix(wifi)`）
+### Task 8：C3 只改 `ssid=`、`psk=` 行（`fix(wifi)`）
 
 **Files:** Create `tests/cases/wifi/conf_match.mutants`；Modify `custom/custom_wifi.c`、`tests/cases/wifi/CMakeLists.txt`、`tests/cases/wifi/test_conf_write.c`。
 
@@ -494,7 +496,7 @@ CMake：`luckfox_add_test(conf_write UNIT unit_wifi.c CASES same_dir_atomic io_f
 
 - [x] **Step 5: 提交** `fix(wifi): 🐛 WiFi [3/9] 写配置时只替换 ssid= 与 psk= 行`；body：`- strstr 子串匹配让 scan_ssid=1、bssid= 命中 ssid=，wpa_psk= 等命中 psk=，提交时会写坏用户配置`、`- 去掉行首空白后按 <key>= 前缀匹配，读写共用同一个判定`、`详见 spec §3.2 C3、D13`。
 
-### Task 9: C5 块边界判定（`fix(wifi)`）
+### Task 9：C5 块边界判定（`fix(wifi)`）
 
 **Files:** Modify `custom/custom_wifi.c`、`tests/cases/wifi/CMakeLists.txt`、`tests/cases/wifi/conf_match.mutants`、`tests/cases/wifi/test_conf_write.c`、`tests/cases/wifi/unit_wifi.c`。
 
@@ -527,7 +529,7 @@ CMake：`luckfox_add_test(conf_write UNIT unit_wifi.c CASES same_dir_atomic io_f
 
 - [x] **Step 5: 提交** `fix(wifi): 🐛 WiFi [4/9] network 块的起止只认整行的 network={ 与 }`；body：`- strstr(line, "}") 让含 } 的 SSID/口令行在匹配 ssid= 之前就被当成块结束，写回时原样保留、读取时读不出；network={ 同理会被值里的子串命中`、`- 与 C3 共用行首去空白的判定，读写两侧一致`、`详见 spec §3.2 C5、D13`。
 
-### Task 10: ㉕ 读配置限宽并取首尾引号之间（`fix(wifi)`）
+### Task 10：㉕ 读配置限宽并取首尾引号之间（`fix(wifi)`）
 
 **Files:** Create `tests/cases/wifi/conf_get.mutants`、`tests/cases/wifi/test_conf_get.c`；Modify `custom/custom_wifi.c`、`tests/cases/wifi/CMakeLists.txt`、`tests/cases/wifi/unit_wifi.c`。
 
@@ -562,7 +564,7 @@ CMake：`luckfox_add_test(conf_get UNIT unit_wifi.c CASES long_and_quoted)`（�
 
 - [x] **Step 5: 提交** `fix(wifi): 🐛 WiFi [5/9] 读配置限定宽度并取首尾引号之间的值`；body：`- sscanf(" ssid=\"%[^\"]\"") 无宽度限制，长值溢出 128 字节缓冲区；遇到第一个 " 就停，含 " 的 SSID/口令回读丢尾`、`- 取第一个到最后一个 " 之间，_wifi_conf_get 增加缓冲区大小参数，调用方只有 wifi_app_init()`、`详见 spec D13`。
 
-### Task 11: ㉒ 扫描结果按 TAB 解析并解码（`fix(wifi)`）
+### Task 11：㉒ 扫描结果按 TAB 解析并解码（`fix(wifi)`）
 
 **Files:** Create `tests/cases/wifi/scan.mutants`、`tests/cases/wifi/test_scan.c`；Modify `custom/custom_wifi.c`、`tests/cases/wifi/CMakeLists.txt`、`tests/cases/wifi/unit_wifi.c`。
 
@@ -602,7 +604,7 @@ CMake：`luckfox_add_test(scan UNIT unit_wifi.c CASES parse parse_all_discarded 
 
 - [x] **Step 5: 提交** `fix(wifi): 🐛 WiFi [6/9] 扫描结果按 TAB 切分并解码 SSID 转义`；body：`- strtok("\t ") 把带空格的 SSID 截断，连续 TAB 合并让 flags 为空的条目错位；strlen < 16 过滤让长 SSID 不显示`、`- 解码 printf_encode 的 \\"、\\\\、\\e、\\n、\\r、\\t、\\xNN：不解码时用户选到的名字与 AP 不符`、`- 空、含控制字符、残缺或未知转义、超过 127 字节的条目整条丢弃：lv_dropdown 以 \\n 分隔，换行会拆项，其余放不进 networks[].ssid 或还原不出真实名称；上限按保留项计`、`详见 spec D15`。
 
-### Task 12: ㉓ + C4 WiFi `popen` 失败处理（`fix(wifi)`）
+### Task 12：㉓ + C4 WiFi `popen` 失败处理（`fix(wifi)`）
 
 **Files:** Create `tests/cases/wifi/popen.mutants`、`tests/cases/wifi/test_popen.c`；Modify `custom/custom_wifi.c`、`tests/cases/wifi/CMakeLists.txt`、`tests/cases/wifi/unit_wifi.c`。
 
@@ -626,7 +628,7 @@ CMake：`luckfox_add_test(popen UNIT unit_wifi.c CASES failure)`。
 
 - [x] **Step 5: 提交** `fix(wifi): 🐛 WiFi [7/9] wpa_cli 无法启动时不再 pclose(NULL) 或退出进程`；body：`- _wifi_status_update 在 popen 失败分支里 pclose(NULL)；_wifi_conf_load 失败直接 exit(EXIT_FAILURE) 让整个界面退出`、`- 改为提示并返回，提示复用校验用的红色标签`、`详见 spec D18、§3.2 C4`。
 
-### Task 13: ㉔ WIFI 定时器只在 WIFI 页刷新（`fix(wifi)`）
+### Task 13：㉔ WIFI 定时器只在 WIFI 页刷新（`fix(wifi)`）
 
 **Files:** Create `tests/cases/wifi/test_timer.c`、`tests/cases/wifi/timer.mutants`；Modify `custom/custom_wifi.c`、`tests/cases/wifi/CMakeLists.txt`。
 
@@ -650,7 +652,7 @@ CMake：`luckfox_add_test(timer CASES inactive_screen)`。
 
 - [x] **Step 5: 提交** `fix(wifi): 🐛 WiFi [8/9] 离开 WIFI 页后定时器不再 popen wpa_cli`；body：`- 离开 WIFI 页后 5 s 定时器仍每次 popen("wpa_cli status")`、`- 回调开头判当前屏，不删除定时器：*_del 标志让 setup_scr_WIFI 只执行一次，删除后再也不会重建；否决 pause/resume 与 SCREEN_LOADED 立即刷新（多一处屏幕事件接线）`、`- 代价：回到 WIFI 页后最多 5 s 内状态仍是旧的`、`详见 spec D16`。
 
-### Task 14: ㉔ 每次 Load 前清掉 wlan0 的 `udhcpc`（`fix(wifi)`）
+### Task 14：㉔ 每次 Load 前清掉 wlan0 的 `udhcpc`（`fix(wifi)`）
 
 **Files:** Create `tests/cases/wifi/dhcp.mutants`、`tests/cases/wifi/test_dhcp.c`；Modify `custom/custom_wifi.c`、`tests/cases/wifi/CMakeLists.txt`。
 
@@ -674,16 +676,16 @@ CMake：`luckfox_add_test(dhcp UNIT unit_wifi.c CASES single_instance)`。
 
 - [x] **Step 5: 提交** `fix(wifi): 🐛 WiFi [9/9] 重启 udhcpc 前先结束 wlan0 上的旧实例`；body：`- 每按一次 Load 多起一个 udhcpc -i wlan0`、`- pkill -f '[u]dhcpc -i wlan0' 只匹配 wlan0 的实例；否决裸 pkill udhcpc（误杀 eth0 等其他接口）`、`- 与启动命令分两次 system()：合在一条 sh -c 里时 shell 自己的命令行也匹配而被杀（退出码 143）`、`- 不加 -n（会改变重试行为）；板上是否有 pkill 见真机清单，没有时改用 -p pidfile`、`详见 spec D17`。
 
-### WiFi 回归检查点
+**WiFi 回归检查点**
 
 - [x] 执行 [H]：全部通过；并行运行下各 WiFi 用例的配置与日志都在各自临时目录（`grep -c '/etc/wpa_supplicant.conf' build-tests/Testing/Temporary/LastTest.log` 为 0）。
 - [x] 执行 [X]：两条 `rc=0`。
 - [x] `IDS='WIFI-20a WIFI-20b WIFI-20c WIFI-20utf8 WIFI-20cont WIFI-20hide WIFI-20length WIFI-21a WIFI-21b WIFI-C3 WIFI-C5a WIFI-C5b WIFI-C5c WIFI-25 WIFI-22a WIFI-22b WIFI-22c WIFI-23 WIFI-C4 WIFI-24t WIFI-24d'` 执行 [M]：21 个 `KILLED`、退出 0。
 - [x] 推送。
 
-## 画板（Task 15–16）
+## 9. 画板（Task 15–16）
 
-### Task 15: ⑱ 画布缓冲区改堆分配（`fix(sketchpad)`）
+### Task 15：⑱ 画布缓冲区改堆分配（`fix(sketchpad)`）
 
 **Files:** Create `tests/cases/sketchpad/CMakeLists.txt`、`tests/cases/sketchpad/canvas.mutants`、`tests/cases/sketchpad/test_canvas.c`、`tests/cases/sketchpad/unit_canvas.c`；Modify `custom/custom.h`、`custom/custom_sketchpad.c`、`generated/setup_scr_Sketchpad.c`、`tests/CMakeLists.txt`。
 
@@ -732,7 +734,7 @@ CMake：`luckfox_add_test(dhcp UNIT unit_wifi.c CASES single_instance)`。
 
 - [x] **Step 5: 提交** `fix(sketchpad): 🐛 画板 [1/2] 画布缓冲区改为堆上一次性分配`；body：`- 缓冲区是 setup_scr_Sketchpad 里的栈 VLA，函数返回后画布指向失效栈；又把字节数当 lv_color_t 元素数，多分配 4 倍`、`- lv_mem_alloc 按 LV_CANVAS_BUF_SIZE_TRUE_COLOR 字节分配，指针存进对象、析构时先 invalidate 再释放；否决 static 数组（480 屏 691 KB、720 屏 1.5 MB 常驻 BSS）`、`- 分配失败返回错误、不设缓冲，画笔与清除跳过空缓冲`、`详见 spec D10`。
 
-### Task 16: ⑲ 笔迹坐标换算到画布（`fix(sketchpad)`）
+### Task 16：⑲ 笔迹坐标换算到画布（`fix(sketchpad)`）
 
 **Files:** Create `tests/cases/sketchpad/stroke.mutants`、`tests/cases/sketchpad/test_stroke.c`；Modify `custom/custom_sketchpad.c`、`tests/cases/sketchpad/CMakeLists.txt`。
 
@@ -756,16 +758,16 @@ CMake：`luckfox_add_test(dhcp UNIT unit_wifi.c CASES single_instance)`。
 
 - [x] **Step 5: 提交** `fix(sketchpad): 🐛 画板 [2/2] 笔迹坐标换算为画布坐标`；body：`- lv_indev_get_point 返回屏幕坐标，画布居中后上移 80，笔迹与手指偏移`、`- 减去 lv_obj_get_coords() 的左上角`、`详见 spec D10`。
 
-### 画板回归检查点
+**画板回归检查点**
 
 - [x] 执行 [H]：全部通过。执行 [X]：两条 `rc=0`。`IDS='SKETCH-18 SKETCH-19'` 执行 [M]：2 个 `KILLED`。
 - [x] 推送。
 
-## 音乐页（Task 17–29）
+## 10. 音乐页（Task 17–29）
 
 所有调用 `music_scan_list`、`setup_scr_Music_player` 或 `_music_*` 的用例先用 `music_env_socketpair()` 把 `fd_mpv` 换成 `socketpair` 的一端：扫描会写 `loadfile`，`music_app_init()`（`setup_scr_Music_player.c:463` 调用）与选中回调会写播放控制命令；`fd_mpv` 初值 -1 到 Task 27 才引入，此前默认的 0 是 stdin。音乐页的按钮同样用测试自建按钮挂上对应 handler 后发事件。
 
-### Task 17: ② 选项串按实际长度分配（`fix(music)`）
+### Task 17：② 选项串按实际长度分配（`fix(music)`）
 
 **Files:** Create `tests/cases/music/CMakeLists.txt`、`tests/cases/music/list.mutants`、`tests/cases/music/music_env.h`、`tests/cases/music/test_list.c`、`tests/cases/music/test_list_alloc.c`、`tests/cases/music/unit_list_alloc.c`；Modify `custom/custom.h`、`custom/custom_musicplayer.c`、`generated/setup_scr_Music_player.c`、`tests/CMakeLists.txt`、`tests/README.md`、`tests/support/fake_fs.c`、`tests/support/fake_fs.h`。
 
@@ -826,7 +828,7 @@ CMake：`luckfox_add_test(dhcp UNIT unit_wifi.c CASES single_instance)`。
 
 `ctest --test-dir build-tests --output-on-failure -R '^music.list_alloc.'`：`MUSIC-13` 单独删除清空逻辑时 4 条断言失败，完整实现通过；整项生产改动撤销时先因接口不兼容编译失败；`IDS=MUSIC-13` 执行 [M]，Expected KILLED。
 
-### Task 18: C2 跳过含 `\n` 的文件名（`fix(music)`）
+### Task 18：C2 跳过含 `\n` 的文件名（`fix(music)`）
 
 **Files:** Create `tests/cases/music/newline.mutants`；Modify `custom/custom_musicplayer.c`、`tests/cases/music/CMakeLists.txt`、`tests/cases/music/test_list.c`。
 
@@ -848,7 +850,7 @@ CMake：`luckfox_add_test(dhcp UNIT unit_wifi.c CASES single_instance)`。
 
 - [x] **Step 5: 提交** `fix(music): 🐛 音乐 [2/13] 扫描时跳过文件名含换行的音乐文件`；body：`- lv_roller 以 \n 分隔选项，含 \n 的文件名占两项，此后选中下标与链表 id 全部错位`、`- 跳过并打印一行，不改写文件名`、`详见 spec §3.2 C2`。
 
-### Task 19: ③ `loadfile` 命令改用 cJSON 构造（`fix(music)`）
+### Task 19：③ `loadfile` 命令改用 cJSON 构造（`fix(music)`）
 
 **Files:** Create `tests/cases/music/mpv_cmd.mutants`、`tests/cases/music/test_mpv_cmd.c`；Modify `custom/custom_musicplayer.c`、`tests/cases/music/CMakeLists.txt`。
 
@@ -877,7 +879,7 @@ CMake：`luckfox_add_test(mpv_cmd CASES escaping_and_length)`。
 
 - [x] **Step 5: 提交** `fix(music): 🐛 音乐 [3/13] mpv 的 loadfile 命令改用 cJSON 构造`；body：`- sprintf 进 cmd[256]，长文件名栈溢出；文件名里的 " 可改写 JSON 命令`、`- 用已有的 cJSON 构造并转义，经新增的 mpv_send() 发出（后续收口全部写 mpv 的路径）`、`详见 spec D3、D6`。
 
-### Task 20: ④ roller 选中长文件名死循环（`fix(music)`）
+### Task 20：④ roller 选中长文件名死循环（`fix(music)`）
 
 **Files:** Create `tests/cases/music/roller.mutants`、`tests/cases/music/test_roller.c`；Modify `custom/custom_musicplayer.c`、`tests/cases/music/CMakeLists.txt`。
 
@@ -901,7 +903,7 @@ CMake：`luckfox_add_test(roller CASES select_long_name)`。
 
 - [x] **Step 5: 提交** `fix(music): 🐛 音乐 [4/13] roller 按下标而非截断后的文件名定位歌曲`；body：`- lv_roller_get_selected_str 截到 buf[32]，≥32 字节的文件名 strcmp 永不相等，在环形链表上死循环`、`- 改用 lv_roller_get_selected() 按 id 查找，判空与越界；否决加大 buf（仍可能被更长的名字截断）`、`详见 spec D5`。
 
-### Task 21: ⑧ `opendir` 判空（`fix(music)`）
+### Task 21：⑧ `opendir` 判空（`fix(music)`）
 
 **Files:** Create `tests/cases/music/opendir.mutants`；Modify `custom/custom_musicplayer.c`、`tests/cases/music/CMakeLists.txt`、`tests/cases/music/test_list.c`。
 
@@ -923,7 +925,7 @@ CMake：`luckfox_add_test(roller CASES select_long_name)`。
 
 - [x] **Step 5: 提交** `fix(music): 🐛 音乐 [5/13] 音乐目录打不开时不再 readdir(NULL)`；body：`- /music 缺失时 opendir 返回 NULL 后仍 readdir`、`- 打印并返回 -1，选项串置为空串`、`详见 spec D18`。
 
-### Task 22: C1 空列表空指针（`fix(music)`）
+### Task 22：C1 空列表空指针（`fix(music)`）
 
 **Files:** Create `tests/cases/music/empty_list.mutants`、`tests/cases/music/test_empty_list.c`；Modify `custom/custom_musicplayer.c`、`tests/cases/music/CMakeLists.txt`。
 
@@ -949,7 +951,7 @@ roller 回调的空链表判断已在 Task 20 加入。
 
 - [x] **Step 5: 提交** `fix(music): 🐛 音乐 [6/13] 音乐列表为空时不再解引用空节点`；body：`- /music 为空或缺失时 playing_music_node 为 NULL，进入音乐页（music_app_init）与上一曲、下一曲都会解引用`、`- 与 opendir 判空同属一条路径，不一起修则判空后仍崩`、`详见 spec §3.2 C1`。
 
-### Task 23: ⑦ 写 mpv 套接字不触发 SIGPIPE（`fix(music)`）
+### Task 23：⑦ 写 mpv 套接字不触发 SIGPIPE（`fix(music)`）
 
 **Files:** Create `tests/cases/music/mpv_send.mutants`、`tests/cases/music/test_mpv_send.c`；Modify `custom/custom_musicplayer.c`、`tests/cases/music/CMakeLists.txt`。
 
@@ -975,7 +977,7 @@ CMake：`luckfox_add_test(mpv_send CASES peer_closed)`。
 
 - [x] **Step 5: 提交** `fix(music): 🐛 音乐 [7/13] 写 mpv 套接字改用 MSG_NOSIGNAL`；body：`- mpv 退出后 write(fd_mpv) 触发 SIGPIPE，整个界面被杀`、`- 全部写 mpv 的路径收口到 mpv_send()，以 send(MSG_NOSIGNAL) 发送、失败只打印；否决 signal(SIGPIPE, SIG_IGN)（进程级，影响 WiFi 的 popen）`、`详见 spec D6`。
 
-### Task 24: ⑤ 监听线程释放 cJSON（`fix(music)`）
+### Task 24：⑤ 监听线程释放 cJSON（`fix(music)`）
 
 **Files:** Create `tests/cases/music/monitor.mutants`、`tests/cases/music/test_monitor.c`；Modify `custom/custom_musicplayer.c`、`tests/cases/music/CMakeLists.txt`。
 
@@ -1000,7 +1002,7 @@ CMake：`luckfox_add_test(monitor CASES no_leak)`（Task 25 追加）。
 
 - [x] **Step 5: 提交** `fix(music): 🐛 音乐 [8/13] mpv 监听线程解析后释放 cJSON 对象`；body：`- 每收到一行 mpv 事件就 cJSON_Parse 一次且从不释放，播放期间每秒数次，内存持续增长`、`详见 spec §5.4`。
 
-### Task 25: ⑥ `read` 读满后补 NUL（`fix(music)`）
+### Task 25：⑥ `read` 读满后补 NUL（`fix(music)`）
 
 **Files:** Modify `custom/custom_musicplayer.c`、`tests/cases/music/CMakeLists.txt`、`tests/cases/music/monitor.mutants`、`tests/cases/music/test_monitor.c`。
 
@@ -1024,7 +1026,7 @@ CMake：`luckfox_add_test(monitor CASES no_leak)`（Task 25 追加）。
 
 - [x] **Step 5: 提交** `fix(music): 🐛 音乐 [9/13] mpv 监听线程读满缓冲区时补结尾 NUL`；body：`- read 读满 512 字节时 buf 没有结尾 NUL，随后 strtok 越界读`、`- 读 sizeof(buf) - 1 并按返回值补 NUL`、`详见 spec §5.4`。
 
-### Task 26: ⑨ 补齐缺失的 `return`（`fix(music)`）
+### Task 26：⑨ 补齐缺失的 `return`（`fix(music)`）
 
 **Files:** Create `tests/cases/music/return.mutants`；Modify `custom/custom_musicplayer.c`、`tests/cases/music/CMakeLists.txt`。
 
@@ -1044,7 +1046,7 @@ CMake：`luckfox_add_test(monitor CASES no_leak)`（Task 25 追加）。
 
 - [x] **Step 5: 提交** `fix(music): 🐛 音乐 [10/13] 补齐音乐页三个 int 函数的返回值`；body：`- music_player_thread_init、music_app_init、music_app_quit 声明返回 int 却落到函数末尾，调用方读到未定义值`、`- 以 -Werror=return-type 的编译检查作为失败测试（-fsyntax-only 不产生该诊断，须 -c）`、`详见 spec D19`。
 
-### Task 27: ① `vfork` 子进程 exec 失败后 `_exit(127)`（`fix(music)`）
+### Task 27：① `vfork` 子进程 exec 失败后 `_exit(127)`（`fix(music)`）
 
 **Files:** Create `tests/cases/music/player.mutants`、`tests/cases/music/test_player.c`；Modify `AGENTS.md`、`custom/custom_musicplayer.c`、`tests/CMakeLists.txt`、`tests/README.md`、`tests/cases/music/CMakeLists.txt`、`tests/cases/music/mpv_send.mutants`、`tests/cases/music/test_mpv_send.c`、`tests/support/fake_fs.c`、`tests/support/fake_fs.h`。
 
@@ -1084,7 +1086,7 @@ CMake：`luckfox_add_test(player CASES exec_failure)`。
 
 - [x] **Step 6: 提交** `fix(music): 🐛 音乐 [11/13] mpv 启动失败时子进程 _exit 而不是 return`；body：`- vfork 子进程与父进程共用栈，execlp 失败后 return 会破坏父进程栈；板上自带 mpv 不触发，主机无 mpv 时必现`、`- 套接字路径改为 #ifndef MPV_SOCKET_PATH：默认值编译期 _Static_assert，覆盖值（测试的运行期表达式）在 vfork 前做长度检查；否决限定字面量并拼接（同一可执行文件的多个用例只能共用一条路径，ctest -j 下串扰）与读环境变量（改变板上行为）`、`- fd_mpv 初值 -1，mpv_send 对未连接直接返回`、`- 常规 UI 测试不调用 custom_init()，以避免硬件初始化；mpv 启动与连接由 cases/music/ 的假 mpv 用例单独验证`、`详见 spec D7、§5.4`。
 
-### Task 28: ⑩ 轮询连接、超时回收、删同步 `mpv`（`fix(music)`）
+### Task 28：⑩ 轮询连接、超时回收、删同步 `mpv`（`fix(music)`）
 
 **Files:** Create `tests/cases/music/connect.mutants`、`tests/cases/music/fake_mpv.py`；Modify `custom/custom_main.c`、`custom/custom_musicplayer.c`、`tests/cases/music/CMakeLists.txt`、`tests/cases/music/test_player.c`。
 
@@ -1122,7 +1124,7 @@ CMake：`luckfox_add_test(player CASES exec_failure)`。
 
 - [x] **Step 6: 提交** `fix(music): 🐛 音乐 [12/13] mpv 连接改为限时轮询并回收失败的子进程`；body：`- 固定 sleep(1) 后只 connect 一次：每次启动白等 1 s，慢板子仍可能连不上；连接前的 sleep(0.1) 实为 sleep(0)；custom_init() 里同步跑一次无参 mpv 的结果从未使用`、`- 每 50 ms 先 waitpid(WNOHANG) 再 connect，上限 5 s：mpv 缺失（127）或中途退出立即放弃，不靠耗尽重试；超时、socket()、pthread_create 失败都先 SIGKILL 再 waitpid，不留占着音频设备的 mpv 与僵尸进程`、`- 轮询期间用局部 fd，连上才赋给 fd_mpv`、`- 板上 mpv 启动耗时见真机清单，用于核对 5 s 上限`、`详见 spec D7、§2.5`。
 
-### Task 29: ⑪ 删除 `close(0)`（`fix(music)`）
+### Task 29：⑪ 删除 `close(0)`（`fix(music)`）
 
 **Files:** Create `tests/cases/music/stdin.mutants`；Modify `custom/custom_musicplayer.c`、`tests/cases/music/CMakeLists.txt`、`tests/cases/music/test_player.c`。
 
@@ -1142,16 +1144,16 @@ CMake：`luckfox_add_test(player CASES exec_failure)`。
 
 - [x] **Step 5: 提交** `fix(music): 🐛 音乐 [13/13] 启动 mpv 后不再关闭标准输入`；body：`- close(0) 让随后的 socket() 拿到 fd 0，mpv 套接字顶替了标准输入，其他读 stdin 的代码会读到 mpv 的数据`、`详见 spec §2.1 ⑪`。
 
-### 音乐页回归检查点
+**音乐页回归检查点**
 
 - [x] 执行 [H]：全部通过；`ls /tmp | grep -c luckfox-tests-` 与运行前相同（无新增残留）；`pgrep -f fake_mpv.py` 无输出。
 - [x] 执行 [X]：两条 `rc=0`；uClibc 下 `_Static_assert` 与 `MSG_NOSIGNAL` 可编译。
 - [x] `IDS='MUSIC-2 MUSIC-C2 MUSIC-3 MUSIC-4 MUSIC-8 MUSIC-C1 MUSIC-7 MUSIC-5 MUSIC-6 MUSIC-9 MUSIC-1 MUSIC-10a MUSIC-10b MUSIC-10c MUSIC-11 MUSIC-12 MUSIC-13 MUSIC-14'` 执行 [M]：18 个 `KILLED`、退出 0。
 - [x] 推送。
 
-## 退出（Task 30）
+## 11. 退出（Task 30）
 
-### Task 30: ⑰ OFF 退出清屏改为 `custom_fb_clear()`（`fix(exit)`）
+### Task 30：⑰ OFF 退出清屏改为 `custom_fb_clear()`（`fix(exit)`）
 
 **Files:** Create `custom/custom_fb.c`、`custom/custom_fb.h`、`tests/cases/exit/CMakeLists.txt`、`tests/cases/exit/fb_clear.mutants`、`tests/cases/exit/test_fb_clear.c`；Modify `AGENTS.md`、`custom/custom.h`、`src/main.c`、`tests/CMakeLists.txt`、`tests/README.md`、`tests/support/fake_fs.c`、`tests/support/fake_fs.h`。
 
@@ -1189,13 +1191,15 @@ CMake：`luckfox_add_test(player CASES exec_failure)`。
 - [x] **Step 6: 更新告警基线**：执行 [X]（两条构建均用 `cmake --build <构建目录> --clean-first -j"$(nproc)"` 清理重编），取两条构建日志的 `grep -c 'warning:'`（当前实测 glibc 119、uClibc 118）；`AGENTS.md`「Lint（代码检查）」节记录这两条最终告警基线，其余文字不动。
 - [x] **Step 7: 提交** `fix(exit): 🐛 退出 [1/1] OFF 退出清屏改为 C 实现并静默处理写满`；body：`- system("cat /dev/zero > /dev/fb0") 每次退出都打印 cat: write error: No space left on device`、`- 4096 字节小块循环写，ENOSPC 与 write 返回 0 视为写满、EINTR 重试，总量上限防止写普通文件时不停；否决先取 FBIOGET_FSCREENINFO 的 smem_len（多一个 ioctl 依赖，/dev/full 与普通文件测不了）`、`详见 spec D9`。
 
-### 退出回归检查点
+**退出回归检查点**
 
 - [x] 执行 [H]：全部通过。执行 [X]（同 Task 30 Step 6 清理重编）：两条 `rc=0`（`src/main.c` 链接到 `custom_fb_clear`）。`IDS='EXIT-17a EXIT-17b EXIT-17c EXIT-17d'` 执行 [M]。推送。
 
 ---
 
-### Task 31: 全量验证、文档提交收尾与 CI
+## 12. 收尾（Task 31–32）
+
+### Task 31：全量验证、文档提交收尾与 CI
 
 - [x] **Step 1: 全量改坏检验**：`R=$(mktemp -d); tests/tools/mutate.sh 2>&1 | tee "$R/mutate-all.txt"`。Expected：原有 12 个与本 PR 新增 50 个变体全部 `KILLED`，`62 run, 0 skipped`，退出 0。
 - [x] **Step 2: 全量测试（root 与非 root）**：在确认不存在的全新构建目录执行 [H]，`100% tests passed`，输出中 `runtime error`、`ERROR: AddressSanitizer`、`ERROR: LeakSanitizer` 命中 0；`ctest --test-dir build-tests -N | tail -1` 的总数与本 plan 新增用例（21 条基线 + 本 PR 新增）一致；`chmod -R a+rwX build-tests && su nobody -s /bin/sh -c 'cd /workspace && ctest --test-dir build-tests -j"$(nproc)"'` 同样全过（容器无 `su` 或 `nobody` 时记「未执行」及原因），之后恢复属主与权限。
@@ -1220,7 +1224,7 @@ done
 
 - [x] **Step 6: CI**：PR #8 的 `pull_request` [run 37125871849](https://github.com/yuangezhizao/luckfox_pico_lvgl_example/actions/runs/37125871849) 除 `docs/superpowers` 外代码树与最终提交相同，运行的 head 由 `gh run view 37125871849 --json headSha --jq .headSha` 查询。`build-image`（dest-lock 复用 dev 镜像）、glibc、uClibc、`native-tests` 四个 job 均 success；`native-tests` 为 78/78，`main.brightness_arm32.conversion` 与 `main.tick.monotonic_wrap` 均 Passed，sanitizer 与 LSan ptrace 错误 0；各 job 耗时见「验证证据」。
 
-### Task 32: 真机验证清单（物理 Luckfox Pico Ultra W，合并前完成）
+### Task 32：真机验证清单（物理 Luckfox Pico Ultra W，合并前完成）
 
 CI 成功只证明交叉编译与测试门禁通过，不能代替真机点亮。逐项记录结果到「验证证据」：
 
@@ -1234,7 +1238,7 @@ CI 成功只证明交叉编译与测试门禁通过，不能代替真机点亮�
 
 执行结果见「验证证据」的 Task 32 各行与「真机遗留问题」；勾选表示已执行，不表示全部通过。
 
-## 验证证据
+## 13. 验证证据
 
 各 Task 的全量用例数来自该提交的独立构建与测试；最终树检查点为 78 条用例（21 条基线与 57 条新增），历史检查点按所标 Task 导出源码后执行相应命令，CI 行仅记录所列 run 的结果。最终告警基线以 `AGENTS.md` 为准。
 
@@ -1313,7 +1317,7 @@ CI 成功只证明交叉编译与测试门禁通过，不能代替真机点亮�
 | Task 32 mpv 耗时 | 3 次清缓存与 3 次预热，核对 5 秒预算 | 清缓存后启动 mpv、记录套接字出现耗时：780/780/780 ms；先运行无参 `mpv` 预热：520/510/500 ms，套接字均出现；通过，最大值距 5 秒上限 4.22 秒；采用清缓存模拟，未测整板重启，套接字出现不等于连接成功 |
 | Task 32 OFF 退出 | 屏幕清黑、进程退出、日志无写错误 | 点击 OFF 后观察屏幕、`ps` 与终端日志：屏幕清黑，应用与 mpv 退出，无 `cat: write error`；通过；残留套接字已清理 |
 
-## 与计划的偏离及原因
+## 14. 与计划的偏离及原因
 
 - Task 2：32 位换算的 Δ=1 s 对照通过、Δ=1 小时对照失败；主机用例以 20 ms 睡眠后差值大于 0 且小于 1000u 判定单调递增，避免恒为 0 的实现通过。
 - Task 3、4：时制测试必须初始化 UI，避免日期更新先访问空控件；日历用例在断言后刷新 stdout，确保 ASan 终止前输出可见。
@@ -1333,7 +1337,7 @@ CI 成功只证明交叉编译与测试门禁通过，不能代替真机点亮�
 - 告警基线：glibc 119、uClibc 118；声明补全、移除画布栈 VLA、完整 WiFi 原型、删除未用代码、消除 loadfile 溢出与补齐返回值均减少既存告警。
 - 变体清单：共 62 个，其中原有 12 个、本 PR 新增 50 个；主屏 16、WiFi 22、画板 2、音乐 18、退出 4。
 
-### 真机遗留问题
+### 14.1 真机遗留问题
 
 以下现象转到后续 PR 处理，复现依据见 [Task 32 真机测试评论](https://github.com/yuangezhizao/luckfox_pico_lvgl_example/pull/8#issuecomment-5968843362)：
 

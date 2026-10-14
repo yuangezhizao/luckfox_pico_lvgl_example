@@ -10,7 +10,7 @@
 
 **Spec:** [`docs/superpowers/specs/2026-09-27-lvgl-example-brightness-slider-design.md`](../specs/2026-09-27-lvgl-example-brightness-slider-design.md)
 
-## Global Constraints
+## 1. Global Constraints
 
 - 滑条范围 10–100（百分比），永不向 `brightness` 写 0；10% 由本板真机最低可见 raw 25 确定（spec D2）。
 - 换算：`pct = (raw × 100 + max / 2) / max`（`raw` 先夹到 [0, max]），`raw = (pct × max + 50) / 100` 且不小于 1，中间值以 `long long` 计算；`max_brightness` 有效范围 1 到 `INT_MAX / 100`（spec §5.2）。
@@ -20,7 +20,7 @@
 - glibc 与 uClibc 两条 CI 行均须编译通过（spec NFR3）。
 - 提交序：`feat(custom)` → `docs(agents)` → `docs(superpowers)`（spec Q8）。
 
-## File Structure
+## 2. File Structure
 
 | 文件 | 职责 | Task |
 |---|---|---|
@@ -32,7 +32,9 @@
 
 ---
 
-### Task 1: 原生预览 harness（以仓库 `tests/` 为准，已完成）
+## 3. Tasks
+
+### Task 1：原生预览 harness（以仓库 `tests/` 为准，已完成）
 
 **Files:** Create：`tests/support/app_env.c`、`tests/tools/screenshots.c`、`tests/tools/preview.c`、`tests/CMakeLists.txt`。
 
@@ -52,7 +54,7 @@ Expected：`build-tests/screenshots/` 下 480、720 各有初始 80%、最左 10
 
 ---
 
-### Task 2: 亮度模块（`feat(custom)`，已完成）
+### Task 2：亮度模块（`feat(custom)`，已完成）
 
 **Files:** Create `custom/custom_brightness.h`、`custom/custom_brightness.c`（以仓库为准）。
 
@@ -64,7 +66,7 @@ Expected：`build-tests/screenshots/` 下 480、720 各有初始 80%、最左 10
 
 ---
 
-### Task 3: 在 `main_app_init()` 挂载（`feat(custom)`，已完成）
+### Task 3：在 `main_app_init()` 挂载（`feat(custom)`，已完成）
 
 **Files:** Modify `custom/custom_main.c`：include 区加 `#include "custom_brightness.h"`，`main_app_init()` 末尾加 `brightness_ui_create(guider_ui.Main);`。
 
@@ -75,7 +77,7 @@ Expected：`build-tests/screenshots/` 下 480、720 各有初始 80%、最左 10
 
 ---
 
-### Task 4: 本机交叉编译与 uClibc 冒烟（已完成）
+### Task 4：本机交叉编译与 uClibc 冒烟（已完成）
 
 - [x] **Step 1: glibc**
 
@@ -111,7 +113,7 @@ Expected：`rootfs.img: OK`；`/usr/bin/mpv` 为 `Type: regular`，`/usr/bin/opk
 
 ---
 
-### Task 5: 独立两阶段评审与故意改坏检验（已完成）
+### Task 5：独立两阶段评审与故意改坏检验（已完成）
 
 **Files:** 无仓库改动（断言与改坏检验以仓库 `tests/` 为准）。
 
@@ -128,7 +130,7 @@ Expected：9 个变体均打印 `KILLED`，失败断言见「验证证据」。
 
 ---
 
-### Task 6: 小 `max_brightness` 时不写 0（评审 I-1，已完成）
+### Task 6：小 `max_brightness` 时不写 0（评审 I-1，已完成）
 
 **Files:** Modify `custom/custom_brightness.c` `backlight_write_percent()`：换算后 `if (raw < 1) raw = 1;`；断言增 H9/H1。
 
@@ -140,7 +142,7 @@ Expected：9 个变体均打印 `KILLED`，失败断言见「验证证据」。
 
 ---
 
-### Task 7: 评审 Minor 处理（M-1、M-3、M-4，已完成）
+### Task 7：评审 Minor 处理（M-1、M-3、M-4，已完成）
 
 **Files:** Modify `custom/custom_brightness.c`；调整断言。
 
@@ -155,7 +157,7 @@ Expected：9 个变体均打印 `KILLED`，失败断言见「验证证据」。
 
 ---
 
-### Task 8: `AGENTS.md` 更正 uClibc 构建前提（`docs(agents)`，已完成）
+### Task 8：`AGENTS.md` 更正 uClibc 构建前提（`docs(agents)`，已完成）
 
 **Files:** Modify `AGENTS.md`（以仓库为准）：`### 构建（标准开发流程）` 中 `LUCKFOX_SDK_PATH` 一行改为「无需完整 SDK，稀疏检出约 233 MB 工具链」并给出检出与构建命令；`### 运行 / 验证 GUI（重要陷阱）` 首段末尾补 `qemu-user` 冒烟命令，注明 `LD_LIBRARY_PATH` 须为绝对路径。
 
@@ -165,7 +167,7 @@ Expected：9 个变体均打印 `KILLED`，失败断言见「验证证据」。
 
 ---
 
-### Task 9: 真机验证（已完成，下限不达标由 Task 11 修订）
+### Task 9：真机验证（已完成，下限不达标由 Task 11 修订）
 
 **Files:** 无仓库文件。消费 run 36403515848（提交 `3c8fb4f`，当时 `BRIGHTNESS_MIN_PCT` 为 5）的 uClibc artifact；下限修订后的复测见 Task 12。结果回填「验证证据」。
 
@@ -183,7 +185,7 @@ Expected：一个背光目录（预期 `backlight`），`max_brightness` 为 255
 
 ---
 
-### Task 10: 整理提交（已完成）
+### Task 10：整理提交（已完成）
 
 **Files:** 无内容改动。
 
@@ -191,7 +193,7 @@ Expected：一个背光目录（预期 `backlight`），`max_brightness` 为 255
 
 ---
 
-### Task 11: 按真机阈值把下限上调到 10%（已完成）
+### Task 11：按真机阈值把下限上调到 10%（已完成）
 
 **Files:** Modify `custom/custom_brightness.c` 的 `BRIGHTNESS_MIN_PCT`（5 → 10）与其注释；断言 A；spec D2、FR2、FR3、§5.2、§6、§7、Q3 已随之修订。代码并入 `feat(custom)`，文档并入 `docs(superpowers)`。
 
@@ -206,7 +208,7 @@ Expected：一个背光目录（预期 `backlight`），`max_brightness` 为 255
 
 ---
 
-### Task 12: 真机复测（已完成）
+### Task 12：真机复测（已完成）
 
 **Files:** 无仓库文件。消费 Task 11 推送后 CI 的 uClibc artifact。
 
@@ -214,7 +216,7 @@ Expected：一个背光目录（预期 `backlight`），`max_brightness` 为 255
 
 ---
 
-### Task 13: 32 位下换算不溢出（已完成）
+### Task 13：32 位下换算不溢出（已完成）
 
 **Files:** Modify `custom/custom_brightness.c` 的 `backlight_read_percent()`、`backlight_write_percent()` 与 `BRIGHTNESS_MAX_RAW` 注释；测试 `tests/cases/main/{test,unit}_brightness_arm32.c`。代码并入 `feat(custom)`。
 
@@ -228,11 +230,11 @@ Expected：一个背光目录（预期 `backlight`），`max_brightness` 为 255
 - [x] **Step 3: 修复**：两处中间值改为 `(long long)` 计算后转回 `long`；`BRIGHTNESS_MAX_RAW` 注释改为「超过即视为异常，中间值一律用 long long」。M7 锚点随之改为新写法（Task 5 Step 4）。
 - [x] **Step 4: 确认通过**：32 位换算测试 6 项全 PASS；11 项断言全 PASS；M7 仍被 A 抓住（最左写入 25）；glibc、uClibc 交叉编译无新增告警。
 
-## Execution Handoff
+## 4. Execution Handoff
 
 全部 Task 已完成；Task 9、12 由作者在真机执行，Task 5 的独立评审由全新子代理执行，其余在 Cloud Agent 内完成。
 
-## 验证证据
+## 5. 验证证据
 
 | 项 | 判据 | 实测 |
 |---|---|---|
@@ -252,7 +254,7 @@ Expected：一个背光目录（预期 `backlight`），`max_brightness` 为 255
 | 真机（Task 9） | 前置、运行、下限、缺失 | 前置：`backlight`、max 255、`pwm_bl` 已加载、`/usr/bin/mpv`；运行打印 `using /sys/class/backlight/backlight (max 255)`，布局、页面往返、弹窗遮盖均正常；下限：raw 25 最暗可见、24 看不清，原 5%（写 13）不可见；缺失：`rmmod` 后控件隐藏并打印 `no backlight device`，`insmod` 后恢复 |
 | 真机复测（Task 12） | 最左 10% 可见、写 26 | 通过：`using` 行正常；最左写入 26、屏幕可见；退出重进后滑条显示 sysfs 当前值 |
 
-## 与计划的偏离及原因
+## 6. 与计划的偏离及原因
 
 - **sysfs 读写由 `open`/`read`/`write` 改为 stdio**：`custom_brightness.c` 同时含 `<fcntl.h>` 与 `custom.h`（引入 `<linux/fcntl.h>`）时 host gcc 报 `/usr/include/asm-generic/fcntl.h:193:8: error: redefinition of 'struct flock'`（原定义 `/usr/include/x86_64-linux-gnu/bits/fcntl.h:35`）；spec NFR2、§5.2 已随之修订。
 - **新增层级下沉**：同级控件按创建顺序绘制，亮度控件压在「Can't find music!」弹窗之上且可拖；改为在模块内 `lv_obj_move_background()`，spec §5.1 已写明约束。

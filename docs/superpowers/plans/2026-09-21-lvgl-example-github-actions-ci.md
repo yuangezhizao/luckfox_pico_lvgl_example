@@ -10,7 +10,7 @@
 
 **Spec:** [`docs/superpowers/specs/2026-09-21-lvgl-example-github-actions-ci-design.md`](../specs/2026-09-21-lvgl-example-github-actions-ci-design.md)
 
-## Global Constraints
+## 1. Global Constraints
 
 每个 Task 默认包含 spec 全文。硬约束：
 
@@ -27,7 +27,7 @@
 - 未在真机跑的步骤不得标为通过；未跑 CI 前不得把 FR8 写成已通过
 - 分支仅 `cursor/lvgl-github-actions-ci-3efc`；不另开 PR；不 force-push `dev`
 
-## File Structure
+## 2. File Structure
 
 | 文件 | 责任 |
 |---|---|
@@ -38,7 +38,9 @@
 
 ---
 
-### Task 1: 新增 workflow（已完成）
+## 3. Tasks
+
+### Task 1：新增 workflow（已完成）
 
 **落地文件（以仓库为准，不在此重复 YAML / RUN 正文）：**
 
@@ -55,7 +57,7 @@ python3 -c 'import yaml,pathlib; yaml.safe_load(pathlib.Path(".github/workflows/
 
 Expected: exit 0。实测见「验证证据」。
 
-### Task 2: `AGENTS.md` 增加 CI 口径（已完成）
+### Task 2：`AGENTS.md` 增加 CI 口径（已完成）
 
 **落地文件（以仓库为准，不在此重复小节正文）：**
 
@@ -66,7 +68,7 @@ Expected: exit 0。实测见「验证证据」。
 - [x] **Step 1:** 插入 CI 口径（两条 libc、板上 uClibc、CI ≠ 真机、sparse 工具链、镜像只在 dev 构建）
 - [x] **Step 2:** 范围：`GitHub Actions` 标题仅一处；构建节原有 glibc 命令仍在
 
-### Task 3: 本地 glibc 冒烟（已完成；代理证明，不是 FR8）
+### Task 3：本地 glibc 冒烟（已完成；代理证明，不是 FR8）
 
 **Files:** 无仓库文件。`build/` 与 `install/` 已被 gitignore。
 
@@ -91,14 +93,14 @@ ls ../install/luckfox_lvgl_demo/lib/*.so*
 
 Expected: 全过。实测见「验证证据」glibc 行（CI artifact 同口径）。
 
-### Task 4: 实现提交（已完成）
+### Task 4：实现提交（已完成）
 
 **Files:** Task 1–2 的仓库文件。提交说明以 `git log` 为准，不在此重复。
 
 - [x] **Step 1:** 未改 CMake、无 submodule、无写入凭据
 - [x] **Step 2:** `ci(github-actions)` 提交（workflow + `AGENTS.md`）在 docs 提交之前
 
-### Task 5: CI 验收与 FR8（交叉编译已完成；真机未做）
+### Task 5：CI 验收与 FR8（交叉编译已完成；真机未做）
 
 **Files:** sparse 未扩（`tools/linux/toolchain/` 够用）。
 
@@ -121,7 +123,7 @@ Expected: 全过。实测见「验证证据」glibc 行（CI artifact 同口径�
 - [x] **Step 5: 两行隔离** 不以日志 `export VAR=` 字面量为据；glibc 编译器 `/usr/bin/arm-linux-gnueabihf-gcc` + `libc.so.6`；uClibc 为 Rockchip gcc + `libc.so.0`
 - [ ] **Step 6: 真机** 未部署到 Ultra W + 480×480 Buildroot。只传 uClibc artifact。
 
-### Task 6: 回填证据（已完成）
+### Task 6：回填证据（已完成）
 
 **落地文件（以本文件与 spec 为准，不重复提交说明）：**
 
@@ -135,11 +137,11 @@ Expected: 全过。实测见「验证证据」glibc 行（CI artifact 同口径�
 
 ---
 
-## Execution Handoff
+## 4. Execution Handoff
 
 无剩余施工。Task 1–6 已完成（真机 / dev 复用 / `**.md` ignore / `schedule` 见验证证据「未做」）。
 
-## 完成情况总结
+## 5. 完成情况总结
 
 | 交付物 | 状态 |
 |---|---|
@@ -154,7 +156,7 @@ Expected: 全过。实测见「验证证据」glibc 行（CI artifact 同口径�
 
 ---
 
-## 验证证据
+## 6. 验证证据
 
 通过标准见 spec §6。
 
@@ -173,7 +175,7 @@ Expected: 全过。实测见「验证证据」glibc 行（CI artifact 同口径�
 | `schedule` 跳过 `build-demo` | 月度或等价手动验证 | 未做 |
 | 真机 Ultra W + 480P Buildroot | 只跑 uClibc 二进制；板上 `/usr/lib` 应有 `libdrm.so.2` / `libcjson.so.1` / `libc.so.0`（`luckfox_pico_w_defconfig` 已开 `BR2_PACKAGE_LIBDRM` / `CJSON`）；不把本仓 `lib/uclibc/` 打进 artifact | 未做；口径见 spec Q9 |
 
-## 与计划的偏离及原因
+## 7. 与计划的偏离及原因
 
 - uClibc 工具链 `bin/` 用完整 `ls -la`，不用 `head`（`pipefail` + `ls | head` 会 SIGPIPE；也要看全目录）。
 - 隔离检查不以 job 日志里的 `export VAR=` 字面量为据；以编译器路径与 `NEEDED` ABI 为准。
@@ -185,7 +187,7 @@ Expected: 全过。实测见「验证证据」glibc 行（CI artifact 同口径�
 - 提交序：`.github/` + `AGENTS.md` 为第一提交；全部 `docs/superpowers/` 为最后单个提交。
 - 首测 run 35520899952 / 35522203019 的 attestation signer 为 `refs/pull/4/merge`，不是 dev；现行口径下不能当 dev 可信镜像复用。run [35523562987](https://github.com/yuangezhizao/luckfox_pico_lvgl_example/actions/runs/35523562987) dest-lock 失败即退出、未 `docker buildx --push`。
 
-## 执行记录
+## 8. 执行记录
 
 | ID | 结论 | 依据 |
 |---|---|---|
