@@ -10,7 +10,7 @@
 
 **Spec:** [`docs/superpowers/specs/2026-09-25-lvgl-example-luckfox-pico-ultra-w-wifi-detect-design.md`](../specs/2026-09-25-lvgl-example-luckfox-pico-ultra-w-wifi-detect-design.md)
 
-## Global Constraints
+## 1. Global Constraints
 
 每个 Task 默认包含 spec 全文。硬约束：
 
@@ -24,7 +24,7 @@
 - 分支仅 `cursor/ultra-w-wifi-detect-7dfe`；不另开 PR
 - 已完成 Task 只保留落地文件与勾选步骤，不重复已入库的代码与提交说明（以 git 为准）；未入库的双重 `fclose` 演示与修复前对照程序保留全文以便复现
 
-## File Structure
+## 2. File Structure
 
 | 文件 | 责任 |
 |---|---|
@@ -39,7 +39,9 @@
 
 ---
 
-### Task 1: 真机前置采集（判据门槛，已完成）
+## 3. Tasks
+
+### Task 1：真机前置采集（判据门槛，已完成）
 
 **Files:** 无仓库文件。作者在 Luckfox Pico Ultra W（刷 run 35115207257 固件）上执行，结果见 spec §2.3 与「验证证据」。
 
@@ -57,7 +59,7 @@ ls /var/run/wpa_supplicant
 
 - [x] **Step 2:** 判定：function 2 为 `SDIO_ID=C8A1:C18D`，`wpa_supplicant` 在运行 → 继续 Task 2（无 `C8A1:C18D` 时的处理为停止并修订 spec D2）
 
-### Task 2: 按 SDIO ID 判定 WiFi（`fix(custom)`，已完成）
+### Task 2：按 SDIO ID 判定 WiFi（`fix(custom)`，已完成）
 
 **落地文件（以仓库为准，不在此重复代码与提交说明）：**
 
@@ -119,7 +121,7 @@ grep -E 'custom_(main|wifi)\.c:.*warning' /tmp/build.log
 - [x] **Step 10:** 提交 `fix(custom)`（`custom/custom_main.c`、`custom/custom_wifi.c`）
 - [x] **Step 11:** ASan/UBSan 下重跑：`tests/` 工程默认开启。
 
-### Task 3: `AGENTS.md` 板型判据 gotcha（`docs(agents)`，已完成）
+### Task 3：`AGENTS.md` 板型判据 gotcha（`docs(agents)`，已完成）
 
 **落地文件（以仓库为准）：** Modify: `AGENTS.md`（文件末尾空行 + 单行段落，末句为「仅旧固件 `model` 为 `Luckfox Pico Ultra W` 时直接视为带 WiFi」，见「与计划的偏离」；`### GitHub Actions（交叉编译门禁）` 中「权威验证仍是物理 …」一句型号写全称）
 
@@ -127,13 +129,13 @@ grep -E 'custom_(main|wifi)\.c:.*warning' /tmp/build.log
 - [x] **Step 2:** 范围检查：只有 `AGENTS.md`，+3/−1 行；`grep -c 'SDIO_ID=C8A1:C18D' AGENTS.md` 为 1
 - [x] **Step 3:** 提交 `docs(agents)`
 
-### Task 4: 推送与 CI（已完成）
+### Task 4：推送与 CI（已完成）
 
 - [x] **Step 1:** 推送 `cursor/ultra-w-wifi-detect-7dfe`（`--force-with-lease`）
 - [x] **Step 2:** PR 的 `pull_request` run：`build-image` dest-lock 复用 dev 签名镜像，glibc 与 uClibc 两行均 success
 - [x] **Step 3:** run URL 与 artifact 记入「验证证据」
 
-### Task 5: 真机功能验证（已完成）
+### Task 5：真机功能验证（已完成）
 
 **Files:** 无仓库文件。由作者执行，结果见「验证证据」。
 
@@ -145,13 +147,13 @@ grep -E 'custom_(main|wifi)\.c:.*warning' /tmp/build.log
 - [x] **Step 4:** 路径 B：再次启动，**不进 WIFI 页**直接点 OFF，正常退出、屏幕被清、`exit=0`（无 `Segmentation fault`、非 139）
 - [x] **Step 5:** 非 W 板、旧固件两项在「验证证据」保持「未实测」
 
-### Task 6: 回填证据与文档提交（已完成）
+### Task 6：回填证据与文档提交（已完成）
 
 - [x] **Step 1:** 回填「验证证据」与「与计划的偏离及原因」
 - [x] **Step 2:** 提交 `docs(superpowers)` 为 PR 最后一个提交并 `git push --force-with-lease origin cursor/ultra-w-wifi-detect-7dfe`
 - [x] **Step 3:** Task 5 真机结果回填「验证证据」并勾选 Task 5，amend `docs(superpowers)` 后 `--force-with-lease` 推送
 
-### Task 7: 修复前对照程序（可选，已完成）
+### Task 7：修复前对照程序（可选，已完成）
 
 **Files:** 无仓库改动。对照程序只去掉 `wifi_backend_release()` 判空（spec FR7），其余与包含本修复的提交相同，仅用于真机对照，不合并。
 
@@ -190,11 +192,11 @@ sha256sum luckfox_lvgl_demo
 
 ---
 
-## Execution Handoff
+## 4. Execution Handoff
 
 无剩余施工。Task 1–6 均已完成（非 W 板、旧固件见验证证据「未实测」）；Task 7 修复前对照（可选）已完成。
 
-## 完成情况总结
+## 5. 完成情况总结
 
 | 交付物 | 状态 |
 |---|---|
@@ -211,7 +213,7 @@ sha256sum luckfox_lvgl_demo
 
 ---
 
-## 验证证据
+## 6. 验证证据
 
 通过标准见 spec §6。
 
@@ -240,7 +242,7 @@ sha256sum luckfox_lvgl_demo
 | 非 W 板 | 无 WIFI 键 | 未实测（无硬件） |
 | 旧固件（`model = "Luckfox Pico Ultra W"`） | 有 WIFI 键 | 未实测（无镜像） |
 
-## 与计划的偏离及原因
+## 7. 与计划的偏离及原因
 
 - `AGENTS.md` 段落末句写明旧固件例外（「仅旧固件 `model` 为 `Luckfox Pico Ultra W` 时直接视为带 WiFi」），未采用笼统禁止按 `model` 判定的写法：后者与保留的旧固件分支（spec FR3/D4）矛盾，读者可能据此误删该分支。
 - 范围扩大到 `custom/custom_wifi.c` 的 `wifi_backend_release()`：WIFI 键恢复后，启动后不进 WIFI 页直接 OFF 会对从未创建的 `wifi_update_timer` 调用 `lv_timer_del(NULL)` 而段错误（spec §2.1、D7），该路径由本修复变为可达，故判空并置 `NULL`，与判据修复同属 `fix(custom)`；真机验证相应分路径 A/B（Task 5）。

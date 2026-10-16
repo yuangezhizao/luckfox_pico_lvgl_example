@@ -10,7 +10,7 @@
 
 **Spec:** [`docs/superpowers/specs/2026-09-20-lvgl-example-grilling-skill-design.md`](../specs/2026-09-20-lvgl-example-grilling-skill-design.md)
 
-## Global Constraints
+## 1. Global Constraints
 
 设计一律以 spec 为准。每个 Task 默认包含：
 
@@ -21,7 +21,7 @@
 - 相对 `origin/dev`：实现（`.cursor/environment.json` + `AGENTS.md`）在前，spec/plan 单个提交在最后
 - 本会话即使改了 `install` 也不会出现 grilling；端到端须新 Build + 新 Agent。草稿 Build 只验证、不自动成为 active
 
-## File Structure
+## 2. File Structure
 
 | 文件 | 责任 |
 |---|---|
@@ -33,7 +33,9 @@
 
 ---
 
-### Task 1: `.cursor/environment.json` 追加 `install`（已完成）
+## 3. Tasks
+
+### Task 1：`.cursor/environment.json` 追加 `install`（已完成）
 
 **落地文件（以仓库为准，不在此重复 JSON 正文）：**
 
@@ -46,7 +48,7 @@
 - [x] **Step 3:** `python3 -m json.tool` 成功；`install` 与 spec §5.1 逐字相同；无 `start` / `terminals`
 - [x] **Step 4:** 实现提交（与 Task 2 同一 `chore(cloud-env)`）
 
-### Task 2: `AGENTS.md` 增加 grilling gotcha（已完成）
+### Task 2：`AGENTS.md` 增加 grilling gotcha（已完成）
 
 **落地文件（以仓库为准，不在此重复条目正文）：**
 
@@ -59,7 +61,7 @@
 - [x] **Step 3:** 全文件仅一处 `grilling`；未改构建 / lint / 运行小节
 - [x] **Step 4:** 与 Task 1 同一实现提交
 
-### Task 3: 隔离 `HOME` 验收 install 命令（已完成）
+### Task 3：隔离 `HOME` 验收 install 命令（已完成）
 
 **Files:** 无仓库文件。
 
@@ -83,7 +85,7 @@ test ! -e /workspace/.cursor/skills/grilling/SKILL.md
 
 Expected: 两次退出 0；SHA-256 第一列为 `10ff989e7498b23b5acb49d5048f11dcd906757d2f79c5cdf8a00001381296f2`；三处 grep 均命中。实测见「最终验证证据」。
 
-### Task 4: 草稿 Environment Build（已完成）
+### Task 4：草稿 Environment Build（已完成）
 
 **Files:** 无仓库改动。Build 必须包含已推送的 `environment.json`。
 
@@ -93,7 +95,7 @@ Expected: 两次退出 0；SHA-256 第一列为 `10ff989e7498b23b5acb49d5048f11d
 - [x] **Step 2:** `trigger-environment-build`（`refs.repoUrl=github.com/yuangezhizao/luckfox_pico_lvgl_example`，`refs.ref=cursor/install-grilling-skill-23fb`，不传 `environmentJson`）
 - [x] **Step 3:** `list-environment-builds` 至终态后取 `environment-build-logs`；`SUCCEEDED` 才算通过；未另起 Agent 读哈希
 
-### Task 5: 回填验证证据（已完成）
+### Task 5：回填验证证据（已完成）
 
 **落地文件（以仓库为准，不在此重复表格正文）：**
 
@@ -107,11 +109,11 @@ Expected: 两次退出 0；SHA-256 第一列为 `10ff989e7498b23b5acb49d5048f11d
 
 ---
 
-## Execution Handoff
+## 4. Execution Handoff
 
 仓库施工无剩余。§7.5 新 Agent 读哈希未做，不记作通过。新 Agent 须从捕获了该 `install` 的 Build 启动。
 
-## 完成情况总结
+## 5. 完成情况总结
 
 | 交付物 | 状态 |
 |---|---|
@@ -127,7 +129,7 @@ Expected: 两次退出 0；SHA-256 第一列为 `10ff989e7498b23b5acb49d5048f11d
 
 ---
 
-## 最终验证证据
+## 6. 最终验证证据
 
 通过标准见 spec §7。
 
