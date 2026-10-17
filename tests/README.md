@@ -86,6 +86,8 @@ ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
 
 退出码：0 表示全部 `KILLED`；1 表示有变体 `SURVIVED`（测试没能发现这处改坏）；2 表示工具或清单错误，包括基线不绿、构建失败、`file` 不在 `custom/` 下或含 `..`、`old` 不是恰好匹配一次、清单解析失败（未知键、重复 id、记录内重复键也算，后者通常是漏写记录间空行）、传入的 id 不存在、一个变体都没跑。
 
+基线通过后先打印 `baseline green: <用例数> tests; running <N> mutants`，之后每个变体一行，以 `[序号/总数] [id]` 开头显示进度，如 `[ 35/120] [MUSIC-N6-list-unsorted] KILLED by: music.list.sorted_by_name (Failed)`。
+
 对应测试未注册的变体（如缺 `qemu-arm` 时的 32 位用例）标为 `SKIPPED`，不影响退出码，结尾会汇总 `N run, M skipped`。
 
 工作目录由 `MUTATE_WORK` 指定，默认固定为 `/tmp/luckfox-mutate`，并发运行须用不同的 `MUTATE_WORK` 区分。脚本启动时会 `rm -rf` 其中的 `src`，所以拒绝 `/`、仓库内的路径与仓库位于其 `src/` 之内的目录，只使用不存在、为空或带标记文件 `.luckfox-mutate-workdir`（普通文件，脚本首次使用时创建）的目录，否则以退出码 2 结束；`custom/` 中有符号链接时同样拒绝，因为变体会经副本写回仓库。
