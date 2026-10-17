@@ -17,6 +17,13 @@ old:             if (strcmp(filename, pos->filename) < 0)\n                break
 new:             if (0)\n                break;
 tests: ^music\.list\.
 
+# 总是插到开头：readdir 若按降序返回，结果恰为升序，只有非单调的读取顺序才能发现（spec §2.4、Q12）。
+id: MUSIC-N6-list-prepend
+file: custom/custom_musicplayer.c
+old:             if (strcmp(filename, pos->filename) < 0)\n                break;\n            pos = pos->next;\n        } while (pos != *head);\n        newNode->next = pos;\n        newNode->prev = pos->prev;\n        pos->prev->next = newNode;\n        pos->prev = newNode;\n        if (pos == *head && strcmp(filename, (*head)->filename) < 0)
+new:             if (1)\n                break;\n            pos = pos->next;\n        } while (pos != *head);\n        newNode->next = pos;\n        newNode->prev = pos->prev;\n        pos->prev->next = newNode;\n        pos->prev = newNode;\n        if (pos == *head)
+tests: ^music\.list\.
+
 id: MUSIC-N6-head-not-updated
 file: custom/custom_musicplayer.c
 old:         if (pos == *head && strcmp(filename, (*head)->filename) < 0)\n            *head = newNode;

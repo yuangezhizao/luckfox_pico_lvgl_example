@@ -55,6 +55,7 @@ ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
 - 捕获输出期间 `CHECK` 的打印也会被捕获，断言放在 `tst_capture_end()` 之后。
 - 测试工程对 `lib/lvgl/src`、`generated/`、`custom/` 递归 glob 全部 `.c`，与产品 `CMakeLists.txt` 只 glob 指定目录不完全相同，在这些目录下新增子目录或非产品 `.c` 时需留意。
 - 音乐源码的 `MUSIC_DIR_PATH=tst_music_dir()` 也通过源文件 `COMPILE_DEFINITIONS` 和 `-include support/fake_fs.h` 覆盖；`unit_list_alloc.c` 在包含源码前用 `#define` 做相同覆盖，目录由本进程独享；`MPV_SOCKET_PATH=tst_mpv_socket_path()` 使用同样的源文件属性与 UNIT 宏覆盖，假 mpv 的套接字也在本进程临时目录。
+- 音乐源码另以 `readdir=tst_readdir`、`closedir=tst_closedir` 编译（`unit_list_alloc.c` 用 `#define` 做相同覆盖）：`readdir` 的顺序取决于文件系统（ext4 按文件名哈希与 mkfs 时的随机种子），若读到的恰为升序或降序，部分不排序的改坏也能通过排序用例。`tst_readdir()` 读出真实条目后按文件名排序，再以固定的非单调顺序返回（「.」「..」在前，其余后半与前半交错，如 01 02 03 04 → 03 01 04 02），结果与文件系统无关。
 - `custom_fb.c` 的 `FB_CLEAR_MAX_BYTES=tst_fb_clear_max_bytes` 通过源文件 `COMPILE_DEFINITIONS` 和 `-include support/fake_fs.h` 覆盖，用例可修改该变量缩小清屏上限。路径宏是运行期 `const char *` 表达式，不能拼接字符串字面量或用 `sizeof` 计算路径长度。
 - libdrm、cjson 头文件使用系统路径 `/usr/include/libdrm`、`/usr/include/cjson`（Debian/Ubuntu 布局）。
 - 触摸读取 `custom_touch.c` 的用例经 FIFO 逐帧喂入 `struct input_event`；`touch_step*.txt` 是板上 `evdev_probe` 录到的多指事件原文，用例按文本回放。
