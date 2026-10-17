@@ -259,19 +259,7 @@
 
 ### 6.1 另开 docs PR：历史 spec 与 plan 标题补序号
 
-**状态**：已由 PR #11 完成，见 [`2026-10-14-lvgl-example-heading-numbers-design.md`](../specs/2026-10-14-lvgl-example-heading-numbers-design.md)。特例 1 最终改为原位的加粗段落，没有就地编号（该 spec §3.4）；特例 2 按规则改（§3.5）；另补了 Task 所在章与 Task 标题冒号（§3.3、§3.6）。以下为 PR #10 时的统计与暂定方案。
-
-本 PR 起执行的标题编号规则（作者个人 `~/.pi/agent/AGENTS.md`）：`## 2.`、`### 2.2`、`#### 2.2.1`，最多四级；plan 的 Task 标题保持 `### Task N：…`，Task 以外的小节不与 Task 混在同一章；附录写成 `## 附录 A`、`### A.1`。按该规则统计（2026-10-10，本 PR 两份文档除外）：
-
-| 类别 | 文件数 | 标题总数 | 需要改 | 说明 |
-|---|---|---|---|---|
-| spec | 8 | 177 | 0 | 已是 `## 1.`、`### 2.1` |
-| plan | 8 | 166 | 56 | 多为二级标题补序号，如 `## Global Constraints` → `## 1. Global Constraints` |
-
-约 450 处 `§` 引用都指向 spec 章节号，spec 不改，plan 补的是原先没有的序号，所以引用不受影响。两个特例的处理在开 PR 时再与作者讨论：
-
-- **特例 1**：`2026-10-01-lvgl-example-fix-existing-defects.md`（PR #8 的 plan）中，`### 主屏回归检查点`、`### WiFi 回归检查点`、`### 画板回归检查点`、`### 音乐页回归检查点`、`### 退出回归检查点` 5 个非 Task 小节位于各页面的 Task 章节（`## 主屏与时间（Task 1–5）` 等）之内，违反「不与 Task 混在同一章」。暂定就地编号（如 `### 6.1 主屏回归检查点`）并在 PR 中说明是例外；备选是挪到单独一章，但会让结构与当时的执行记录对不上。
-- **特例 2**：`2026-10-06-lvgl-example-cloudagent-align-luckfox-pico.md`（PR #9 的 plan）的附录小节写作 `### A1`–`### A6`，按规则应改为 `### A.1`–`### A.6`；正文约 10 处「附录 A1」「附录 A2」等引用需同步改写。
+**状态**：已由 PR #11 完成，设计、统计与决策见 [`2026-10-14-lvgl-example-heading-numbers-design.md`](../specs/2026-10-14-lvgl-example-heading-numbers-design.md)。PR #10 时的统计与暂定方案见 PR #10 合并时的 [`2026-10-10-lvgl-example-board-test-followups.md`](https://github.com/yuangezhizao/luckfox_pico_lvgl_example/blob/85a6dd48264938b267fc0e4ecd458f6ac14f0530/docs/superpowers/plans/2026-10-10-lvgl-example-board-test-followups.md#61-另开-docs-pr历史-spec-与-plan-标题补序号)。
 
 ### 6.2 Load 在没有 `network={}` 块时自动添加（spec Q31）
 
@@ -297,14 +285,7 @@
 
 ### 6.5 CI 增加变体检验
 
-另开 `ci(github-actions)` PR，不在本 PR 实现。CI 的「原生测试」只在 HEAD 上构建并跑一次 `ctest`（构建约 22 s、测试约 23 s）；变体检验（本地 8 核约 6 分钟）与逐提交测试（约 7.6 分钟）目前只在本地执行（命令与脚本见附录 C.2、C.3）。
-
-改动量小：仿照「原生测试」新增一个 job（同一镜像、`needs: build-image`、`--user 0`），执行 `tests/tools/mutate.sh`，按退出码判定（0 全部 `KILLED`、1 有变体存活、2 工具或清单错误），约 25 行；`AGENTS.md`、`tests/README.md` 的 CI 说明各补一句。开 PR 前要定下与验证：
-
-- 触发时机：每次 `pull_request` 推送，还是只在 `dev` 合并时；是否设为必需检查。
-- 耗时：GitHub 标准 runner 为 4 核，预计 8–12 分钟；逐提交测试是否也进 CI。
-- CI 镜像只有 `python3-minimal`，需在镜像内确认 `mutate.sh` 用到的 `glob` 等模块可用；若要改 `.cursor/Dockerfile`，该 PR 合并前 `build-image` 必然失败（`AGENTS.md`）。
-- 稳定性：部分测试按真实时间等待（如 §5 中 `wifi.scan_trigger` 的负载问题），需在 runner 上连续跑几次确认没有偶发失败。
+**状态**：已由 PR #12 完成，设计、实测与决策见 [`2026-10-16-lvgl-example-ci-mutation-design.md`](../specs/2026-10-16-lvgl-example-ci-mutation-design.md)。PR #10 时的待办与待定问题见 PR #10 合并时的 [`2026-10-10-lvgl-example-board-test-followups.md`](https://github.com/yuangezhizao/luckfox_pico_lvgl_example/blob/85a6dd48264938b267fc0e4ecd458f6ac14f0530/docs/superpowers/plans/2026-10-10-lvgl-example-board-test-followups.md#65-ci-增加变体检验)。
 
 ### 6.6 单次动作按钮的按下反馈
 
