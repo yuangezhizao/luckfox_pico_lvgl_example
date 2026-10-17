@@ -328,3 +328,86 @@ jobs:
       - name: 🧪 运行原生测试
         shell: bash
         run: ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
+
+  mutation-tests:
+    name: 🧬 变体检验
+    needs: build-image
+    # schedule（月度）只重建 CI 镜像、跳过变体检验；其余触发与 native-tests 相同，两者并行
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    # runner 上运行步骤 9–12 分钟（spec §2.3），按约 2.5 倍留余量
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ${{ needs.build-image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+      # 镜像末尾 USER ubuntu（Cloud Agent）；Actions 要求 job 容器为超级用户（官方文档写 root）。用 --user 0（数字 uid）覆盖，不用 --user root（按 passwd 名解析）。https://docs.github.com/en/actions/reference/workflows-and-actions/dockerfile-support#user
+      options: --user 0
+    env:
+      # 字面量路径：容器 job 中 ${{ runner.temp }} 给出的是宿主路径；须在检出目录之外（mutate.sh 拒绝仓库内路径）
+      MUTATE_WORK: /tmp/luckfox-mutate
+      MUTATE_OUT: /tmp/mutate.out
+    steps:
+      - name: 📤 检出本仓
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: 🧬 运行变体检验
+        shell: bash
+        run: |
+          set -euo pipefail
+          # 退出码见 tests/README.md「改坏检验」：0 全部 KILLED；1 有变体 SURVIVED；2 工具或清单错误
+          rc=0
+          tests/tools/mutate.sh 2>&1 | tee "${MUTATE_OUT}" || rc=$?
+          case "${rc}" in
+            0) ;;
+            1) echo "::error::mutate.sh 退出码 1：有变体存活（SURVIVED），测试没能发现这处改坏"; exit 1 ;;
+            2) echo "::error::mutate.sh 退出码 2：工具或清单错误（基线不绿、构建失败、清单不合法等），见上方输出"; exit 2 ;;
+            *) echo "::error::mutate.sh 退出码 ${rc}（预期 0、1、2）"; exit "${rc}" ;;
+          esac
+          # CI 镜像有 qemu-arm 与 arm-linux-gnueabihf-gcc，全部用例都会注册；出现 SKIPPED 只能是清单的 tests: 正则一个用例都没匹配到，变体实际没有运行
+          if ! grep -Eq '^[0-9]+ run, 0 skipped$' "${MUTATE_OUT}"; then
+            echo "::error::有变体被跳过（SKIPPED）：tests: 正则没有匹配到任何用例（写错，或用例已改名、删除）"
+            grep -E 'SKIPPED|^[0-9]+ run, [0-9]+ skipped$' "${MUTATE_OUT}" || true
+            exit 1
+          fi
+
+      - name: 📄 失败时打印相关日志
+        if: failure()
+        shell: bash
+        run: |
+          # 每个变体只打印一行（[序号/总数] [id] 结果），详细输出在 MUTATE_WORK；按失败类型补打印（不上传 artifact，spec §3.4）
+          if [ ! -f "${MUTATE_OUT}" ]; then
+            echo "没有 mutate.sh 的输出：运行步骤未开始"
+            exit 0
+          fi
+          printed=0
+          if grep -q '^baseline not green' "${MUTATE_OUT}"; then
+            # baseline.log 不带 --output-on-failure，LastTest.log 按完成顺序排列，末尾不一定是失败用例：重跑失败的用例取断言输出
+            echo "::group::基线失败的用例（ctest --rerun-failed --output-on-failure，末尾 200 行）"
+            timeout 600 ctest --test-dir "${MUTATE_WORK}/build" --rerun-failed --output-on-failure 2>&1 | tail -n 200 || true
+            echo "::endgroup::"
+            printed=1
+          fi
+          while read -r id; do
+            echo "::group::${id} 构建日志（末尾 200 行）"
+            tail -n 200 "${MUTATE_WORK}/${id}.build.log" || true
+            echo "::endgroup::"
+            printed=1
+          done < <(sed -nE 's/^\[ *[0-9]+\/[0-9]+\] \[([A-Za-z0-9][A-Za-z0-9_.-]*)\] BUILD FAILED.*/\1/p' "${MUTATE_OUT}")
+          while read -r id; do
+            echo "::group::${id} 存活：清单记录、所跑用例（全部通过）与本地复现"
+            awk -v RS= -v id="${id}" 'index("\n" $0 "\n", "\nid: " id "\n") { print FILENAME ":"; print $0 }' tests/cases/*/*.mutants
+            tail -n 200 "${MUTATE_WORK}/${id}.log" || true
+            echo "本地复现：tests/tools/mutate.sh ${id}"
+            echo "::endgroup::"
+            printed=1
+          done < <(sed -nE 's/^\[ *[0-9]+\/[0-9]+\] \[([A-Za-z0-9][A-Za-z0-9_.-]*)\] SURVIVED$/\1/p' "${MUTATE_OUT}")
+          if [ "${printed}" -eq 0 ]; then
+            echo "没有可补充的日志：错误原因见上一步输出"
+          fi

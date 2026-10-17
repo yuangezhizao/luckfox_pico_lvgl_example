@@ -2,6 +2,7 @@
 #ifndef TST_FAKE_FS_H
 #define TST_FAKE_FS_H
 
+#include <dirent.h>
 #include <stddef.h>
 
 const char *tst_tmp_dir(void);
@@ -17,6 +18,9 @@ void tst_fake_exec(const char *name, const char *script);
 
 const char *tst_music_dir(void);
 const char *tst_mpv_socket_path(void);
+/* 音乐源码以 readdir=tst_readdir、closedir=tst_closedir 编译，目录条目按与文件系统无关的固定顺序返回（见 fake_fs.c）。 */
+struct dirent *tst_readdir(DIR *dir);
+int tst_closedir(DIR *dir);
 
 extern unsigned long long tst_fb_clear_max_bytes;
 

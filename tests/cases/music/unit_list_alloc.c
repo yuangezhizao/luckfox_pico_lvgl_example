@@ -9,9 +9,13 @@ void *tst_music_malloc(size_t size);
 int tst_music_list_empty(void);
 #define MUSIC_DIR_PATH tst_music_dir()
 #define MPV_SOCKET_PATH tst_mpv_socket_path()
+#define readdir tst_readdir
+#define closedir tst_closedir
 #define malloc tst_music_malloc
 #include "custom_musicplayer.c"
 #undef malloc
+#undef closedir
+#undef readdir
 
 void *tst_music_malloc(size_t size)
 {

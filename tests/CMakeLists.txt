@@ -128,10 +128,10 @@ endfunction()
 
 add_subdirectory(cases/main)
 add_subdirectory(cases/wifi)
-# 音乐目录指向本进程临时目录（spec §5.4）。
+# 音乐目录指向本进程临时目录（spec §5.4）；目录条目按固定顺序读取，与文件系统无关（support/fake_fs.c）。
 set_source_files_properties(${LUCKFOX_ROOT}/custom/custom_musicplayer.c PROPERTIES
     COMPILE_OPTIONS "-include;${CMAKE_CURRENT_SOURCE_DIR}/support/fake_fs.h"
-    COMPILE_DEFINITIONS "MUSIC_DIR_PATH=tst_music_dir();MPV_SOCKET_PATH=tst_mpv_socket_path()")
+    COMPILE_DEFINITIONS "MUSIC_DIR_PATH=tst_music_dir();MPV_SOCKET_PATH=tst_mpv_socket_path();readdir=tst_readdir;closedir=tst_closedir")
 
 add_subdirectory(cases/sketchpad)
 # 清屏写入上限由测试改小（spec D9）。

@@ -127,37 +127,50 @@ if ! ctest --test-dir "$BUILD" -j"$JOBS" >"$WORK/baseline.log" 2>&1 </dev/null; 
     exit 2
 fi
 
+# 先数出本次要处理的变体数（与下方循环的筛选相同），逐条结果行以 [序号/总数] 开头显示进度。
+total=0
+while IFS=$'\t' read -r id _; do
+    if [[ $# -gt 0 && " $* " != *" $id "* ]]; then
+        continue
+    fi
+    total=$((total + 1))
+done <"$LIST"
+echo "baseline green: $(sed -nE 's/.* tests failed out of ([0-9]+)$/\1/p' "$WORK/baseline.log") tests; running $total mutants"
+
 survived=0
 ran=0
 skipped=0
+n=0
 while IFS=$'\t' read -r id file tests; do
     if [[ $# -gt 0 && " $* " != *" $id "* ]]; then
         continue
     fi
+    n=$((n + 1))
+    printf -v tag '[%*d/%d] [%s]' "${#total}" "$n" "$total" "$id"
     if [[ $file != custom/* || $file == *..* ]]; then
-        echo "[$id] file must be under custom/ and must not contain '..': $file"
+        echo "$tag file must be under custom/ and must not contain '..': $file"
         exit 2
     fi
     listing=$(ctest --test-dir "$BUILD" -N -R "$tests" </dev/null)
     if ! grep -q 'Total Tests: [1-9]' <<<"$listing"; then
-        echo "[$id] SKIPPED: no test matches $tests"
+        echo "$tag SKIPPED: no test matches $tests"
         skipped=$((skipped + 1))
         continue
     fi
     if ! mutants apply "$SRC" "$id"; then
-        echo "[$id] cannot apply mutant"
+        echo "$tag cannot apply mutant"
         exit 2
     fi
     if ! cmake --build "$BUILD" -j"$JOBS" >"$WORK/$id.build.log" 2>&1 </dev/null; then
-        echo "[$id] BUILD FAILED, see $WORK/$id.build.log"
+        echo "$tag BUILD FAILED, see $WORK/$id.build.log"
         exit 2
     fi
     ran=$((ran + 1))
     if ctest --test-dir "$BUILD" -R "$tests" -j"$JOBS" >"$WORK/$id.log" 2>&1 </dev/null; then
-        echo "[$id] SURVIVED"
+        echo "$tag SURVIVED"
         survived=1
     else
-        echo "[$id] KILLED by: $(grep -E '^[[:space:]]+[0-9]+ - ' "$WORK/$id.log" | sed -E 's/^[[:space:]]+[0-9]+ - //' | tr '\n' ' ')"
+        echo "$tag KILLED by: $(grep -E '^[[:space:]]+[0-9]+ - ' "$WORK/$id.log" | sed -E 's/^[[:space:]]+[0-9]+ - //' | tr '\n' ' ')"
     fi
     cp "$REPO/$file" "$SRC/$file"
 done <"$LIST"
