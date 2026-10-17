@@ -90,4 +90,6 @@ ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
 
 对应测试未注册的变体（如缺 `qemu-arm` 时的 32 位用例）标为 `SKIPPED`，不影响退出码，结尾会汇总 `N run, M skipped`。
 
+CI 的 `🧬 变体检验` job 在每次 `pull_request` 推送与 `dev` push 时全量运行本脚本，退出码非 0 即失败；CI 镜像有 `qemu-arm` 与交叉 gcc，全部用例都会注册，所以出现 `SKIPPED`（`tests:` 正则没匹配到用例）也算失败。
+
 工作目录由 `MUTATE_WORK` 指定，默认固定为 `/tmp/luckfox-mutate`，并发运行须用不同的 `MUTATE_WORK` 区分。脚本启动时会 `rm -rf` 其中的 `src`，所以拒绝 `/`、仓库内的路径与仓库位于其 `src/` 之内的目录，只使用不存在、为空或带标记文件 `.luckfox-mutate-workdir`（普通文件，脚本首次使用时创建）的目录，否则以退出码 2 结束；`custom/` 中有符号链接时同样拒绝，因为变体会经副本写回仓库。

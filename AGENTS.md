@@ -38,7 +38,8 @@ mkdir -p build && cd build && cmake .. && make -j && make install
 - 作者当前系统是 SDK 编的 Buildroot，板上使用 **uClibc** 产物；glibc 产物 ABI 不兼容（`libc.so.6` vs `libc.so.0`），不能在这块板上运行。
 - CI 成功只证明交叉编译与 ABI 门禁通过，不能代替真机点亮；权威验证仍是物理 Luckfox Pico Ultra / Luckfox Pico Ultra W。
 - uClibc gcc 不在 `.cursor/Dockerfile` 里；CI 从 `yuangezhizao/luckfox-pico@dev` sparse checkout `tools/linux/toolchain/`，不引入 submodule。
-- CI 镜像只在 `dev` 上构建并 attest；`pull_request` 只复用 dest-lock（signer/source=`dev`）通过的 digest，失败即退出，不覆盖 GHCR。镜像标签取 `.cursor/Dockerfile` 内容哈希，所以修改该文件的 PR 在合并前 `build-image` 必然失败（找不到 dev 签名镜像），合并后 dev push 重建镜像才恢复。不把 `container:` 换成 `luckfox-pico-ci`（其中无 `gcc-arm-linux-gnueabihf`，uClibc gcc 也不在镜像层）。镜像末尾 `USER ubuntu`，`build-demo` 与 `native-tests` 以 `options: --user 0` 运行（Actions 要求 job 容器为超级用户）。
+- CI 镜像只在 `dev` 上构建并 attest；`pull_request` 只复用 dest-lock（signer/source=`dev`）通过的 digest，失败即退出，不覆盖 GHCR。镜像标签取 `.cursor/Dockerfile` 内容哈希，所以修改该文件的 PR 在合并前 `build-image` 必然失败（找不到 dev 签名镜像），合并后 dev push 重建镜像才恢复。不把 `container:` 换成 `luckfox-pico-ci`（其中无 `gcc-arm-linux-gnueabihf`，uClibc gcc 也不在镜像层）。镜像末尾 `USER ubuntu`，`build-demo`、`native-tests` 与 `mutation-tests` 以 `options: --user 0` 运行（Actions 要求 job 容器为超级用户）。
+- `mutation-tests`（`🧬 变体检验`）与 `native-tests` 用同一镜像、触发相同（`schedule` 跳过）、两者并行，全量运行 `tests/tools/mutate.sh`：退出码非 0（1 有变体存活，2 工具或清单错误）或出现 `SKIPPED` 即失败（镜像工具齐全，`SKIPPED` 只可能是 `tests:` 正则没匹配到用例），失败时按类型打印存活变体的清单记录、基线失败用例的重跑输出或构建日志末尾，不上传 artifact；runner 上 job 约 10–12 分钟。逐提交测试仍只在本地执行。
 
 ### Lint（代码检查）
 没有独立的 linter，也没有告警关卡（无 `-Werror`）。`CMakeLists.txt` 的告警段 `add_compile_options()` 位于 `add_executable()` 之前（`add_compile_options()` 只作用于其后创建的 target），并用 `-std=gnu99`（`-std=c99` 会关掉 POSIX/GNU 扩展声明而编译失败），主程序以 `-Wall -Wextra …` 编译：glibc 121 条、uClibc 120 条告警为既存基线（新增的编译单元会重复报一次 `lib/lv_conf.h` 的 `-Wundef`），只记录不作门禁。另一处 `add_compile_options(-fPIC -Wall -O3 -g0)` 仍在 `add_executable()` 之后、未生效，主程序实际按 `-O0` 编译；LVGL 与 lv_drivers 子目录不受这两处影响，`C_FLAGS` 为空。
