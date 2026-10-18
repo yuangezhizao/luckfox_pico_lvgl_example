@@ -1,0 +1,70 @@
+# 圆环与连接图标按 wpa_state 分组显示，连不上 wpa_supplicant 时停止（spec §3.1、Q1、Q3、Q6，N7）。
+# 未连接时不改动，即修复前的行为。
+id: WIFI-N7-down-keeps
+file: custom/custom_wifi.c
+old:     pclose(fp);\n    wifi_link_show(link);
+new:     pclose(fp);\n    if (link != WIFI_LINK_DOWN)\n        wifi_link_show(link);
+tests: ^wifi\.status\.
+
+# 读不到 wpa_state= 行（连不上）按连接中处理。
+id: WIFI-N7-unreachable-busy
+file: custom/custom_wifi.c
+old:     enum wifi_link link = WIFI_LINK_DOWN;
+new:     enum wifi_link link = WIFI_LINK_BUSY;
+tests: ^wifi\.status\.
+
+# 未知取值（含 DISCONNECTED、INACTIVE 等）按连接中处理。
+id: WIFI-N7-unknown-busy
+file: custom/custom_wifi.c
+old:     return WIFI_LINK_DOWN;
+new:     return WIFI_LINK_BUSY;
+tests: ^wifi\.status\.
+
+# 连接中只认 SCANNING。
+id: WIFI-N7-only-scanning
+file: custom/custom_wifi.c
+old: i < sizeof(busy) / sizeof(busy[0])
+new: i < 1
+tests: ^wifi\.status\.
+
+# 漏掉最后一个连接中状态 GROUP_HANDSHAKE。
+id: WIFI-N7-drop-last-busy
+file: custom/custom_wifi.c
+old: i < sizeof(busy) / sizeof(busy[0])
+new: i + 1 < sizeof(busy) / sizeof(busy[0])
+tests: ^wifi\.status\.
+
+# 在行内任意位置找 wpa_state=，ssid= 行中的同名文字会先被命中。
+id: WIFI-N7-state-anywhere
+file: custom/custom_wifi.c
+old:         const char *state = result;\n\n        if (strncmp(state, "wpa_state=", 10) != 0)\n            continue;
+new:         const char *state = strstr(result, "wpa_state=");\n\n        if (state == NULL)\n            continue;
+tests: ^wifi\.status\.
+
+# 不去掉行尾换行，取值整串比较全部落空。
+id: WIFI-N7-keep-newline
+file: custom/custom_wifi.c
+old: result[strcspn(result, 
+new: result[strlen(result) + 0 * strcspn(result, 
+tests: ^wifi\.status\.
+
+# 已连接时也显示圆环。
+id: WIFI-N7-up-spins
+file: custom/custom_wifi.c
+old:     if (link == WIFI_LINK_BUSY)\n
+new:     if (link != WIFI_LINK_DOWN)\n
+tests: ^wifi\.status\.
+
+# 连接中也显示连接图标。
+id: WIFI-N7-busy-icon
+file: custom/custom_wifi.c
+old:     if (link == WIFI_LINK_UP) {
+new:     if (link != WIFI_LINK_DOWN) {
+tests: ^wifi\.status\.
+
+# popen 失败时改为未连接，违反 PR #8 D18（spec Q3）。
+id: WIFI-N7-popen-fail-down
+file: custom/custom_wifi.c
+old:         /* 不知道当前状态，保持原有显示（PR #8 D18）。 */\n
+new:         wifi_link_show(WIFI_LINK_DOWN);\n
+tests: ^wifi\.popen\.
