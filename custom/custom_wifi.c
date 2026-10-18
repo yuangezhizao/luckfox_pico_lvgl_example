@@ -49,6 +49,8 @@ static lv_obj_t *wifi_hint_label;
 /**********************
  *  STATIC FUNCTIONS
  **********************/
+static void wifi_status_connecting(void);
+
 static int wifi_utf8_valid(const unsigned char *s)
 {
     while (*s != '\0') {
@@ -283,6 +285,7 @@ static void _wifi_conf_load(const char* ssid, const char* password)
 
     // reconnect wifi
     system("wpa_cli reconfigure &");
+    wifi_status_connecting();
     /* [u]dhcpc 不匹配 pkill 自身与父 shell；与启动命令分两次 system()，否则 sh -c 的命令行也被匹配而连 shell 一起杀掉。 */
     system("pkill -f '[u]dhcpc -i wlan0'");
     system("udhcpc -i wlan0 &");
@@ -376,6 +379,15 @@ static void wifi_link_show(enum wifi_link link)
         lv_obj_add_flag(guider_ui.WIFI_wifi_log_img, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(guider_ui.WIFI_loaded_wifi_label, LV_OBJ_FLAG_HIDDEN);
     }
+}
+
+/* Load 发起重连后立即按连接中显示，并把下一次查询推到一个周期之后：reconfigure 在后台执行，
+ * 马上查询多半读到旧的未连接状态，圆环又会被隐藏（spec §3.3）。 */
+static void wifi_status_connecting(void)
+{
+    wifi_link_show(WIFI_LINK_BUSY);
+    if (wifi_update_timer != NULL)
+        lv_timer_reset(wifi_update_timer);
 }
 
 static void _wifi_status_update()

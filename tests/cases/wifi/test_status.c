@@ -1,5 +1,5 @@
 /* WiFi 页圆环与连接图标按 wpa_cli status 的 wpa_state 分组显示；连不上 wpa_supplicant 时圆环停止；
- * 圆环初始隐藏，每次进入 WiFi 页立即查询（spec §3.1、§3.2、§4，N7）。 */
+ * 圆环初始隐藏，每次进入 WiFi 页立即查询；点 Load 后立即显示连接中（spec §3.1–§3.3、§4，N7）。 */
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -11,6 +11,7 @@
 #include "wifi_env.h"
 
 void tst_wifi_status_update(void);
+void tst_wifi_conf_load(const char *ssid, const char *psk);
 
 /* 连接中的 6 个状态与未连接的状态（含 wpa_supplicant 的 UNKNOWN 与一个未知取值），取值见 hostap wpa_supplicant_state_txt()。 */
 static const char *const CONNECTING[] = {"SCANNING", "AUTHENTICATING", "ASSOCIATING", "ASSOCIATED", "4WAY_HANDSHAKE", "GROUP_HANDSHAKE"};
@@ -203,6 +204,26 @@ static void enter_queries_now(void)
     expect("enter again, SCANNING", 1, 0);
 }
 
+/* 未连接时点 Load：立即显示连接中，并把下一次轮询推到 5 s 后。wpa_cli reconfigure 在后台执行，马上查询多半读到旧状态；
+ * 在进入页面的查询之后约 4.5 s 才点 Load，不推迟时下一次轮询约 0.5 s 后就会读到旧的 DISCONNECTED 而隐藏圆环。 */
+static void load_shows_spinner(void)
+{
+    uint32_t t;
+
+    setup_wifi_page();
+    set_state("DISCONNECTED");
+    t = lv_tick_get();
+    run_until(t, 4500);
+    expect("enter, DISCONNECTED", 0, 0);
+    wifi_env_reset_logs();
+    tst_wifi_conf_load("home", "homepass1");
+    expect("right after Load", 1, 0);
+    t = lv_tick_get();
+    run_until(t, 1000);
+    CHECK_EQ_INT(status_queries(), 0);
+    expect("1 s after Load, still DISCONNECTED", 1, 0);
+}
+
 int main(int argc, char **argv)
 {
     static const tst_case_t cases[] = {
@@ -214,6 +235,7 @@ int main(int argc, char **argv)
         {"timer_unreachable_stops", timer_unreachable_stops},
         {"initial_hidden", initial_hidden},
         {"enter_queries_now", enter_queries_now},
+        {"load_shows_spinner", load_shows_spinner},
     };
     return tst_run_case(cases, TST_COUNT(cases), argc, argv);
 }
