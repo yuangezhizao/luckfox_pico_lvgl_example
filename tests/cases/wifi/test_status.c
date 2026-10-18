@@ -1,4 +1,5 @@
-/* WiFi 页圆环与连接图标按 wpa_cli status 的 wpa_state 分组显示；连不上 wpa_supplicant 时圆环停止（spec §3.1、§4，N7）。 */
+/* WiFi 页圆环与连接图标按 wpa_cli status 的 wpa_state 分组显示；连不上 wpa_supplicant 时圆环停止；
+ * 圆环初始隐藏，每次进入 WiFi 页立即查询（spec §3.1、§3.2、§4，N7）。 */
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -167,6 +168,41 @@ static void timer_unreachable_stops(void)
     expect("timer unreachable", 0, 0);
 }
 
+/* 页面创建后、首次查询前状态未知，按未连接显示：圆环不转。 */
+static void initial_hidden(void)
+{
+    wifi_env_setup(WIFI_ENV_CONF);
+    tst_app_init(480, 1, 0);
+    setup_scr_WIFI(&guider_ui);
+    expect("created", 0, 0);
+}
+
+/* 首次进入与离开后再次进入，都在 300 ms 内查询并显示当前状态，不等 5 s 轮询；离开期间不查询。 */
+static void enter_queries_now(void)
+{
+    lv_obj_t *other;
+    uint32_t t;
+
+    setup_wifi_page();
+    set_state("COMPLETED");
+    t = lv_tick_get();
+    run_until(t, 300);
+    CHECK_EQ_INT(status_queries(), 1);
+    expect("first enter, COMPLETED", 0, 1);
+    other = lv_obj_create(NULL);
+    lv_scr_load(other);
+    set_state("SCANNING");
+    t = lv_tick_get();
+    run_until(t, 300);
+    CHECK_EQ_INT(status_queries(), 1);
+    wifi_env_reset_logs();
+    lv_scr_load(guider_ui.WIFI);
+    t = lv_tick_get();
+    run_until(t, 300);
+    CHECK_EQ_INT(status_queries(), 1);
+    expect("enter again, SCANNING", 1, 0);
+}
+
 int main(int argc, char **argv)
 {
     static const tst_case_t cases[] = {
@@ -176,6 +212,8 @@ int main(int argc, char **argv)
         {"completed_shows_icon", completed_shows_icon},
         {"state_line_only", state_line_only},
         {"timer_unreachable_stops", timer_unreachable_stops},
+        {"initial_hidden", initial_hidden},
+        {"enter_queries_now", enter_queries_now},
     };
     return tst_run_case(cases, TST_COUNT(cases), argc, argv);
 }

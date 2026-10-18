@@ -545,6 +545,15 @@ static void wifi_update_timer_cb(lv_timer_t * tmr)
     _wifi_status_update();
 }
 
+/* 每次进入 WiFi 页立即查询一次，不等 5 s 轮询。只让定时器在下一次 lv_timer_handler() 中执行：
+ * 此时两种切屏方式的 lv_scr_act() 都已是 WiFi 页，回调中也不同步 popen（spec §2.5、§3.2）。 */
+static void wifi_screen_load_cb(lv_event_t *e)
+{
+    LV_UNUSED(e);
+    if (wifi_update_timer != NULL)
+        lv_timer_ready(wifi_update_timer);
+}
+
 /**********************
  *  GLOBAL FUNCTIONS
  **********************/
@@ -690,6 +699,9 @@ void wifi_app_init()
 
     lv_obj_add_flag(guider_ui.WIFI_wifi_log_img,LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(guider_ui.WIFI_loaded_wifi_label,LV_OBJ_FLAG_HIDDEN); 
+    /* 首次查询前状态未知，按未连接显示，圆环不转（spec §3.2）。 */
+    lv_obj_add_flag(guider_ui.WIFI_loading_spinner,LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_event_cb(guider_ui.WIFI, wifi_screen_load_cb, LV_EVENT_SCREEN_LOAD_START, NULL);
     wifi_hint_label = lv_label_create(guider_ui.WIFI);
     luckfox_lv_obj_set_pos(wifi_hint_label, 150, 245);
     luckfox_lv_obj_set_size(wifi_hint_label, 310, 60);
