@@ -267,7 +267,7 @@
 
 ### 6.3 WiFi 页在 `wpa_supplicant not reachable` 时圆环一直转（N7，spec Q2）
 
-复测 N1 时，左上角圆环在显示红色提示后仍持续转动。不影响 N1 判据，本 PR 不修；以后追查圆环的启停条件，连不上 `wpa_supplicant` 时应停止。
+**状态**：已由 PR #13 完成，原因、设计、真机复测与决策见 [`2026-10-18-lvgl-example-wifi-spinner-design.md`](../specs/2026-10-18-lvgl-example-wifi-spinner-design.md)。PR #10 时的记录见 PR #10 合并时的 [`2026-10-10-lvgl-example-board-test-followups.md`](https://github.com/yuangezhizao/luckfox_pico_lvgl_example/blob/85a6dd48264938b267fc0e4ecd458f6ac14f0530/docs/superpowers/plans/2026-10-10-lvgl-example-board-test-followups.md#63-wifi-页在-wpa_supplicant-not-reachable-时圆环一直转n7spec-q2)。
 
 ### 6.4 歌曲列表换成从顶部排列的列表（spec Q38）
 
