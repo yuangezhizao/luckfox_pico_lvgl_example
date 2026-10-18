@@ -49,6 +49,8 @@ static lv_obj_t *wifi_hint_label;
 /**********************
  *  STATIC FUNCTIONS
  **********************/
+static void wifi_status_connecting(void);
+
 static int wifi_utf8_valid(const unsigned char *s)
 {
     while (*s != '\0') {
@@ -283,6 +285,7 @@ static void _wifi_conf_load(const char* ssid, const char* password)
 
     // reconnect wifi
     system("wpa_cli reconfigure &");
+    wifi_status_connecting();
     /* [u]dhcpc 不匹配 pkill 自身与父 shell；与启动命令分两次 system()，否则 sh -c 的命令行也被匹配而连 shell 一起杀掉。 */
     system("pkill -f '[u]dhcpc -i wlan0'");
     system("udhcpc -i wlan0 &");
@@ -340,53 +343,82 @@ static void _wifi_conf_get(char *ssid, size_t ssid_size, char *passwd, size_t pa
     return ;
 }
 
+/* wpa_cli status 的 wpa_state 分三组（取值见 hostap wpa_supplicant_state_txt()）：COMPLETED 为已连接；
+ * 扫描、认证、关联与握手为连接中，显示圆环；其他取值与读不到 wpa_state= 行（连不上 wpa_supplicant 时
+ * wpa_cli 只往 stderr 写错误）为未连接，圆环与连接图标都隐藏。 */
+enum wifi_link { WIFI_LINK_DOWN, WIFI_LINK_BUSY, WIFI_LINK_UP };
+
+static enum wifi_link wifi_link_of(const char *state)
+{
+    static const char *const busy[] = {"SCANNING", "AUTHENTICATING", "ASSOCIATING", "ASSOCIATED",
+                                       "4WAY_HANDSHAKE", "GROUP_HANDSHAKE"};
+    size_t i;
+
+    if (strcmp(state, "COMPLETED") == 0)
+        return WIFI_LINK_UP;
+    for (i = 0; i < sizeof(busy) / sizeof(busy[0]); i++) {
+        if (strcmp(state, busy[i]) == 0)
+            return WIFI_LINK_BUSY;
+    }
+    return WIFI_LINK_DOWN;
+}
+
+static void wifi_link_show(enum wifi_link link)
+{
+    if (guider_ui.WIFI_loading_spinner == NULL || guider_ui.WIFI_wifi_log_img == NULL
+        || guider_ui.WIFI_loaded_wifi_label == NULL)
+        return;
+    if (link == WIFI_LINK_BUSY)
+        lv_obj_clear_flag(guider_ui.WIFI_loading_spinner, LV_OBJ_FLAG_HIDDEN);
+    else
+        lv_obj_add_flag(guider_ui.WIFI_loading_spinner, LV_OBJ_FLAG_HIDDEN);
+    if (link == WIFI_LINK_UP) {
+        lv_obj_clear_flag(guider_ui.WIFI_wifi_log_img, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_clear_flag(guider_ui.WIFI_loaded_wifi_label, LV_OBJ_FLAG_HIDDEN);
+    } else {
+        lv_obj_add_flag(guider_ui.WIFI_wifi_log_img, LV_OBJ_FLAG_HIDDEN);
+        lv_obj_add_flag(guider_ui.WIFI_loaded_wifi_label, LV_OBJ_FLAG_HIDDEN);
+    }
+}
+
+/* Load 发起重连后立即按连接中显示，并把下一次查询推到一个周期之后：reconfigure 在后台执行，
+ * 马上查询多半读到旧的未连接状态，圆环又会被隐藏（spec §3.3）。 */
+static void wifi_status_connecting(void)
+{
+    wifi_link_show(WIFI_LINK_BUSY);
+    if (wifi_update_timer != NULL)
+        lv_timer_reset(wifi_update_timer);
+}
+
 static void _wifi_status_update()
 {
     FILE *fp;
     char command[MAX_LINE_LEN];
     char result[MAX_LINE_LEN];
+    enum wifi_link link = WIFI_LINK_DOWN;
     strcpy(command, "wpa_cli status");
  
     fp = popen(command, "r");
     if (fp == NULL) {
         printf("Failed to run command\n");
+        /* 不知道当前状态，保持原有显示（PR #8 D18）。 */
         return ;
     }
 
-
-    while (fgets(result, sizeof(result)-1, fp) != NULL)
+    /* 只认行首的 wpa_state=：输出中 ssid= 在它之前，SSID 本身可以含 "wpa_state=" 这样的文字。 */
+    while (fgets(result, sizeof(result), fp) != NULL)
     {
-        if (strstr(result, "wpa_state=COMPLETED"))
-        {   
-            // connected 
-            if((guider_ui.WIFI_loading_spinner != NULL)
-                &&(guider_ui.WIFI_wifi_log_img != NULL)
-                &&(guider_ui.WIFI_loaded_wifi_label != NULL)  )
-            {
-                lv_obj_add_flag(guider_ui.WIFI_loading_spinner,LV_OBJ_FLAG_HIDDEN);
-                lv_obj_clear_flag(guider_ui.WIFI_wifi_log_img,LV_OBJ_FLAG_HIDDEN);
-                lv_obj_clear_flag(guider_ui.WIFI_loaded_wifi_label,LV_OBJ_FLAG_HIDDEN);
+        const char *state = result;
 
-            }
-            break;     
-        }
-        else if(strstr(result, "wpa_state=SCANNING"))
-        { 
-            // scanning
-            if((guider_ui.WIFI_loading_spinner != NULL)
-                &&(guider_ui.WIFI_wifi_log_img != NULL)
-                &&(guider_ui.WIFI_loaded_wifi_label != NULL)  )
-            {
-                lv_obj_clear_flag(guider_ui.WIFI_loading_spinner,LV_OBJ_FLAG_HIDDEN);
-                lv_obj_add_flag(guider_ui.WIFI_wifi_log_img,LV_OBJ_FLAG_HIDDEN);
-                lv_obj_add_flag(guider_ui.WIFI_loaded_wifi_label,LV_OBJ_FLAG_HIDDEN);
-            }
-            break;     
-        }
+        if (strncmp(state, "wpa_state=", 10) != 0)
+            continue;
+        result[strcspn(result, "\r\n")] = '\0';
+        link = wifi_link_of(state + 10);
+        break;
     }
 
     pclose(fp);
-
+    wifi_link_show(link);
 }
 
 static int wifi_hex(int c)
@@ -523,6 +555,15 @@ static void wifi_update_timer_cb(lv_timer_t * tmr)
     if (lv_scr_act() != guider_ui.WIFI)
         return;
     _wifi_status_update();
+}
+
+/* 每次进入 WiFi 页立即查询一次，不等 5 s 轮询。只让定时器在下一次 lv_timer_handler() 中执行：
+ * 此时两种切屏方式的 lv_scr_act() 都已是 WiFi 页，回调中也不同步 popen（spec §2.5、§3.2）。 */
+static void wifi_screen_load_cb(lv_event_t *e)
+{
+    LV_UNUSED(e);
+    if (wifi_update_timer != NULL)
+        lv_timer_ready(wifi_update_timer);
 }
 
 /**********************
@@ -670,6 +711,9 @@ void wifi_app_init()
 
     lv_obj_add_flag(guider_ui.WIFI_wifi_log_img,LV_OBJ_FLAG_HIDDEN);
     lv_obj_add_flag(guider_ui.WIFI_loaded_wifi_label,LV_OBJ_FLAG_HIDDEN); 
+    /* 首次查询前状态未知，按未连接显示，圆环不转（spec §3.2）。 */
+    lv_obj_add_flag(guider_ui.WIFI_loading_spinner,LV_OBJ_FLAG_HIDDEN);
+    lv_obj_add_event_cb(guider_ui.WIFI, wifi_screen_load_cb, LV_EVENT_SCREEN_LOAD_START, NULL);
     wifi_hint_label = lv_label_create(guider_ui.WIFI);
     luckfox_lv_obj_set_pos(wifi_hint_label, 150, 245);
     luckfox_lv_obj_set_size(wifi_hint_label, 310, 60);

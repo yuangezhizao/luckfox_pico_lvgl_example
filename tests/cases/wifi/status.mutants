@@ -1,0 +1,114 @@
+# 圆环与连接图标按 wpa_state 分组显示，连不上 wpa_supplicant 时停止（spec §3.1、Q1、Q3、Q6，N7）。
+# 未连接时不改动，即修复前的行为。
+id: WIFI-N7-down-keeps
+file: custom/custom_wifi.c
+old:     pclose(fp);\n    wifi_link_show(link);
+new:     pclose(fp);\n    if (link != WIFI_LINK_DOWN)\n        wifi_link_show(link);
+tests: ^wifi\.status\.
+
+# 读不到 wpa_state= 行（连不上）按连接中处理。
+id: WIFI-N7-unreachable-busy
+file: custom/custom_wifi.c
+old:     enum wifi_link link = WIFI_LINK_DOWN;
+new:     enum wifi_link link = WIFI_LINK_BUSY;
+tests: ^wifi\.status\.
+
+# 未知取值（含 DISCONNECTED、INACTIVE 等）按连接中处理。
+id: WIFI-N7-unknown-busy
+file: custom/custom_wifi.c
+old:     return WIFI_LINK_DOWN;
+new:     return WIFI_LINK_BUSY;
+tests: ^wifi\.status\.
+
+# 连接中只认 SCANNING。
+id: WIFI-N7-only-scanning
+file: custom/custom_wifi.c
+old: i < sizeof(busy) / sizeof(busy[0])
+new: i < 1
+tests: ^wifi\.status\.
+
+# 漏掉最后一个连接中状态 GROUP_HANDSHAKE。
+id: WIFI-N7-drop-last-busy
+file: custom/custom_wifi.c
+old: i < sizeof(busy) / sizeof(busy[0])
+new: i + 1 < sizeof(busy) / sizeof(busy[0])
+tests: ^wifi\.status\.
+
+# 在行内任意位置找 wpa_state=，ssid= 行中的同名文字会先被命中。
+id: WIFI-N7-state-anywhere
+file: custom/custom_wifi.c
+old:         const char *state = result;\n\n        if (strncmp(state, "wpa_state=", 10) != 0)\n            continue;
+new:         const char *state = strstr(result, "wpa_state=");\n\n        if (state == NULL)\n            continue;
+tests: ^wifi\.status\.
+
+# 不去掉行尾换行，取值整串比较全部落空。
+id: WIFI-N7-keep-newline
+file: custom/custom_wifi.c
+old: result[strcspn(result, 
+new: result[strlen(result) + 0 * strcspn(result, 
+tests: ^wifi\.status\.
+
+# 已连接时也显示圆环。
+id: WIFI-N7-up-spins
+file: custom/custom_wifi.c
+old:     if (link == WIFI_LINK_BUSY)\n
+new:     if (link != WIFI_LINK_DOWN)\n
+tests: ^wifi\.status\.
+
+# 连接中也显示连接图标。
+id: WIFI-N7-busy-icon
+file: custom/custom_wifi.c
+old:     if (link == WIFI_LINK_UP) {
+new:     if (link != WIFI_LINK_DOWN) {
+tests: ^wifi\.status\.
+
+# popen 失败时改为未连接，违反 PR #8 D18（spec Q3）。
+id: WIFI-N7-popen-fail-down
+file: custom/custom_wifi.c
+old:         /* 不知道当前状态，保持原有显示（PR #8 D18）。 */\n
+new:         wifi_link_show(WIFI_LINK_DOWN);\n
+tests: ^wifi\.popen\.
+
+# 圆环初始隐藏、进入 WiFi 页立即查询（spec §3.2、Q4）。
+# 删掉初始隐藏：首次查询前圆环一直转。
+id: WIFI-N7-initial-spins
+file: custom/custom_wifi.c
+old:     lv_obj_add_flag(guider_ui.WIFI_loading_spinner,LV_OBJ_FLAG_HIDDEN);\n
+new:
+tests: ^wifi\.status\.
+
+# 不注册进入页面的事件：进入后要等 5 s 轮询。
+id: WIFI-N7-no-enter-query
+file: custom/custom_wifi.c
+old:     lv_obj_add_event_cb(guider_ui.WIFI, wifi_screen_load_cb, LV_EVENT_SCREEN_LOAD_START, NULL);\n
+new:
+tests: ^wifi\.status\.
+
+# 进入页面时重置定时器而不是立即触发：查询反而推迟到 5 s 后。
+id: WIFI-N7-enter-reset
+file: custom/custom_wifi.c
+old:         lv_timer_ready(wifi_update_timer);
+new:         lv_timer_reset(wifi_update_timer);
+tests: ^wifi\.status\.
+
+# 点 Load 后立即显示连接中（spec §3.3、Q14）。
+# 不显示：未连接时点 Load，下一次轮询前没有任何进行中提示。
+id: WIFI-N7-load-no-spinner
+file: custom/custom_wifi.c
+old:     wifi_link_show(WIFI_LINK_BUSY);\n
+new:
+tests: ^wifi\.status\.
+
+# 不推迟下一次轮询：原本快到期的轮询读到旧状态，马上又隐藏圆环。
+id: WIFI-N7-load-no-reset
+file: custom/custom_wifi.c
+old:     if (wifi_update_timer != NULL)\n        lv_timer_reset(wifi_update_timer);\n
+new:
+tests: ^wifi\.status\.
+
+# 改为立即查询：reconfigure 在后台执行，立即读到的多半是旧的 DISCONNECTED。
+id: WIFI-N7-load-ready
+file: custom/custom_wifi.c
+old:         lv_timer_reset(wifi_update_timer);
+new:         lv_timer_ready(wifi_update_timer);
+tests: ^wifi\.status\.
