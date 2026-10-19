@@ -12,7 +12,7 @@
 这是一个交叉编译的嵌入式 GUI 应用（C + LVGL 8.3 + lv_drivers 8.1，使用 CMake 构建），面向 `Luckfox Pico Ultra` ARM 开发板。项目库依赖（LVGL/lv_drivers/libdrm/libcjson）已 vendored 于 `lib/`；交叉工具链与 native 渲染验证依赖（`libdrm-dev`/`libcjson-dev` 等）由 `.cursor/Dockerfile` 安装。现在通过 `.cursor/environment.json`（引用 `.cursor/Dockerfile`）以 Dockerfile 模式提供可复现环境。构建命令见 `README.md`。
 
 ### Cloud Agent 环境（Dockerfile 模式 / 配置即代码）
-- **当前活动**：`.cursor/environment.json` → `.cursor/Dockerfile`（自建 `ubuntu:24.04`，apt 安装 ARM 交叉工具链、CMake、native/SDL 验证依赖与 `qemu-user`，另装通用 / 诊断 CLI 与 Tailscale，末尾 `USER ubuntu`）。
+- **当前活动**：`.cursor/environment.json` → `.cursor/Dockerfile`（自建 `ubuntu:24.04`，apt 安装 ARM 交叉工具链、CMake、native/SDL 验证依赖、`qemu-user` 与 preview 脚本工具（`imagemagick`、`xdotool`、`xvfb`），另装通用 / 诊断 CLI 与 Tailscale，末尾 `USER ubuntu`）。
 - **备选**：`.cursor/Dockerfile.luckfox_pico`（Luckfox 官方镜像 `luckfoxtech/luckfox_pico:1.0`，该 FROM 无 `ubuntu` 账户，`USER` 前 `useradd` 创建）；切换只需把 `environment.json` 的 `build.dockerfile` 改为指向它。
 - 按官方 resolution order，repo 级 `.cursor/environment.json` 优先于 personal / team saved environment，故通常无需任何 Dashboard 操作。
 - grilling：`install`（`sudo -n -E bash .cursor/install.sh`）在创建 Environment Build 时把固定 commit `85f83d3` 的技能写入 `$HOME/.cursor/skills/grilling/SKILL.md`（不进 git），并 `chown` 给 `ubuntu`。新 Agent 须从捕获了该 install 的 Build 启动。

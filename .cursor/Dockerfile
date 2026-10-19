@@ -43,15 +43,16 @@ ENV TZ=Asia/Shanghai
 # └──────────────────────────────────────────────────────────────────────────────
 
 # apt 取舍只看当前 FROM digest 的 dpkg：不在 FROM 则显式安装，已在 FROM 则不写。2026-10-06 对该 digest 执行 docker run --rm --entrypoint dpkg-query ubuntu:24.04@sha256:4fbb8e6a8395de5a7550b33509421a2bafbc0aab6c06ba2cef9ebffbc7092d90 -W（amd64，92 个包），下列包均不在 FROM。
-# 下方 apt 包分组与 docs/superpowers/specs/2026-10-06-lvgl-example-cloudagent-align-luckfox-pico-design.md §2.2 一致：先本仓构建依赖（基础工具、平台引导、ARM 交叉工具链、构建系统、native 验证、32 位运行），再 A / B / C 类；每组前一行组名注释，组内按字母序。
+# 下方 apt 包分组与 docs/superpowers/specs/2026-10-06-lvgl-example-cloudagent-align-luckfox-pico-design.md §2.2 一致：先本仓构建依赖（基础工具、平台引导、ARM 交叉工具链、构建系统、native 验证、32 位运行，以及 docs/superpowers/specs/2026-10-19-lvgl-example-preview-tools-design.md §3.5 新增的 preview 工具），再 A / B / C 类；每组前一行组名注释，组内按字母序。
 # - 基础工具    : git（构建期即需——本文件末尾的 git config 依赖它）、sudo（容器内提权）、ca-certificates（运行期 https：git clone / curl / gh；注意 Ubuntu 官方 apt 源走 http，本行 apt 自身并不需要它）。
 # - 平台引导    : curl（Cursor 安装 exec-daemon 时用它从 S3 拉取 tar.gz；该步早于平台按 Aptfile 补装 curl，故必须镜像内自带——ubuntu:24.04 基础镜像默认不含 curl）；curl 还被下一层拉 Tailscale 密钥使用。
 # - ARM 交叉工具链: gcc-arm-linux-gnueabihf、g++-arm-linux-gnueabihf（编 32-bit ARM 目标；本仓工具链在此安装）。
 # - 构建系统    : cmake；build-essential 提供 native x86 gcc/g++/make（native 渲染 harness 需要）。
 # - native 验证 : libdrm-dev、libcjson-dev（x86 版，供 custom/*.c 链接期符号）；libsdl2-dev（SDL 驱动桌面开窗渲染 + ffmpeg 录制演示）；pkg-config 便利工具（可选）。
 # - 32 位运行 : qemu-user（qemu-arm 用户态运行 32 位 ARM 程序：tests/ 的 32 位换算测试 main.brightness_arm32.conversion 与 uClibc 产物冒烟；CI 的 native-tests job 以 LUCKFOX_TESTS_ARM32=ON 依赖它）。⚠️ 修改本文件会改变 CI 镜像标签（取本文件哈希），该 PR 在合并前 build-image 找不到 dev 签名镜像而失败，合并后 dev push 重建镜像。
+# - preview 工具: imagemagick、xdotool、xvfb（tests/tools/preview/ 的脚本：ImageMagick 截图与取色，xdotool 点击，Xvfb 无桌面运行；CI 的 native-tests 以 --headless 运行其中的核对脚本）。xdotool 在 Cloud Agent 中另由平台 Aptfile 安装，CI 镜像没有平台层，须在此显式安装；三者均不在 FROM（2026-10-19 dpkg-query）。
 # - A 类 iproute2 / jq：`ss` 与 JSON 摘要供 .cursor/start.sh 使用；FROM 没有。procps 已在 FROM，不重复。
-# - B 类 tcpdump / htop / neofetch：抓包与排查 CLI。neofetch 在 universe；本 RUN 带 --no-install-recommends，避免拉上 imagemagick 等推荐包。
+# - B 类 tcpdump / htop / neofetch：抓包与排查 CLI。neofetch 在 universe；本 RUN 带 --no-install-recommends，避免拉上 neofetch 推荐的 chafa、w3m-img 等包（其中 imagemagick 已在 preview 工具组显式安装）。
 # - B 类 tree / iftop / iotop / screen / ncdu / traceroute / nmap / ngrep / conntrack / psmisc / fping / dmidecode：诊断 CLI。apt 写 conntrack（AlmaLinux 包名 conntrack-tools）；不写 conntrack-tools / conntrackd / iotop-c。nmap/ngrep/ncdu 等在 universe，与 neofetch 相同前提。
 # - C 类 通用 CLI：vim / file / rsync / unzip / wget / xz-utils / openssh-client / openssl / locales：与 luckfox-pico 仓库对齐的通用 CLI。
 # - 绝不写 which：which 无独立实体包（命令由 essential 包 debianutils 内置、FROM 已有）；ubuntu:24.04（universe 默认开启）上写它会解析到虚包 gnu-which 并安装成功（退出 0）、徒增冗余包，官方镜像 Ubuntu 22.04 上则报 "E: Unable to locate package which" 致退出码 100。
@@ -69,6 +70,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       libcjson-dev libdrm-dev libsdl2-dev pkg-config \
       # 32 位运行
       qemu-user \
+      # preview 工具
+      imagemagick xdotool xvfb \
       # A 类：start.sh 依赖
       iproute2 jq \
       # B 类：诊断 CLI

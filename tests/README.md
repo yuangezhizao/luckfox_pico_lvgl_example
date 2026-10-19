@@ -82,7 +82,7 @@ ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
 
 `tools/preview/` 中的脚本用来启动 `preview`、模拟点击、截图并核对界面，在 Cloud Agent 桌面（`DISPLAY=:1`）与无桌面环境中用法相同。先执行 `cmake --build build-tests --target preview`。
 
-- 依赖：`xdotool`、ImageMagick（`import`、`convert`）；无桌面时还要 Xvfb 或 Xtigervnc。缺少时脚本以退出码 2 结束并提示 `sudo apt-get install -y imagemagick xdotool xvfb`。
+- 依赖：`xdotool`、ImageMagick（`import`、`convert`）；无桌面时还要 Xvfb 或 Xtigervnc。`imagemagick`、`xdotool`、`xvfb` 由 `.cursor/Dockerfile` 与 `.cursor/Dockerfile.luckfox_pico` 安装；Environment Build 早于此改动的环境与其他环境缺少时，脚本以退出码 2 结束并提示 `sudo apt-get install -y imagemagick xdotool xvfb`。
 - 会话目录 `PREVIEW_WORK`（默认 `/tmp/luckfox-preview`）：`session` 记录显示号、分辨率、进程与窗口；`tmp/` 是 `preview` 的 `TMPDIR`（音乐目录、假背光在其中的 `luckfox-tests-*/`）；`wifi/` 是假 `wpa_cli` 的状态与调用记录 `cmd.log`；`shots/` 是截图；另有 `preview.log`、`xserver.log`。`start.sh` 会清空其中的 `tmp/`、`wifi/`，所以只使用不存在、为空或带标记文件 `.luckfox-preview-workdir`（普通文件，首次使用时创建）的目录，拒绝 `/` 与仓库内的路径（做法同 `tools/mutate.sh`）；没有标记的旧目录要先删除。构建目录用 `PREVIEW_BUILD` 覆盖（默认仓库根目录的 `build-tests`），`PREVIEW_BACKLIGHT` 原样传给 `preview`。
 - 核对脚本的退出码：0 符合；1 不符，打印实际值与预期值，截图留在 `shots/`；2 环境错误（缺工具、`preview` 未运行等）。每步操作后反复截图，连续两次符合即继续，超时才判失败。
 
