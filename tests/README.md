@@ -113,7 +113,7 @@ tests/tools/preview/stop.sh
 **何时运行**：
 
 - 没有板子时查看或操作界面：在桌面上 `start.sh`，用鼠标点；用 `songs.sh`、`wifi.sh` 准备音乐列表与 WiFi 状态。
-- 改了主屏、音乐页、WiFi 页或画板相关的 `generated/`、`custom/`，或改了这些脚本：推送前在本地跑两个核对脚本。
+- 改了主屏、音乐页、WiFi 页或画板相关的 `generated/`、`custom/`，或改了这些脚本：推送前在本地跑两个核对脚本，CI 也会再跑。
 - 要给 PR 或审查配截图：`shots.sh`，也可以直接用核对脚本留在 `shots/` 中的截图。
 
 两个核对脚本只覆盖音乐列表面板与 WiFi 圆环这两处界面，其他界面的改动要另写核对脚本或 ctest 用例。界面有意改变时（如调整布局、配色），按实测值更新脚本中的预期值与上表。
@@ -126,12 +126,13 @@ tests/tools/preview/stop.sh
   - `pv_shot`、`pv_pixel`、`pv_colors`：截图、取像素、数颜色；
   - `pv_wait`、`pv_wait_page`：轮询等待，不用固定的 `sleep`。
 - 坐标只写 480 设计值；预期值在 480、720 下分别实测。
-- 改完先在本地跑 ShellCheck：`shellcheck -x -P SCRIPTDIR tests/tools/preview/*.sh tests/tools/preview/bin/wpa_cli`，要求 0 条；再在桌面与 `--headless` 下各以 480、720 跑一遍。
+- 改完先在本地跑 ShellCheck（与 CI 相同）：`shellcheck -x -P SCRIPTDIR tests/tools/preview/*.sh tests/tools/preview/bin/wpa_cli`，要求 0 条；再在桌面与 `--headless` 下各以 480、720 跑一遍。
 
 **排查**：
 
 - `start.sh` 最多等 30 s，等到 `preview` 的窗口与临时目录。超时会打印诊断（进程、同名窗口及其 PID、`preview.log` 末尾）并以 2 退出；成功时打印等了几秒。找窗口时排除启动前已有的同名窗口（如手动启动的 `preview`）；启动中途失败时会结束本次启动的 `preview` 与自起的 X 服务器，不留后台进程。
 - 核对不符时，先看 `shots/` 中对应步骤的截图；`<分辨率>-page.png` 是判断当前页面时截的图。再看 `preview.log`，以及 `wifi/cmd.log` 中的 `wpa_cli` 调用。
+- CI 失败时，同样的文件在 artifact `preview-shots` 中。
 
 脚本只写 480 设计坐标，按 `分辨率 / 480` 截断取整换算，与 `custom/custom_main.c` 的 `luckfox_lv_obj_set_pos()`、`luckfox_lv_obj_set_size()` 相同；生成代码中用 `lv_obj_set_size()` 设置的尺寸不缩放，要单独处理。常用的点击位置（设计坐标）：
 
@@ -144,7 +145,7 @@ tests/tools/preview/stop.sh
 | 音乐 | 列表按钮 | 左上角 (139, 310) 缩放后加 16（32×32 不缩放）：480 屏 (155, 326)，720 屏 (224, 481) |
 | 音乐 | 返回 | 窗口内 (32, 32)，两种屏相同（64×64 不缩放） |
 
-这些脚本不进 ctest，只用于开发中快速核对，权威验证仍是真机。
+这些脚本不进 ctest。CI 的 `🧪 原生测试` job 在 480、720 下各以 `--headless` 运行一遍两个核对脚本与 `shots.sh`，失败时上传截图与日志（保留 7 天）；`🐚 ShellCheck` job 静态检查仓库内的全部 shell 脚本，要求 0 条。脚本只用于开发中快速核对，权威验证仍是真机。
 
 ## 改坏检验
 

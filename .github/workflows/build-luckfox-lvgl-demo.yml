@@ -329,6 +329,60 @@ jobs:
         shell: bash
         run: ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
 
+      - name: 🖼️ preview 脚本核对（480/720）
+        shell: bash
+        env:
+          # 字面量路径：容器 job 中 ${{ runner.temp }} 给出的是宿主路径
+          PREVIEW_WORK: /tmp/luckfox-preview
+        run: |
+          set -euo pipefail
+          # imagemagick、xdotool、xvfb 在 CI 镜像（.cursor/Dockerfile）中；复用上一步的 build-tests，只需再链接 preview；用法见 tests/README.md「preview 脚本」
+          cmake --build build-tests --target preview -j"$(nproc)"
+          for res in 480 720; do
+            tests/tools/preview/start.sh --headless "${res}"
+            tests/tools/preview/check-music-list.sh
+            tests/tools/preview/check-wifi.sh
+            tests/tools/preview/shots.sh
+            tests/tools/preview/stop.sh
+          done
+
+      - name: 📦 失败时上传 preview 截图与日志
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: preview-shots
+          # 只在失败时上传；ctest 失败时本步骤之前的核对未运行，没有文件即忽略
+          path: |
+            /tmp/luckfox-preview/shots/
+            /tmp/luckfox-preview/*.log
+            /tmp/luckfox-preview/wifi/cmd.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  shellcheck:
+    name: 🐚 ShellCheck
+    # 只做静态检查，不执行脚本；用 runner 预装的 shellcheck，不依赖 build-image，改 Dockerfile 的 PR 上也照常运行
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: 📤 检出本仓
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: 🐚 检查全部 shell 脚本
+        shell: bash
+        run: |
+          set -euo pipefail
+          shellcheck --version
+          # *.sh 之外，假 wpa_cli 没有扩展名；-x -P SCRIPTDIR 跟随脚本中 source 的 lib.sh；默认级别（含 style），要求 0 条
+          mapfile -d '' files < <(git ls-files -z '*.sh' 'tests/tools/preview/bin/*')
+          printf '%s\n' "${files[@]}"
+          shellcheck -x -P SCRIPTDIR "${files[@]}"
+
   mutation-tests:
     name: 🧬 变体检验
     needs: build-image
