@@ -324,6 +324,8 @@ awk '/^### A\.3 /{a=1} a&&/^```json$/{p=1;next} p&&/^```$/{exit} p' $P9 > /tmp/m
 
 ### A.4 在 `preview` 中查看 WiFi 页圆环
 
+**状态**：本节的假 `wpa_cli` 与 `pv-wifi-check.sh` 已由 PR #14 入库到 `tests/tools/preview/`（`bin/wpa_cli`、`check-wifi.sh`，切换状态用 `wifi.sh`），用法见 `tests/README.md`「preview 脚本」，设计见 [`2026-10-19-lvgl-example-preview-tools-design.md`](../specs/2026-10-19-lvgl-example-preview-tools-design.md)；以下为 PR #13 时的原文，依赖、坐标与运行方式以新目录为准。
+
 `preview` 的构建与运行方法见 `AGENTS.md`「运行 / 验证 GUI」与 `tests/README.md`「手动目标」，桌面操作脚本见 PR #10 plan 附录 C.5。WiFi 页要用假 `wpa_cli` 切换状态：`/tmp/pv-wifi/state` 不存在时模拟连不上，存在时按其中的 `wpa_state` 回答。在 Cloud Agent 的桌面（`DISPLAY=:1`）上运行，点主屏 WIFI 进入后，用 `echo SCANNING > /tmp/pv-wifi/state`、`echo COMPLETED > /tmp/pv-wifi/state`、`rm /tmp/pv-wifi/state` 切换，最多 5 s 后生效；`/tmp/pv-wifi/cmd.log` 记录每次调用。`preview` 没有 `wpa_supplicant.conf`，SSID 标签为空，只看得到图标。
 
 ```bash
