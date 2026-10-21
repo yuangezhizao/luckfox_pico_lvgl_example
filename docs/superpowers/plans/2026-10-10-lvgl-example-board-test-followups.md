@@ -559,6 +559,8 @@ fi
 
 ### C.5 `preview` 操作与核对
 
+**状态**：本节脚本已由 PR #14 入库到 `tests/tools/preview/`，用法见 `tests/README.md`「preview 脚本」，设计见 [`2026-10-19-lvgl-example-preview-tools-design.md`](../specs/2026-10-19-lvgl-example-preview-tools-design.md)；以下为 PR #10 时的原文，依赖、坐标与运行方式以新目录为准。
+
 `pv-start.sh`、`pv-songs.sh`、`pv-check.sh` 放在同一目录（相互调用），默认用云端桌面 `DISPLAY=:1`；没有桌面时用 Xvfb（如 `Xvfb :99 &` 后 `DISPLAY=:99`）。窗口内坐标（`xdotool mousemove --window`）：
 
 | 控件 | 480 屏 | 720 屏 |

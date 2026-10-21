@@ -1,0 +1,19 @@
+#!/bin/sh
+# preview 用的假 wpa_cli，由 start.sh 放在 PATH 最前（PR #13 plan 附录 A.4）。
+# $PREVIEW_WIFI_DIR/state 存在时按其中的 wpa_state 回答；不存在时像连不上 wpa_supplicant 一样只写 stderr、以 255 退出
+# （与 wpa_cli v2.10 实测相同，PR #13 spec §2.3）。每次调用记入 $PREVIEW_WIFI_DIR/cmd.log。
+d=${PREVIEW_WIFI_DIR:?PREVIEW_WIFI_DIR 未设置，请用 start.sh 启动 preview}
+echo "$(date +%T.%3N) wpa_cli $*" >>"$d/cmd.log"
+if [ ! -f "$d/state" ]; then
+    ifname='(nil)'
+    [ "${1:-}" = -i ] && ifname=$2
+    echo "Failed to connect to non-global ctrl_ifname: $ifname  error: No such file or directory" >&2
+    exit 255
+fi
+case "$*" in
+    status) printf "Selected interface 'wlan0'\nbssid=aa:bb:cc:dd:ee:ff\nssid=home\nid=0\nmode=station\nwpa_state=%s\n" "$(cat "$d/state")" ;;
+    *scan_results*) printf 'bssid / frequency / signal level / flags / ssid\naa:bb:cc:dd:ee:ff\t2412\t-40\t[WPA2-PSK-CCMP][ESS]\thome\n11:22:33:44:55:66\t2437\t-60\t[WPA2-PSK-CCMP][ESS]\tcafe\n' ;;
+    *' scan') echo OK ;;
+    '') cat >/dev/null ;;
+esac
+exit 0

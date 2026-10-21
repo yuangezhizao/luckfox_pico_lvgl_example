@@ -289,34 +289,7 @@ W1–W4 的二进制为 uClibc 产物 `luckfox_lvgl_demo-pr13-fc4c066`（当时�
 
 ### 8.1 整理 `preview` 的启动与操作方法（Q10）
 
-**状态**：待办，另开会话与 PR；完成后改为状态行，链接新 PR 的文档。
-
-本 PR 在 Cloud Agent 桌面上用 `preview` 查看 WiFi 页时，启动与操作方法分散在多处。`origin/dev` `1272564` 上提到 `preview` 的文档（`git grep -c preview`，plan 附录 A.2 ⑤）：
-
-| 位置 | 次数 | 内容 |
-|---|---|---|
-| `AGENTS.md` | 1 | 一句构建与运行命令 |
-| `tests/README.md`「手动目标」 | 1 | 环境变量与限制 |
-| PR #7、#9、#10、#12 的 spec | 共 22 | 设计背景（编译单元、Mesa 等） |
-| PR #6、#7、#9、#10、#12 的 plan | 共 52 | 其中 PR #10 plan 附录 C.5 有 4 个桌面脚本（`pv-start.sh`、`pv-songs.sh`、`pv-check.sh`、`preview_run.sh`） |
-
-此外，本 PR plan 附录 A.4 新增了一个假 `wpa_cli`，用来在 WiFi 页切换状态。`tests/tools/` 只有 `preview.c` 本身，没有启动或操作脚本；要用 `preview`，得先知道去 PR #10 plan 附录 C.5，再从 Markdown 中提取脚本。
-
-| 方案 | 做法 | 优点 | 缺点 |
-|---|---|---|---|
-| A：只合并文档 | 扩写 `tests/README.md`「手动目标」，汇总启动、操作与核对方法，脚本仍留在各 plan 附录 | 不改「辅助脚本不入库」的现有做法 | 脚本仍要从 plan 中提取；plan 是历史记录，脚本以后改动无处落地 |
-| B：脚本入库 | 新建目录（如 `tests/tools/preview/`）存放上述 4 个脚本与假 `wpa_cli`；用法写进 `tests/README.md`，`AGENTS.md` 只留一句指引 | 一处可找；脚本能做 ShellCheck；新会话可直接运行 | 要维护窗口坐标等硬编码；改变了 PR #10、#12 把辅助脚本写在 plan 附录的做法 |
-| C：新建单独文档 | 如 `docs/preview.md` | 篇幅不受 `tests/README.md` 限制 | 与 `tests/README.md` 重复，又多一个入口 |
-
-建议 B：`preview` 脚本是反复使用的开发工具，与一次性的核对脚本（`percommit.sh`、`probe.sh` 等）不同，适合入库；一次性脚本仍留在 plan 附录。历史 plan 不改正文，只在 PR #10 plan 附录 C.5 开头加一行状态，指向新目录（同 PR #12 对 §6.5 的处理）。本 PR plan 附录 A.4 保持原样，作为本 PR 的记录。
-
-在新会话、新 PR 中执行：
-
-- 范围：开发工具与文档的整理，与 N7 的修复无关，并入本 PR 会扩大 spec、QA 与验证的范围。
-- 时机：整理与本 PR 互不依赖，不必等本 PR 合并，可从最新的 `dev` 另开分支进行。
-- 上下文：本会话已经很长，新会话读 `AGENTS.md` 与 PR #10 plan 附录 C.5 即可起步。
-
-新会话待定：目录名；是否加 ShellCheck 检查（本机或 CI）；480、720 两种屏幕的坐标是否参数化；Xvfb 与云端桌面两种运行方式是否合并为一个脚本。
+**状态**：已由 PR #14 完成，设计、实测与决策见 [`2026-10-19-lvgl-example-preview-tools-design.md`](2026-10-19-lvgl-example-preview-tools-design.md)，脚本在 `tests/tools/preview/`，用法见 `tests/README.md`「preview 脚本」。PR #13 时的现状、方案比较与待定问题见 PR #13 合并时的 [`2026-10-18-lvgl-example-wifi-spinner-design.md`](https://github.com/yuangezhizao/luckfox_pico_lvgl_example/blob/c13283c84c73ba5a1843e3a696250067dee03d2a/docs/superpowers/specs/2026-10-18-lvgl-example-wifi-spinner-design.md#81-整理-preview-的启动与操作方法q10)。
 
 ## 9. QA（grilling 记录）
 
