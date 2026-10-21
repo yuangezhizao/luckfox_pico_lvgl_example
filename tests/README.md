@@ -2,7 +2,7 @@
 
 `tests/` 是在 x86 主机上运行的独立 CMake 工程：用主机 gcc 以 ASan/UBSan 编译产品实际使用的 `lib/lvgl`、`generated/`、`custom/`，headless 运行，不需要开发板、`/dev/fb0` 或触摸屏。它与顶层交叉编译工程互不引用。
 
-## 运行
+## 1. 运行
 
 ```bash
 cmake -S tests -B build-tests
@@ -13,7 +13,7 @@ ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
 - 依赖：`build-essential`、`cmake`、`libdrm-dev`、`libcjson-dev`（均在 `.cursor/Dockerfile` 中），以及 `python3`（`tools/mutate.sh` 用它解析清单）。
 - 只跑一个页面：`ctest --test-dir build-tests -L wifi`；按名字筛选：`ctest --test-dir build-tests -R '^main\.brightness\.'`；只列出不运行：加 `-N`。
 
-## 目录与分类
+## 2. 目录与分类
 
 用例按页面放在 `cases/<页面>/`：控件或逻辑显示在哪一页，测试就放哪个目录；与页面无关的全局逻辑（tick、隐式声明等）归 `main/`。
 
@@ -30,13 +30,13 @@ ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
 
 `support/` 是公共代码（不含用例，函数统一 `tst_` 前缀）：`check.h` 断言与用例分派，`app_env` 提供 `src/main.c` 的 5 个全局量与 headless 显示、脚本化触摸，`capture` 捕获输出，`fake_fs` 管理本进程临时目录。
 
-## 命名
+## 3. 命名
 
 - 文件 `test_<被测对象>.c`，不加序号或日期前缀；需要调用被测文件里的 `static` 函数时，配一个 `unit_<被测对象>.c`：它 `#include` 被测 `.c`、导出 `tst_` 前缀的包装函数，随被测源码以 `-w` 编译，测试文件本身以 `-Wall -Wextra -Werror` 编译。
 - CTest 测试名 `<类别>.<对象>.<用例>`，用例名描述行为；标签为类别名。
 - 依赖界面或模块静态状态的用例，每个用例一个进程：同一可执行文件按命令行参数选用例（`tst_run_case()`）。
 
-## 新增测试
+## 4. 新增测试
 
 1. 在对应页面目录新建 `test_xxx.c`，用 `tst_case_t` 表列出用例，`main()` 调 `tst_run_case()`。
 2. 在该目录 `CMakeLists.txt` 加一行 `luckfox_add_test(xxx [UNIT unit_xxx.c] CASES <用例>...)`。
@@ -44,11 +44,11 @@ ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
 
 编译层检查在对应页面的 `CMakeLists.txt` 用 `luckfox_add_compile_check(<用例> FLAGS -Werror=<诊断> SOURCES <源文件>...)` 注册为 `<类别>.compile.<用例>`（标签 `<类别>;compile`，超时 120 秒），以普通 `-I` 逐个编译源文件，任一失败即测试失败。
 
-## 32 位测试
+## 5. 32 位测试
 
 目标板的 `long` 为 32 位，主机为 64 位，换算溢出只能在 32 位下测出：`main.brightness_arm32.conversion` 用 `arm-linux-gnueabihf-gcc` 编译、`qemu-arm` 运行（标签 `arm32`，`ctest -LE arm32` 可跳过）。`main.tick.monotonic_wrap` 同样在 ARM32 下验证单调时钟、毫秒换算与回绕；其编译选项 `-U_TIME_BITS -U_FILE_OFFSET_BITS` 取消工具链默认的 64 位时间与文件偏移宏，使 `time_t` 为 32 位，覆盖目标板上的溢出条件。这两个目标不经 `luckfox_add_test()`，而由 `cases/main/CMakeLists.txt` 的自定义命令交叉编译并注册，测试名仍按 `<类别>.<对象>.<用例>`。编译器 `arm-linux-gnueabihf-gcc` 与 `qemu-arm` 都由 `.cursor/Dockerfile` 与 `.cursor/Dockerfile.luckfox_pico` 提供；其他环境需 `sudo apt-get install -y gcc-arm-linux-gnueabihf qemu-user`。`-DLUCKFOX_TESTS_ARM32=AUTO`（默认）缺工具时跳过，`ON` 缺工具即报错，`OFF` 不注册。
 
-## 注意
+## 6. 注意
 
 - 常规 UI 测试不调用 `custom_init()`：它会拉起 `mpv` 并做硬件相关初始化；`mpv` 的启动与连接由 `cases/music/` 的用例以假 `mpv` 单独测试。
 - `custom_wifi.c` 的 `WPA_FILE_PATH=tst_wpa_conf_path()` 由 `tests/CMakeLists.txt` 的源文件 `COMPILE_DEFINITIONS` 覆盖，声明通过 `-include support/fake_fs.h` 引入，配置文件位于本进程临时目录；包含源码的 `unit_wifi.c` 在 `#include "custom_wifi.c"` 前用 `#define` 做相同覆盖。
@@ -61,7 +61,7 @@ ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
 - 触摸读取 `custom_touch.c` 的用例经 FIFO 逐帧喂入 `struct input_event`；`touch_step*.txt` 是板上 `evdev_probe` 录到的多指事件原文，用例按文本回放。
 - `custom_brightness.c` 在测试构建中以 `BACKLIGHT_SYSFS_DIR=tst_backlight_root()` 编译，背光目录位于本进程临时目录，`ctest -j` 并行互不干扰。
 
-## 手动目标
+## 7. 手动目标
 
 不进默认构建、不注册为 ctest：
 
@@ -78,7 +78,7 @@ ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
 
 截图与预览只用于对齐布局和复现交互，权威验证仍是真机。
 
-### preview 脚本
+### 7.1 preview 脚本
 
 `tools/preview/` 中的脚本用来启动 `preview`、模拟点击、截图并核对界面，在 Cloud Agent 桌面（`DISPLAY=:1`）与无桌面环境中用法相同。先执行 `cmake --build build-tests --target preview`。
 
@@ -147,7 +147,7 @@ tests/tools/preview/stop.sh
 
 这些脚本不进 ctest。CI 的 `🧪 原生测试` job 在 480、720 下各以 `--headless` 运行一遍两个核对脚本与 `shots.sh`，失败时上传截图与日志（保留 7 天）；`🐚 ShellCheck` job 静态检查仓库内的全部 shell 脚本，要求 0 条。脚本只用于开发中快速核对，权威验证仍是真机。
 
-## 改坏检验
+## 8. 改坏检验
 
 `tests/tools/mutate.sh [id...]` 逐条应用 `cases/*/*.mutants` 中的改坏变体，确认对应测试失败（`KILLED`）后还原；它把 `custom/` 复制到工作目录 `$MUTATE_WORK/src`（默认 `/tmp/luckfox-mutate/src`）、其余目录链接回仓库，以 `-DLUCKFOX_ROOT` 配置测试工程，不改动工作区。
 
