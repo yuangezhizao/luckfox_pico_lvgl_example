@@ -1,0 +1,85 @@
+# 音乐页按钮的按下反馈：上一首、下一首、播放叠 30% 黑色，播放模式、返回叠 50% 白色，暂停时按下播放键不换图，列表按钮不着色
+# （spec §3.1、§4、§5.1）。
+id: MUSIC-PRESS-no-init
+file: custom/custom_musicplayer.c
+old:     music_press_feedback_init();
+new:     (void)0;
+tests: ^music\.press_feedback\.
+
+id: MUSIC-PRESS-state-checked
+file: custom/custom_musicplayer.c
+old: lv_obj_set_style_img_recolor_opa(darken[i], LV_OPA_30, LV_PART_MAIN | LV_STATE_PRESSED);
+new: lv_obj_set_style_img_recolor_opa(darken[i], LV_OPA_30, LV_PART_MAIN | LV_STATE_CHECKED);
+tests: ^music\.press_feedback\.
+
+id: MUSIC-PRESS-opa-20
+file: custom/custom_musicplayer.c
+old: darken[i], LV_OPA_30,
+new: darken[i], LV_OPA_20,
+tests: ^music\.press_feedback\.
+
+id: MUSIC-PRESS-opa-0
+file: custom/custom_musicplayer.c
+old: darken[i], LV_OPA_30,
+new: darken[i], LV_OPA_0,
+tests: ^music\.press_feedback\.
+
+id: MUSIC-PRESS-lighten-black
+file: custom/custom_musicplayer.c
+old: lv_obj_set_style_img_recolor(lighten[i], lv_color_white(),
+new: lv_obj_set_style_img_recolor(lighten[i], lv_color_black(),
+tests: ^music\.press_feedback\.
+
+id: MUSIC-PRESS-lighten-opa-30
+file: custom/custom_musicplayer.c
+old: lighten[i], LV_OPA_50,
+new: lighten[i], LV_OPA_30,
+tests: ^music\.press_feedback\.
+
+id: MUSIC-PRESS-drop-pre
+file: custom/custom_musicplayer.c
+old: lv_obj_t *darken[] = {guider_ui.Music_player_pre_btn, guider_ui.Music_player_next_btn,
+new: lv_obj_t *darken[] = {guider_ui.Music_player_next_btn,
+tests: ^music\.press_feedback\.
+
+id: MUSIC-PRESS-drop-next
+file: custom/custom_musicplayer.c
+old: {guider_ui.Music_player_pre_btn, guider_ui.Music_player_next_btn,
+new: {guider_ui.Music_player_pre_btn,
+tests: ^music\.press_feedback\.
+
+id: MUSIC-PRESS-drop-start
+file: custom/custom_musicplayer.c
+old: guider_ui.Music_player_start_btn};
+new: };
+tests: ^music\.press_feedback\.
+
+id: MUSIC-PRESS-drop-mode
+file: custom/custom_musicplayer.c
+old: lighten[] = {guider_ui.Music_player_play_mode_btn, guider_ui.Music_player_back_btn};
+new: lighten[] = {guider_ui.Music_player_back_btn};
+tests: ^music\.press_feedback\.
+
+id: MUSIC-PRESS-drop-back
+file: custom/custom_musicplayer.c
+old: lighten[] = {guider_ui.Music_player_play_mode_btn, guider_ui.Music_player_back_btn};
+new: lighten[] = {guider_ui.Music_player_play_mode_btn};
+tests: ^music\.press_feedback\.
+
+id: MUSIC-PRESS-add-list
+file: custom/custom_musicplayer.c
+old: guider_ui.Music_player_start_btn};
+new: guider_ui.Music_player_start_btn, guider_ui.Music_player_music_list_btn};
+tests: ^music\.press_feedback\.
+
+id: MUSIC-PRESS-translate
+file: custom/custom_musicplayer.c
+old:         lv_obj_set_style_img_recolor(darken[i], lv_color_black(), LV_PART_MAIN | LV_STATE_PRESSED);
+new:         lv_obj_set_style_img_recolor(darken[i], lv_color_black(), LV_PART_MAIN | LV_STATE_PRESSED);\n        lv_obj_set_style_translate_y(darken[i], 2, LV_PART_MAIN | LV_STATE_PRESSED);
+tests: ^music\.press_feedback\.
+
+id: MUSIC-PRESS-paused-list-play
+file: custom/custom_musicplayer.c
+old: LV_IMGBTN_STATE_PRESSED, NULL, &_btn_play_alpha_84x84, NULL);
+new: LV_IMGBTN_STATE_PRESSED, NULL, &_btn_list_play_alpha_84x84, NULL);
+tests: ^music\.press_feedback\.

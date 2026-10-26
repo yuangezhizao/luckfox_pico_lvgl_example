@@ -629,6 +629,33 @@ static void music_list_btn_init(void)
     lv_imgbtn_set_src(btn, LV_IMGBTN_STATE_CHECKED_PRESSED, NULL, &_icn_chart_checked_alpha_32x32, NULL);
 }
 
+/* 单击按钮按下时着色：生成代码给按下状态设的 0xFF33FF 作用于空标签，没有效果。上一首、下一首、播放的图标
+ * 浅色或彩色，叠 30% 黑色；返回图标是黑色线条、播放模式是深紫圆底，叠黑色看不出或看不清变化，改叠 50% 白色。
+ * 生成代码让暂停时按下播放键换成浅色底的播放图，与播放中不一致，改回松开时的图，两种状态都只着色。
+ * 列表按钮整图不透明，着色会成灰色方块，不加（spec §2.2、§3.1、§5.1）。 */
+static void music_press_feedback_init(void)
+{
+    lv_obj_t *darken[] = {guider_ui.Music_player_pre_btn, guider_ui.Music_player_next_btn,
+                          guider_ui.Music_player_start_btn};
+    lv_obj_t *lighten[] = {guider_ui.Music_player_play_mode_btn, guider_ui.Music_player_back_btn};
+    size_t i;
+
+    for (i = 0; i < sizeof(darken) / sizeof(darken[0]); i++) {
+        if (darken[i] == NULL)
+            continue;
+        lv_obj_set_style_img_recolor(darken[i], lv_color_black(), LV_PART_MAIN | LV_STATE_PRESSED);
+        lv_obj_set_style_img_recolor_opa(darken[i], LV_OPA_30, LV_PART_MAIN | LV_STATE_PRESSED);
+    }
+    if (guider_ui.Music_player_start_btn != NULL)
+        lv_imgbtn_set_src(guider_ui.Music_player_start_btn, LV_IMGBTN_STATE_PRESSED, NULL, &_btn_play_alpha_84x84, NULL);
+    for (i = 0; i < sizeof(lighten) / sizeof(lighten[0]); i++) {
+        if (lighten[i] == NULL)
+            continue;
+        lv_obj_set_style_img_recolor(lighten[i], lv_color_white(), LV_PART_MAIN | LV_STATE_PRESSED);
+        lv_obj_set_style_img_recolor_opa(lighten[i], LV_OPA_50, LV_PART_MAIN | LV_STATE_PRESSED);
+    }
+}
+
 /* MUSIC 按钮回调先调用：MUSIC_ENABLE 原来只在启动时算一次，运行中放入的音乐要重启才能进入。2（Ubuntu，隐藏音乐）不变。 */
 void music_recheck_enable(void)
 {
@@ -958,6 +985,7 @@ int music_app_init()
     if (music_ui_timer == NULL)
         music_ui_timer = lv_timer_create(music_ui_timer_cb, MUSIC_UI_PERIOD_MS, NULL);
     music_list_btn_init();
+    music_press_feedback_init();
     if (guider_ui.Music_player != NULL && load_cb_screen != guider_ui.Music_player) {
         lv_obj_add_event_cb(guider_ui.Music_player, music_screen_load_cb, LV_EVENT_SCREEN_LOAD_START, NULL);
         load_cb_screen = guider_ui.Music_player;
