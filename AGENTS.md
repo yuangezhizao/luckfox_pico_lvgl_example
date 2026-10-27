@@ -19,6 +19,16 @@
 - 默认用户 `ubuntu`（免密 sudo）；`start`（`sudo -n -E bash .cursor/start.sh`）每次 Agent Run 以 kernel 模式拉起 Tailscale 与 sshd，主机名 `cursor-agent-for-luckfox-pico-lvgl-example-<bcId 前 8 位>`，需要用户级 Secrets `TAILSCALE_AUTHKEY`、`SSH_AUTHORIZED_KEYS`（缺失时 `start` 失败，Agent 仍可编码，只是无远程接入）。
 - 要对锁定 digest 做 `dpkg-query` 时，按 Cursor 文档在当前 VM 临时安装 Docker，禁止写入 Dockerfile；遇 `/etc/fuse.conf` 的 conffile 提问用 `dpkg --force-confold --configure -a` 保留现有文件。
 
+### 提交与 GitHub 操作
+- **身份**：提交身份为仓库配置的 `Cursor Agent <cursoragent@cursor.com>`，带 SSH 签名。环境会注入 `GIT_AUTHOR_*`、`GIT_COMMITTER_*`，提交、rebase 前要加 `env -u GIT_AUTHOR_NAME -u GIT_AUTHOR_EMAIL -u GIT_COMMITTER_NAME -u GIT_COMMITTER_EMAIL`。
+- **`Co-authored-by` 尾注**：仓库 `.git/config` 的 `core.hooksPath` 指向 `~/.cursor/agent-hooks/<id>/`，其中的 `commit-msg` 会追加 `Co-authored-by: 远哥制造 <…>`。本仓提交不带该尾注。
+  - 内容提交照常经过钩子，`pre-commit` 会做密钥扫描，不要用 `--no-verify`。
+  - 改提交说明（reword）或 autosquash 的 rebase 要加 `git -c core.hooksPath=/dev/null`。否则钩子会把尾注加回去，说明不变时哈希也不变。
+  - `GIT_EDITOR` 由 shell 解释，参数中有 `(` 时要加引号。
+- **保留作者时间**：rebase（含 fixup、reword）和 `--amend` 都要保留 author time，committer time 可以变化。不要用 `--reset-author`、`--ignore-date`、`--date`，也不用 `--committer-date-is-author-date`。
+- **GitHub 账户**：推送可以使用 Cloud Agent 自带的 `cursor` 账户凭据。这个账户创建 PR、改 PR 正文、发评论都会返回 HTTP 403 `Resource not accessible by integration`，这些操作要请作者用 `gh auth login` 登录本人账户。环境刷新令牌时会改写 `~/.config/gh/hosts.yml`，登录随时可能失效，登录后要尽快完成 PR 操作。
+- **打码**：`git remote -v`、push 报错可能显示带令牌的地址，输出前要先打码。
+
 ### 构建（标准开发流程）
 这是一个仅支持交叉编译的项目：产出的二进制是 32 位 ARM。`CMakeLists.txt` 会提前调用 `return()`，除非你先导出下列变量之一，否则不会产生任何构建目标：
 - `GLIBC_COMPILER` -> Ubuntu/glibc 目标（可在本环境 / Cloud Agent 容器中使用），或
