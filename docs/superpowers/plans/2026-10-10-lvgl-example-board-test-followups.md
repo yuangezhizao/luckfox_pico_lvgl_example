@@ -289,7 +289,7 @@
 
 ### 6.6 单次动作按钮的按下反馈
 
-上一首、下一首、返回按钮按下时没有视觉反馈（生成代码给按下状态设的 `0xFF33FF` 作用于按钮里的空文字标签，不生效）。可参照 LVGL Image button 示例，按下时加 30% 黑色着色（`img_recolor_opa`）；这些图标带透明像素，着色不会变成方块。本 PR 只做列表按钮的选中高亮（spec Q50），按下反馈以后再议。
+**状态**：已由 PR #15 完成，设计、实测与决策见 [`2026-10-26-lvgl-example-music-press-feedback-design.md`](../specs/2026-10-26-lvgl-example-music-press-feedback-design.md)。PR #10 时的记录见 PR #10 合并时的 [`2026-10-10-lvgl-example-board-test-followups.md`](https://github.com/yuangezhizao/luckfox_pico_lvgl_example/blob/85a6dd48264938b267fc0e4ecd458f6ac14f0530/docs/superpowers/plans/2026-10-10-lvgl-example-board-test-followups.md#66-单次动作按钮的按下反馈)。
 
 ### 6.7 触摸读取处理 `SYN_DROPPED`
 
