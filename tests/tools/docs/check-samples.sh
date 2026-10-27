@@ -62,6 +62,12 @@ ok 14 "$AP"'| 编号 | 说明 |\n|---|---|\n| A.10 | y |\n\n见附录 A.10。\n'
 ok 15 "$TK"'<!-- <h2>注释里的标题</h2> 与 Task 99 不渲染 -->\n\n第一行<br>第二行，见 Task 2\n'
 ok 16 "$TK"'<p>见 Task <strong>2</strong></p>\n\n<!-- Task 99 -->\n\n<script>Task 99</script>\n'
 ok 7 '# T\n\n## 1. a\n\n> ```python\n> x = 1\n> ```\n'; ok 8 '# T\n\n## 1. a\n\n- 列表\n\n  ```bash\n  echo 1\n  ```\n'; ok 9 '# T\n\n## 1. a\n\n~~~~\n```\n~~~\n~~~~~\n'
+# QA 编号（PR #16 spec §3.3）：段首加粗的 Qn 须写成「Qn. 」且从 Q1 连续；代码块、行内代码与 **QA …** 不算
+QP='# T\n\n## 1. QA\n\n'
+bad qa1 "${QP}**Q1. a**\n\n**Q3. b**\n"; bad qa2 "${QP}**Q2. a**\n"; bad qa3 "${QP}**Q1. a**\n\n**Q1. b**\n"
+bad qa4 "${QP}**Q1：a**\n"; bad qa5 "${QP}**Q1.a**\n"
+ok 17 "${QP}**Q1. a**\n\n- 问：x\n\n**Q2. b**\n"; ok 18 "${QP}"'```\n**Q9. x**\n```\n'
+ok 19 "${QP}"'`**Q9. x**` 是旧写法\n'; ok 20 "${QP}**QA 记录**\n\n**Quick** 说明\n"
 n=0; miss=0
 for f in bad-*.md ok-*.md; do
   python3 "$CHK" "$f" > /dev/null; rc=$?; n=$((n + 1))

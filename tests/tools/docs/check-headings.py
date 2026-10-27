@@ -8,9 +8,10 @@ docs/superpowers/specs/2026-10-14-lvgl-example-heading-numbers-design.md。
 原始 HTML 中的 <h1>–<h6> 按错误报出（标题须写成带编号的 Markdown 标题）；HTML 块中注释以外的文字也参与引用与附录编号检查（spec Q33）。
 引用与附录编号按渲染后的连续文字检查：同一段落内软换行、HTML 标签两侧的文字连起来看，空白（含 &nbsp;）按 HTML 规则合并为一个空格（spec Q34）。
 规则：代码块（围栏与缩进）内不算标题；标题不得位于引用块或列表内；## n. 从 1 连续编号，### n.m、#### n.m.k 与所在章、节一致且末级从 1 连续编号，### 只能出现在有效的 ## n. 或 ## 附录 之下，#### 只能出现在有效的 ### n.m（附录为 ### A.m）之下；空标题（单独的 ## 等）按缺序号报错，不用 Setext 标题（=== / --- 下划线），
-不超过四级；有 ## 附录 的文件中，代码块外不再出现「附录 A1」或表格首列为 A1 这类未加点的附录编号（行内代码与「」内的引述除外）；plan 的 ### Task N：… 用全角冒号，N 只用数字、从 0 或 1 起逐个加 1，所在章标题含「Task」且只放 Task；章标题写明 Task 范围（如「（Task 1–5）」）时，该章的 Task 恰为这一范围；有 Task 的文件中，正文与 Task 定义以外的标题中的「Task N」、首列为 Task 的表格只引用本文件存在的 Task（指其他文件的 Task 时写在行内代码或「」内，表格首列可为「—」）；## 附录 X 之后的 ### 写成 X.n，附录之后不再出现正文章。
+不超过四级；QA 条目（段落开头加粗的 Qn）写成 **Qn. …** 并从 Q1 逐个加 1（QA_EXEMPT 中的历史 spec 除外）；有 ## 附录 的文件中，代码块外不再出现「附录 A1」或表格首列为 A1 这类未加点的附录编号（行内代码与「」内的引述除外）；plan 的 ### Task N：… 用全角冒号，N 只用数字、从 0 或 1 起逐个加 1，所在章标题含「Task」且只放 Task；章标题写明 Task 范围（如「（Task 1–5）」）时，该章的 Task 恰为这一范围；有 Task 的文件中，正文与 Task 定义以外的标题中的「Task N」、首列为 Task 的表格只引用本文件存在的 Task（指其他文件的 Task 时写在行内代码或「」内，表格首列可为「—」）；## 附录 X 之后的 ### 写成 X.n，附录之后不再出现正文章。
 """
 import glob
+import os
 import re
 import sys
 from html.parser import HTMLParser
@@ -18,6 +19,18 @@ from html.parser import HTMLParser
 from markdown_it import MarkdownIt
 
 MD = MarkdownIt("commonmark").enable("table")
+
+# QA 编号检查豁免的历史 spec（按文件名匹配，PR #16 spec §3.3），都早于 PR #11 写入 AGENTS.md 的 **Q1. … 格式：
+# 前 4 份用「**Q1：」「**Q1（第 1 轮）：」；2026-10-06 有子编号（Q2b、Q7b、Q13（作者提问，…）.）；2026-10-10 沿用会话中的编号
+#（Q2、Q4–Q8、Q13…）。重新编号会改错大量引用，不改这些文件
+QA_EXEMPT = {
+    "2026-09-21-lvgl-example-github-actions-ci-design.md": "旧写法",
+    "2026-09-25-lvgl-example-luckfox-pico-ultra-w-wifi-detect-design.md": "旧写法",
+    "2026-09-27-lvgl-example-brightness-slider-design.md": "旧写法",
+    "2026-09-28-lvgl-example-native-tests-design.md": "旧写法",
+    "2026-10-06-lvgl-example-cloudagent-align-luckfox-pico-design.md": "子编号",
+    "2026-10-10-lvgl-example-board-test-followups-design.md": "会话编号",
+}
 
 files = sys.argv[1:] or sorted(glob.glob("docs/superpowers/specs/*.md") + glob.glob("docs/superpowers/plans/*.md"))
 bad = 0
@@ -116,6 +129,30 @@ for f in files:
             texts.append(chars(cell, " "))
         elif t.type == "inline" and toks[k - 1].type != "heading_open" and t.map:
             texts.append(chars(rendered(t, t.map[0] + 1, False), " "))  # 软换行渲染为空白，跨行的「Task\n99」也连起来看
+    qa_want = 1  # 下一条 QA 应有的号
+    for k, t in enumerate(toks):
+        # QA 条目：段落以加粗开头、加粗文字以「Q 加数字」开头；须写成「Qn. …」且从 Q1 逐个加 1。代码块、行内代码不算
+        if t.type != "paragraph_open" or os.path.basename(f) in QA_EXEMPT:
+            continue
+        ch = toks[k + 1].children or []
+        while ch and ch[0].type == "text" and not ch[0].content:  # 加粗开头时解析器在前面放一个空的 text
+            ch = ch[1:]
+        if not ch or ch[0].type != "strong_open":
+            continue
+        bold = ""
+        for c in ch[1:]:
+            if c.type == "strong_close":
+                break
+            bold += c.content if c.type in ("text", "text_special", "code_inline") else " "  # 标题如「Q13. `…` 是否同步」
+        q = re.match(r"Q(\d+)", bold)
+        if not q:
+            continue
+        i = t.map[0] + 1
+        if not re.match(r"Q\d+\. \S", bold):
+            report(f, i, "QA 条目应写成 **Qn. …**", src[i - 1][:60])
+        if int(q.group(1)) != qa_want:
+            report(f, i, f"QA 编号应为 Q{qa_want}", src[i - 1][:60])
+        qa_want = int(q.group(1)) + 1
     h2 = h3 = h4 = 0
     parent2 = False  # 当前是否在有效的 ## n. / ## 附录 之下，### 只能出现在其下
     parent3 = False  # 当前是否在有效的 ### n.m / ### A.m 之下，#### 只能出现在其下
