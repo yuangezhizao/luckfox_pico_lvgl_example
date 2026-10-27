@@ -383,6 +383,39 @@ jobs:
           printf '%s\n' "${files[@]}"
           shellcheck -x -P SCRIPTDIR "${files[@]}"
 
+  doc-check:
+    name: 📝 文档检查
+    needs: build-image
+    # 按 AGENTS.md「文档」一节检查全部 spec 与 plan 的编号，并运行检查器自身的样例；每次都完整运行，不按改动文件跳过。
+    # python3-markdown-it 由 CI 镜像提供（.cursor/Dockerfile「文档检查」组），改 Dockerfile 的 PR 上与其他容器 job 一同被跳过
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ${{ needs.build-image.outputs.image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+      # 同 mutation-tests：镜像末尾 USER ubuntu，Actions 要求 job 容器为超级用户
+      options: --user 0
+    steps:
+      - name: 📤 检出本仓
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: 📝 检查编号并运行样例
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 --version
+          python3 -c 'import markdown_it; print("markdown-it-py", markdown_it.__version__)'
+          python3 tests/tools/docs/check-headings.py
+          bash tests/tools/docs/check-samples.sh
+
   mutation-tests:
     name: 🧬 变体检验
     needs: build-image
