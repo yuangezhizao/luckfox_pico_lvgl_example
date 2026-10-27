@@ -528,14 +528,11 @@ echo "$PREVIEW_WORK/shots/$PV_RES-press.png"
 
 ### A.4 辅助脚本与重建 `/tmp/pr15`
 
-新环境中先手工建 `/tmp/pr15/extract.py`（源码见下），再用它从各 plan 附录中抽出脚本。`check-headings.py`、`check-samples.sh` 计划由后续 PR 入库（spec §9）。
+新环境中先手工建 `/tmp/pr15/extract.py`（源码见下），再用它从各 plan 附录中抽出脚本。`check-headings.py`、`check-samples.sh` 已由 PR #16 入库到 `tests/tools/docs/`，不再抽取。
 
 ```bash
 mkdir -p /tmp/pr15/mock
 X="python3 /tmp/pr15/extract.py"
-# 文档检查：PR #11 plan 附录 A.1、A.5
-$X docs/superpowers/plans/2026-10-14-lvgl-example-heading-numbers.md '^### A\.1 ' 1 /tmp/pr15/check-headings.py
-$X docs/superpowers/plans/2026-10-14-lvgl-example-heading-numbers.md '^### A\.5 ' 1 /tmp/pr15/check-samples.sh
 # 交叉编译与交付：PR #10 plan 附录 C.4，交付目录改为当天（目录须先 mkdir -p）
 $X docs/superpowers/plans/2026-10-10-lvgl-example-board-test-followups.md '^### C\.4 ' 1 /tmp/pr15/cross.sh
 sed -i "s#board-retest-20261010#board-retest-$(date +%Y%m%d)#" /tmp/pr15/cross.sh
@@ -551,8 +548,8 @@ $X $P '^### A\.4 ' 6 /tmp/pr15/push-and-body.sh
 
 # 文档检查（Task 7）：前 3 个为 0；lint_copy_rules.py 来自作者安装的 Skill Fenng/tech-doc-style-chinese，只在本地运行
 S=docs/superpowers/specs/2026-10-26-lvgl-example-music-press-feedback-design.md
-python3 /tmp/pr15/check-headings.py $S $P docs/superpowers/plans/2026-10-10-lvgl-example-board-test-followups.md
-bash /tmp/pr15/check-samples.sh
+python3 tests/tools/docs/check-headings.py $S $P docs/superpowers/plans/2026-10-10-lvgl-example-board-test-followups.md
+bash tests/tools/docs/check-samples.sh
 python3 /tmp/pr15/qref.py
 python3 ~/.pi/agent/git/github.com/Fenng/tech-doc-style-chinese/scripts/lint_copy_rules.py $S $P
 
@@ -572,7 +569,7 @@ bash /tmp/pr15/push-and-body.sh "$(GIT_TERMINAL_PROMPT=0 timeout 60 git ls-remot
 #!/usr/bin/env python3
 """从 Markdown 中提取某个标题之后的第 N 个代码块，写到文件。
 用法：extract.py <md> <标题行的正则> <第几个代码块，从 1 起> <输出文件>
-例：extract.py docs/superpowers/plans/2026-10-14-lvgl-example-heading-numbers.md '^### A\\.1 ' 1 /tmp/pr15/check-headings.py"""
+例：extract.py docs/superpowers/plans/2026-10-10-lvgl-example-board-test-followups.md '^### C\\.4 ' 1 /tmp/pr15/cross.sh"""
 import re
 import sys
 

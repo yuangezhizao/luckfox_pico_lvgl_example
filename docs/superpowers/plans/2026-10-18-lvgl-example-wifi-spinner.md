@@ -301,18 +301,15 @@ int main(int argc, char **argv)
 ```bash
 mkdir -p /tmp/ws
 P10=docs/superpowers/plans/2026-10-10-lvgl-example-board-test-followups.md
-P11=docs/superpowers/plans/2026-10-14-lvgl-example-heading-numbers.md
 P9=docs/superpowers/plans/2026-10-06-lvgl-example-cloudagent-align-luckfox-pico.md
 # PR #10 附录 C：cross.sh（C.4）；C.3 的 percommit.sh（spec Q9）与 C.6 的 archive.sh（结果由作者直接存入项目存储）本 PR 未用
 for s in 'C.4:cross'; do
   awk -v h="### ${s%%:*} " 'index($0,h)==1{a=1;next} a&&/^```bash$/{p=1;next} p&&/^```$/{exit} p' $P10 > /tmp/ws/${s##*:}.sh; done
 chmod +x /tmp/ws/*.sh
-# PR #11 附录 A.1、A.5：check-headings.py 与 check-samples.sh
-awk '/^### A\.1 /{a=1} a&&/^```python$/{p=1;next} p&&/^```$/{exit} p' $P11 > /tmp/ws/check-headings.py
-awk '/^### A\.5 /{a=1} a&&/^```bash$/{p=1;next} p&&/^```$/{exit} p' $P11 > /tmp/ws/check-samples.sh
-python3 /tmp/ws/check-headings.py docs/superpowers/specs/2026-10-18-lvgl-example-wifi-spinner-design.md \
+# check-headings.py 与 check-samples.sh：当时从 PR #11 plan 附录 A.1、A.5 提取，已由 PR #16 入库到 tests/tools/docs/
+python3 tests/tools/docs/check-headings.py docs/superpowers/specs/2026-10-18-lvgl-example-wifi-spinner-design.md \
   docs/superpowers/plans/2026-10-18-lvgl-example-wifi-spinner.md
-bash /tmp/ws/check-samples.sh /tmp/ws/check-headings.py | tail -1
+bash tests/tools/docs/check-samples.sh | tail -1
 # PR #10 附录 C.7：reword.py（改写提交说明，附录 A.6）
 awk '/^### C.7 /{a=1} a&&/^```python$/{p=1;next} p&&/^```$/{exit} p' $P10 > /tmp/ws/reword.py
 # PR #9 附录 A.3：Mermaid 校验
