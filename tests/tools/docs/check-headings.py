@@ -5,16 +5,20 @@ docs/superpowers/specs/2026-10-14-lvgl-example-heading-numbers-design.md。
 用法（仓库根目录）：check-headings.py [文件…]，默认检查 docs/superpowers/specs/*.md 与 plans/*.md；有问题时逐行打印并退出 1。
 依赖 markdown-it-py（Ubuntu 24.04：apt install python3-markdown-it）：标题、代码块、Setext 写法、表格与行内代码都由 CommonMark 解析器识别（GFM 表格扩展），
 引用、附录编号与标题文字都取自解析后的渲染文字，不再按原始行用正则判断（spec Q28、Q30、Q31）。
-原始 HTML 中的 <h1>–<h6> 按错误报出（标题须写成带编号的 Markdown 标题）；HTML 块中注释以外的文字也参与引用与附录编号检查（spec Q33）。
-引用与附录编号按渲染后的连续文字检查：同一段落内软换行、HTML 标签两侧的文字连起来看，空白（含 &nbsp;）按 HTML 规则合并为一个空格（spec Q34）。
+原始 HTML 中的 <h1>–<h6> 按错误报出（标题须写成带编号的 Markdown 标题）；HTML 块中注释以外的文字也参与引用与附录编号检查（spec Q33）；
+<script>、<style>、<template> 中不渲染的内容不参与任何检查（文字、HTML 与 Markdown 标题、QA 条目）：段落中的行内写法与 HTML 块相同，结束标签在后面的段落或 HTML 块中时
+按文档顺序接续；规则与浏览器相同（见 html_step()）；代码块是否闭合照常检查，隐藏区域到文末未闭合时报错（PR #16 Codex 审查）。
+引用与附录编号按渲染后的连续文字检查：同一段落内软换行、HTML 标签两侧的文字连起来看，空白（含 &nbsp;）按 HTML 规则合并为一个空格（spec Q34）；
+<br> 与块级标签（BREAK_TAGS）两侧的文字按空白分开（PR #16 全面复查）。
 规则：代码块（围栏与缩进）内不算标题；标题不得位于引用块或列表内；## n. 从 1 连续编号，### n.m、#### n.m.k 与所在章、节一致且末级从 1 连续编号，### 只能出现在有效的 ## n. 或 ## 附录 之下，#### 只能出现在有效的 ### n.m（附录为 ### A.m）之下；空标题（单独的 ## 等）按缺序号报错，不用 Setext 标题（=== / --- 下划线），
-不超过四级；QA 条目（段落开头加粗的 Qn）写成 **Qn. …** 并从 Q1 逐个加 1（QA_EXEMPT 中的历史 spec 除外）；有 ## 附录 的文件中，代码块外不再出现「附录 A1」或表格首列为 A1 这类未加点的附录编号（行内代码与「」内的引述除外）；plan 的 ### Task N：… 用全角冒号，N 只用数字、从 0 或 1 起逐个加 1，所在章标题含「Task」且只放 Task；章标题写明 Task 范围（如「（Task 1–5）」）时，该章的 Task 恰为这一范围；有 Task 的文件中，正文与 Task 定义以外的标题中的「Task N」、首列为 Task 的表格只引用本文件存在的 Task（指其他文件的 Task 时写在行内代码或「」内，表格首列可为「—」）；## 附录 X 之后的 ### 写成 X.n，附录之后不再出现正文章。
+不超过四级；QA 条目（段落中第一段可见内容为加粗的 Qn，段首的 HTML 标签不算；加粗部分与正文一样按 rendered() 的可见文字判断）写成 **Qn. …** 并从 Q1 逐个加 1（QA_EXEMPT 中的历史 spec 除外）；有 ## 附录 的文件中，代码块外不再出现「附录 A1」或表格首列为 A1 这类未加点的附录编号（行内代码与「」内的引述除外）；plan 的 ### Task N：… 用全角冒号，N 只用数字、从 0 或 1 起逐个加 1，所在章标题含「Task」且只放 Task；章标题写明 Task 范围（如「（Task 1–5）」）时，该章的 Task 恰为这一范围；有 Task 的文件中，正文与 Task 定义以外的标题中的「Task N」、首列为 Task 的表格只引用本文件存在的 Task（指其他文件的 Task 时写在行内代码或「」内，表格首列可为「—」）；## 附录 X 之后的 ### 写成 X.n，附录之后不再出现正文章。
 """
 import glob
 import os
 import re
 import sys
 from html.parser import HTMLParser
+from types import SimpleNamespace
 
 from markdown_it import MarkdownIt
 
@@ -42,20 +46,45 @@ def report(f, i, msg, line):
     print(f"{f}:{i}: {msg}: {line}")
 
 
-def rendered(inline, base, code):
+# 浏览器中会断开文字的标签：<br> 与块级元素。两侧的文字按空白分开（如「Task<br>99」显示为两行，按「Task 99」检查），不直接相连
+BREAK_TAGS = {"address", "article", "aside", "blockquote", "br", "dd", "details", "dialog", "div", "dl", "dt", "fieldset",
+              "figcaption", "figure", "footer", "form", "h1", "h2", "h3", "h4", "h5", "h6", "header", "hr", "li", "main",
+              "nav", "ol", "p", "pre", "section", "summary", "table", "tbody", "td", "tfoot", "th", "thead", "tr", "ul"}
+
+
+def html_step(hidden, tag):
+    """一段行内 HTML（html_inline）对隐藏状态的影响。hidden 为从外到内所在的不渲染元素，空格分隔（如 "template script"），不在其中时为空串。
+    与 HTML 块共用 HtmlText 解析（标准库 HTMLParser，规则与浏览器相同），整段从左到右处理：<script>、<style> 是原始文本，在其中时注释不起作用，
+    任何位置出现 </script> 都结束它，其后的内容继续按 HTML 解析（如 <!-- </script><script> --> 结束后又重新打开）；<template> 的内容不渲染但按普通
+    HTML 解析，可嵌套、可含 <script>，注释照常起作用；开始标签不区分大小写，可带属性，<script/> 等也按开始标签（PR #16 Codex 审查）。"""
+    h = HtmlText(0, hidden)
+    h.feed(tag)
+    return h.hidden
+
+
+def rendered(inline, base, code, hidden=""):
     """inline 的渲染文字，按软换行、硬换行拆成 [(行号, 文字)]。行内代码是否存在由解析器按 CommonMark 判断；
-    code=True 时保留行内代码的文字（标题），False 时剔除（引用与附录编号检查：行内代码是对旧写法的描述）。"""
+    code=True 时保留行内代码的文字（标题），False 时剔除（引用与附录编号检查：行内代码是对旧写法的描述）。
+    段落中的行内 <script>、<style>、<template> 与 HTML 块一样不显示其内容（HtmlText）：从开始标签到结束标签之间的文字不计入（PR #16 Codex 审查）。
+    开始标签后有空行时结束标签落在后面的段落或 HTML 块中，hidden 为进入本 token 时所在的元素（见 html_step()），返回 (文字, 离开时所在的元素) 供下一个 token 接续。"""
     out, line, buf = [], base, []
     for c in inline.children or []:
         if c.type in ("softbreak", "hardbreak"):
             out.append((line, "".join(buf)))
             buf, line = [], line + 1
+        elif c.type == "html_inline":
+            name = re.match(r"</?([A-Za-z][\w-]*)", c.content)
+            if not hidden and name and name.group(1).lower() in BREAK_TAGS:
+                buf.append(" ")
+            hidden = html_step(hidden, c.content)
+        elif hidden:
+            continue
         elif c.type in ("text", "text_special", "image"):
             buf.append(c.content)
         elif c.type == "code_inline":
             buf.append(c.content if code else " ")
     out.append((line, "".join(buf)))
-    return out
+    return out, hidden
 
 
 def chars(segments, sep):
@@ -72,22 +101,45 @@ def chars(segments, sep):
 
 
 class HtmlText(HTMLParser):
-    """HTML 块中浏览器会显示的文字：标签不产生文字，注释与 <script>、<style> 的内容不显示，字符引用按 HTML 解码。"""
+    """HTML 块中浏览器会显示的文字：标签不产生文字，注释与 <script>、<style>、<template> 的内容不显示，字符引用按 HTML 解码。"""
 
-    def __init__(self, base):
+    def __init__(self, base, hidden=""):
         super().__init__(convert_charrefs=True)
-        self.base, self.hidden, self.segs, self.heads = base, 0, [], []
+        self.base, self.segs, self.heads = base, [], []
+        self.stack = hidden.split()  # 所在的不渲染元素（见 html_step()），可由前面段落延续而来
+        if self.stack and self.stack[-1] in ("script", "style"):  # 延续而来时解析器也要处在原始文本状态，与浏览器相同
+            self.set_cdata_mode(self.stack[-1])
+
+    @property
+    def hidden(self):
+        return " ".join(self.stack)
 
     def handle_starttag(self, tag, attrs):
-        if re.fullmatch(r"h[1-6]", tag):
+        if re.fullmatch(r"h[1-6]", tag) and not self.stack:  # 不渲染元素中的标签不显示
             self.heads.append(self.base + self.getpos()[0] - 1)
-        self.hidden += tag in ("script", "style")
+        self.gap(tag)
+        if tag in ("script", "style", "template"):  # <script>、<style> 由解析器自行进入原始文本状态
+            self.stack.append(tag)
+
+    def handle_startendtag(self, tag, attrs):
+        if tag in ("script", "style", "template"):  # 与浏览器相同，<script/> 等也是开始标签
+            self.handle_starttag(tag, attrs)
+            if tag != "template":  # 并像普通开始标签一样进入原始文本状态
+                self.set_cdata_mode(tag)
+        else:
+            super().handle_startendtag(tag, attrs)
 
     def handle_endtag(self, tag):
-        self.hidden -= tag in ("script", "style") and self.hidden > 0
+        self.gap(tag)
+        if self.stack and tag == self.stack[-1]:
+            self.stack.pop()
+
+    def gap(self, tag):
+        if not self.stack and tag in BREAK_TAGS:  # <br> 与块级元素两侧的文字按空白分开
+            self.segs.append((self.base + self.getpos()[0] - 1, " "))
 
     def handle_data(self, data):
-        if not self.hidden:
+        if not self.stack:
             self.segs.append((self.base + self.getpos()[0] - 1, data))
 
 
@@ -99,15 +151,21 @@ for f in files:
     texts = []   # 每个段落、单元格、标题或 HTML 块的渲染文字，逐字带行号（剔除行内代码）：用于引用与附录编号检查
     tables = []  # 每张表：[(行号, 首列渲染文字, 是否表头行), …]；有无前导竖线、是否在列表内都由解析器识别
     row = None   # 当前表格行：[行号, 是否表头行, 是否已取首列]
+    hide = ""    # 按文档顺序接续的、所在的不渲染元素 <script>、<style>、<template>（见 html_step()）
+    hide_from = 0  # 开始隐藏的行号：到文末仍未闭合时报错，否则其后整篇的引用与附录编号检查会静默失效
+    state_at = []  # 每个 token 开始时所在的元素：隐藏区域中的内容不参与任何检查（代码块是否闭合与本项未闭合除外）
     for k, t in enumerate(toks):
+        before = hide
+        state_at.append(hide)
         if t.type in ("fence", "code_block") and t.map:
             # 已闭合的围栏占「开始行 + 内容行 + 结束行」；未闭合时没有结束行。按解析结果计行数，不看原始行，引用块、列表内的围栏也适用
             if t.type == "fence" and t.map[1] - t.map[0] - t.content.count("\n") < 2:
                 report(f, t.map[0] + 1, "代码块未闭合", t.markup)
         elif t.type == "html_block" and t.map:
-            h = HtmlText(t.map[0] + 1)
+            h = HtmlText(t.map[0] + 1, hide)
             h.feed(t.content)
             h.close()
+            hide = h.hidden
             for ln in h.heads:
                 report(f, ln, "原始 HTML 标题，应写成带编号的 Markdown 标题", src[ln - 1][:60])
             texts.append(chars(h.segs, ""))  # 标签两侧的文字直接相连，如「Task <strong>99</strong>」显示为「Task 99」
@@ -117,33 +175,47 @@ for f in files:
             row = [t.map[0] + 1, toks[k - 1].type == "thead_open", False]
         elif t.type == "heading_open":
             line = t.map[0] + 1
-            title = "".join(x for _, x in rendered(toks[k + 1], line, True)).strip()
+            title = "".join(x for _, x in rendered(toks[k + 1], line, True)[0]).strip()  # 标题本身的文字，标题内部的隐藏只影响其后
+            if hide:  # 开始时位于隐藏区域中：不是可见的标题，不参与编号等结构检查；标题内结束隐藏后的文字可见，照常参与引用检查
+                seg, hide = rendered(toks[k + 1], line, False, hide)
+                texts.append(chars(seg, " "))
+                continue
             heads.append((line, int(t.tag[1]), title, t.markup[0] in "=-", t.level > 0))
             if not (t.tag == "h3" and re.match(r"Task \w+[:：]", title)):  # 只排除 Task 定义本身，章标题中的「（Task 1–5）」照常核对
-                texts.append(chars(rendered(toks[k + 1], line, False), " "))
+                seg, hide = rendered(toks[k + 1], line, False, hide)
+                texts.append(chars(seg, " "))
+            else:
+                hide = rendered(toks[k + 1], line, False, hide)[1]
         elif t.type == "inline" and toks[k - 1].type in ("th_open", "td_open") and row:
-            cell = rendered(t, row[0], False)
+            cell, hide = rendered(t, row[0], False, hide)
             if not row[2]:
                 tables[-1].append((row[0], "".join(x for _, x in cell).strip(), row[1]))
                 row[2] = True
             texts.append(chars(cell, " "))
         elif t.type == "inline" and toks[k - 1].type != "heading_open" and t.map:
-            texts.append(chars(rendered(t, t.map[0] + 1, False), " "))  # 软换行渲染为空白，跨行的「Task\n99」也连起来看
+            seg, hide = rendered(t, t.map[0] + 1, False, hide)
+            texts.append(chars(seg, " "))  # 软换行渲染为空白，跨行的「Task\n99」也连起来看
+        if hide and not before:
+            hide_from = t.map[0] + 1 if t.map else (row[0] if row else 0)
+    if hide:
+        report(f, hide_from, "<script>、<style>、<template> 到文末未闭合", src[hide_from - 1][:60] if hide_from else "")
     qa_want = 1  # 下一条 QA 应有的号
     for k, t in enumerate(toks):
         # QA 条目：段落以加粗开头、加粗文字以「Q 加数字」开头；须写成「Qn. …」且从 Q1 逐个加 1。代码块、行内代码不算
         if t.type != "paragraph_open" or os.path.basename(f) in QA_EXEMPT:
             continue
-        ch = toks[k + 1].children or []
-        while ch and ch[0].type == "text" and not ch[0].content:  # 加粗开头时解析器在前面放一个空的 text
+        ch, h = toks[k + 1].children or [], state_at[k]
+        # 段首可见内容之前的部分不算：解析器放的空 text、空白、HTML 标签（如 </script>、<b></b>）与隐藏区域中的内容
+        while ch and (ch[0].type in ("html_inline", "softbreak") or h or (ch[0].type == "text" and not ch[0].content.strip())):
+            if ch[0].type == "html_inline":
+                h = html_step(h, ch[0].content)
             ch = ch[1:]
         if not ch or ch[0].type != "strong_open":
             continue
-        bold = ""
-        for c in ch[1:]:
-            if c.type == "strong_close":
-                break
-            bold += c.content if c.type in ("text", "text_special", "code_inline") else " "  # 标题如「Q13. `…` 是否同步」
+        end = next((n for n, c in enumerate(ch) if c.type == "strong_close"), len(ch))
+        # 加粗部分的可见文字与正文一样取自 rendered()：行内代码（如「Q13. `…` 是否同步」）与图片替代文本计入，
+        # 斜体、链接等标记不产生字符，<script>、<style> 中的内容不计，<br> 与块级标签、换行按空白
+        bold = " ".join(x for _, x in rendered(SimpleNamespace(children=ch[1:end]), 0, True, h)[0])
         q = re.match(r"Q(\d+)", bold)
         if not q:
             continue
@@ -182,10 +254,16 @@ for f in files:
             refs += [(i, x, src[i - 1]) for x in re.findall(r"\d+[a-z]?", r.group(1) + r.group(2))]
     chap_title = ""
     chap_ranges = []  # (行号, 章标题, 写明的 Task 范围, 该章实际的 Task)
-    for t in toks:  # 行内 HTML（段落、表格单元格、标题中的标签）
+    for k, t in enumerate(toks):  # 行内 HTML（段落、表格单元格、标题中的标签）；隐藏区域中的标签不显示，不报
+        h = state_at[k - 1] if k and toks[k - 1].type == "heading_open" else state_at[k]  # 标题的 inline 在 heading_open 处处理
         for c in t.children or []:
-            if c.type == "html_inline" and re.match(r"<h[1-6]\b", c.content, re.I):
+            if c.type != "html_inline":
+                continue
+            hp = HtmlText(0, h)  # 与 html_step() 相同的解析：隐藏中的标签不记录，结束标签之后的标题照常记录
+            hp.feed(c.content)
+            if hp.heads:
                 report(f, t.map[0] + 1 if t.map else 0, "原始 HTML 标题，应写成带编号的 Markdown 标题", c.content[:60])
+            h = hp.hidden
     for i, depth, text, setext, nested in heads:
         line = src[i - 1]
         if setext:

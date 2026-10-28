@@ -68,6 +68,47 @@ bad qa1 "${QP}**Q1. a**\n\n**Q3. b**\n"; bad qa2 "${QP}**Q2. a**\n"; bad qa3 "${
 bad qa4 "${QP}**Q1：a**\n"; bad qa5 "${QP}**Q1.a**\n"
 ok 17 "${QP}**Q1. a**\n\n- 问：x\n\n**Q2. b**\n"; ok 18 "${QP}"'```\n**Q9. x**\n```\n'
 ok 19 "${QP}"'`**Q9. x**` 是旧写法\n'; ok 20 "${QP}**QA 记录**\n\n**Quick** 说明\n"
+# 段落中的行内 <script>、<style>（PR #16 Codex 审查）：内容不显示，不参与引用与附录编号检查；结束标签之后的文字照常检查
+ok 21 "$TK"'说明 <script>Task 99</script> 结尾\n'
+ok 22 "$AP"'说明 <style>见 附录 A1</style> 与 <SCRIPT type="x">Task 99</SCRIPT> 结尾\n'
+bad hs1 "$TK"'说明 <script>x</script> 见 Task 99\n'
+# 开始标签后有空行、结束标签在后面的段落或单独成为 HTML 块（Codex 第 2 条）：中间段落同样不显示
+ok 23 "$TK"'说明 <script>\n\nTask 99\n\n</script> 结尾\n'
+ok 24 "$AP"'说明 <style>\n\n见 附录 A1\n\n</style>\n'
+bad hs2 "$TK"'说明 <script>\n\nx\n\n</script> 之后 Task 99\n'
+# 行内 <script>、<style> 到文末仍未闭合：其后整篇都会被当作隐藏内容，按「未闭合」报错，避免检查静默失效
+bad hs3 "$TK"'说明 <style>\n\n见 Task 99\n'; ok 25 "$TK"'说明 <style>\n\n## 3. 其后\n\n</style>\n'
+# 隐藏区域中的内容不参与任何检查（Codex 第 3 条起统一）：其中的 HTML 标题、QA 条目与 Markdown 标题都不算；可见处的 <h2> 照常报错
+ok 26 '# T\n\n## 1. a\n\n说明 <script>const tpl="<h2>标题</h2>"</script> 结尾\n'; ok 27 '# T\n\n## 1. a\n\n说明 <style>\n\n<h2>x</h2>\n\n</style>\n'
+ok 28 "${QP}"'**Q1. a**\n\n说明 <script>\n\n**Q5. x**\n\n</script>\n\n**Q2. b**\n'; ok 29 '# T\n\n## 1. a\n\n说明 <script>\n\n## 9. x\n\n</script>\n\n## 2. b\n'
+bad hs4 '# T\n\n## 1. a\n\n说明 <script>x</script> <h2>y</h2>\n'
+# 隐藏状态记录当前所在的元素（Codex 第 6 条）：<script> 中只有 </script> 结束隐藏，其中的 <style> 只是文字（<style> 同理），行内与 HTML 块两条路径
+ok 30 '# T\n\n## 1. a\n\n说明 <script>const tpl="<style>";</script> 结尾\n\n## 2. b\n'
+ok 31 '# T\n\n## 1. a\n\n说明 <style>\n\n<div>a { content: "<script>" }</div>\n\n</style> 结尾\n\n## 2. b\n'
+# 全面复查（PR #16）：QA 标题中紧跟编号的斜体、链接不算格式错误；<br> 与块级标签按空白显示；QA 条目前的 HTML 标签不影响识别；
+# <script/>、<style/> 与浏览器一样按开始标签处理
+ok 32 "${QP}"'**Q1. *斜体* 标题**\n\n**Q2. [链接](x) 标题**\n'
+bad br1 "$TK"'见 Task<br>99\n'; bad br2 "$TK"'<p>见 Task<br/>99</p>\n'; bad br3 "$TK"'<div>见 Task</div><div>99</div>\n'
+bad qa6 "${QP}"'**Q1. a**\n\n<b></b>**Q3. c**\n'; bad qa7 "${QP}"'**Q1. a**\n\n说明 <script>\n\nx\n\n</script> **Q3. c**\n'
+ok 33 "$TK"'说明 <script/>Task 99</script> 结尾\n'
+# QA 标题与正文一样按渲染文字判断（Codex 第 10 条）：图片的替代文本、加粗中的 <script> 与 <br> 都按 rendered() 处理
+ok 34 "${QP}"'**Q1. ![问题](x) 标题**\n\n**Q2. <script>x</script>标题**\n\n**Q3.<br>换行**\n'
+# 在 <script> 中注释不起作用，其中的 </script> 同样结束隐藏（Codex 第 11 条），行内与 HTML 块两条路径；结束之后的内容照常检查
+ok 35 '# T\n\n## 1. a\n\n说明 <script>\n\n文字 <!-- </script> --> 结尾\n\n## 2. b\n'; ok 36 '# T\n\n## 1. a\n\n说明 <script>\n\n<!-- </script> -->\n\n## 2. b\n'
+bad hs5 "$TK"'说明 <script>\n\n<!-- </script> --><p>见 Task 99</p>\n'
+# HTML 块中的 <script/> 同样进入原始文本状态（Codex 第 12 条）；行内路径的同类写法一并覆盖
+ok 37 '# T\n\n## 1. a\n\n<div><script/><!-- </script> -->可见内容</div>\n\n## 2. b\n\n说明 <style/>文字 <!-- </style> --> 结尾\n'
+bad hs6 "$TK"'<div><script/><!-- </script> -->见 Task 99</div>\n'
+# <template> 的内容同样不渲染（Codex 第 13 条），但按普通 HTML 解析：可嵌套，注释照常起作用，其中可再有 <script>；行内与 HTML 块两条路径
+ok 38 "$TK"'说明 <template><h2>模板标题</h2>见 Task 99</template> 结尾\n'; ok 39 "$TK"'<template>\n<h2>x</h2><p>见 Task 99</p>\n</template>\n'
+ok 40 "$TK"'说明 <template><template></template>见 Task 99<!-- </template> --><script>"</template>"</script></template> 结尾\n'
+bad hs7 "$TK"'说明 <template>x</template> 见 Task 99\n'; bad hs8 "$TK"'说明 <template>\n\n见 Task 2\n'
+# 一段行内 HTML 中结束标签之后的内容继续按 HTML 解析（Codex 第 16 条）：关闭后又重新打开 <script>，其后仍不显示；再次关闭后照常检查
+ok 41 "$TK"'说明 <script>\n\n文字 <!-- </script><script> -->见 Task 99</script> 结尾\n'
+bad hs9 "$TK"'说明 <script>\n\n<!-- </script><script> --></script> 见 Task 99\n'
+bad hs10 '# T\n\n## 1. a\n\n说明 <script>\n\n文字 <!-- </script><h2>x</h2> --> 结尾\n'
+# 隐藏状态在 Markdown 标题内结束时，结束标签之后的文字可见，照常参与引用检查；标题结构仍不检查（Codex 第 17 条）
+bad hs11 "$TK"'说明 <script>\n\n## </script> 见 Task 99\n'
 n=0; miss=0
 for f in bad-*.md ok-*.md; do
   python3 "$CHK" "$f" > /dev/null; rc=$?; n=$((n + 1))
