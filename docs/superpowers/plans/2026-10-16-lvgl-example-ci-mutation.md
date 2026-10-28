@@ -204,12 +204,10 @@ sudo -n docker run --rm --user 0 --cpuset-cpus 0-3 --memory 16g --env-file "$T/e
 
 ### A.3 `check-headings.py`
 
-从 PR #11 plan（`2026-10-14-lvgl-example-heading-numbers.md`）附录 A.1 提取，依赖 `python3-markdown-it`：
+当时从 PR #11 plan（`2026-10-14-lvgl-example-heading-numbers.md`）附录 A.1 提取；该脚本已由 PR #16 入库到 `tests/tools/docs/`，依赖 `python3-markdown-it`：
 
 ```bash
-awk '/^### A\.1 /{a=1} a&&/^```python$/{p=1;next} p&&/^```$/{exit} p' \
-  docs/superpowers/plans/2026-10-14-lvgl-example-heading-numbers.md > /tmp/cm/check-headings.py
-python3 /tmp/cm/check-headings.py docs/superpowers/specs/2026-10-16-lvgl-example-ci-mutation-design.md \
+python3 tests/tools/docs/check-headings.py docs/superpowers/specs/2026-10-16-lvgl-example-ci-mutation-design.md \
   docs/superpowers/plans/2026-10-16-lvgl-example-ci-mutation.md
 ```
 

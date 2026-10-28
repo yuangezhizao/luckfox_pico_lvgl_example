@@ -12,12 +12,22 @@
 这是一个交叉编译的嵌入式 GUI 应用（C + LVGL 8.3 + lv_drivers 8.1，使用 CMake 构建），面向 `Luckfox Pico Ultra` ARM 开发板。项目库依赖（LVGL/lv_drivers/libdrm/libcjson）已 vendored 于 `lib/`；交叉工具链与 native 渲染验证依赖（`libdrm-dev`/`libcjson-dev` 等）由 `.cursor/Dockerfile` 安装。现在通过 `.cursor/environment.json`（引用 `.cursor/Dockerfile`）以 Dockerfile 模式提供可复现环境。构建命令见 `README.md`。
 
 ### Cloud Agent 环境（Dockerfile 模式 / 配置即代码）
-- **当前活动**：`.cursor/environment.json` → `.cursor/Dockerfile`（自建 `ubuntu:24.04`，apt 安装 ARM 交叉工具链、CMake、native/SDL 验证依赖、`qemu-user` 与 preview 脚本工具（`imagemagick`、`xdotool`、`xvfb`），另装通用 / 诊断 CLI 与 Tailscale，末尾 `USER ubuntu`）。
+- **当前活动**：`.cursor/environment.json` → `.cursor/Dockerfile`（自建 `ubuntu:24.04`，apt 安装 ARM 交叉工具链、CMake、native/SDL 验证依赖、`qemu-user` 与 preview 脚本工具（`imagemagick`、`xdotool`、`xvfb`）、文档检查依赖 `python3-markdown-it`，另装通用 / 诊断 CLI 与 Tailscale，末尾 `USER ubuntu`）。
 - **备选**：`.cursor/Dockerfile.luckfox_pico`（Luckfox 官方镜像 `luckfoxtech/luckfox_pico:1.0`，该 FROM 无 `ubuntu` 账户，`USER` 前 `useradd` 创建）；切换只需把 `environment.json` 的 `build.dockerfile` 改为指向它。
 - 按官方 resolution order，repo 级 `.cursor/environment.json` 优先于 personal / team saved environment，故通常无需任何 Dashboard 操作。
 - grilling：`install`（`sudo -n -E bash .cursor/install.sh`）在创建 Environment Build 时把固定 commit `85f83d3` 的技能写入 `$HOME/.cursor/skills/grilling/SKILL.md`（不进 git），并 `chown` 给 `ubuntu`。新 Agent 须从捕获了该 install 的 Build 启动。
 - 默认用户 `ubuntu`（免密 sudo）；`start`（`sudo -n -E bash .cursor/start.sh`）每次 Agent Run 以 kernel 模式拉起 Tailscale 与 sshd，主机名 `cursor-agent-for-luckfox-pico-lvgl-example-<bcId 前 8 位>`，需要用户级 Secrets `TAILSCALE_AUTHKEY`、`SSH_AUTHORIZED_KEYS`（缺失时 `start` 失败，Agent 仍可编码，只是无远程接入）。
 - 要对锁定 digest 做 `dpkg-query` 时，按 Cursor 文档在当前 VM 临时安装 Docker，禁止写入 Dockerfile；遇 `/etc/fuse.conf` 的 conffile 提问用 `dpkg --force-confold --configure -a` 保留现有文件。
+
+### 提交与 GitHub 操作
+- **身份**：提交身份为仓库配置的 `Cursor Agent <cursoragent@cursor.com>`，带 SSH 签名。环境会注入 `GIT_AUTHOR_*`、`GIT_COMMITTER_*`，提交、rebase 前要加 `env -u GIT_AUTHOR_NAME -u GIT_AUTHOR_EMAIL -u GIT_COMMITTER_NAME -u GIT_COMMITTER_EMAIL`。
+- **`Co-authored-by` 尾注**：仓库 `.git/config` 的 `core.hooksPath` 指向 `~/.cursor/agent-hooks/<id>/`，其中的 `commit-msg` 会追加 `Co-authored-by: 远哥制造 <…>`。本仓提交不带该尾注。
+  - 内容提交照常经过钩子，`pre-commit` 会做密钥扫描，不要用 `--no-verify`。
+  - 改提交说明（reword）或 autosquash 的 rebase 要加 `git -c core.hooksPath=/dev/null`。否则钩子会把尾注加回去，说明不变时哈希也不变。
+  - `GIT_EDITOR` 由 shell 解释，参数中有 `(` 时要加引号。
+- **保留作者时间**：rebase（含 fixup、reword）和 `--amend` 都要保留 author time，committer time 可以变化。不要用 `--reset-author`、`--ignore-date`、`--date`，也不用 `--committer-date-is-author-date`。
+- **GitHub 账户**：推送可以使用 Cloud Agent 自带的 `cursor` 账户凭据。这个账户创建 PR、改 PR 正文、发评论都会返回 HTTP 403 `Resource not accessible by integration`，这些操作要请作者用 `gh auth login` 登录本人账户。环境刷新令牌时会改写 `~/.config/gh/hosts.yml`，登录随时可能失效，登录后要尽快完成 PR 操作。
+- **打码**：`git remote -v`、push 报错可能显示带令牌的地址，输出前要先打码。
 
 ### 构建（标准开发流程）
 这是一个仅支持交叉编译的项目：产出的二进制是 32 位 ARM。`CMakeLists.txt` 会提前调用 `return()`，除非你先导出下列变量之一，否则不会产生任何构建目标：
@@ -38,9 +48,10 @@ mkdir -p build && cd build && cmake .. && make -j && make install
 - 作者当前系统是 SDK 编的 Buildroot，板上使用 **uClibc** 产物；glibc 产物 ABI 不兼容（`libc.so.6` vs `libc.so.0`），不能在这块板上运行。
 - CI 成功只证明交叉编译与 ABI 门禁通过，不能代替真机点亮；权威验证仍是物理 Luckfox Pico Ultra / Luckfox Pico Ultra W。
 - uClibc gcc 不在 `.cursor/Dockerfile` 里；CI 从 `yuangezhizao/luckfox-pico@dev` sparse checkout `tools/linux/toolchain/`，不引入 submodule。
-- CI 镜像只在 `dev` 上构建并 attest；`pull_request` 只复用 dest-lock（signer/source=`dev`）通过的 digest，失败即退出，不覆盖 GHCR。镜像标签取 `.cursor/Dockerfile` 内容哈希，所以修改该文件的 PR 在合并前 `build-image` 必然失败（找不到 dev 签名镜像），合并后 dev push 重建镜像才恢复。不把 `container:` 换成 `luckfox-pico-ci`（其中无 `gcc-arm-linux-gnueabihf`，uClibc gcc 也不在镜像层）。镜像末尾 `USER ubuntu`，`build-demo`、`native-tests` 与 `mutation-tests` 以 `options: --user 0` 运行（Actions 要求 job 容器为超级用户）。
+- CI 镜像只在 `dev` 上构建并 attest；`pull_request` 只复用 dest-lock（signer/source=`dev`）通过的 digest，失败即退出，不覆盖 GHCR。镜像标签取 `.cursor/Dockerfile` 内容哈希，所以修改该文件的 PR 在合并前 `build-image` 必然失败（找不到 dev 签名镜像），合并后 dev push 重建镜像才恢复。不把 `container:` 换成 `luckfox-pico-ci`（其中无 `gcc-arm-linux-gnueabihf`，uClibc gcc 也不在镜像层）。镜像末尾 `USER ubuntu`，`build-demo`、`native-tests`、`mutation-tests` 与 `doc-check` 以 `options: --user 0` 运行（Actions 要求 job 容器为超级用户）。
 - `mutation-tests`（`🧬 变体检验`）与 `native-tests` 用同一镜像、触发相同（`schedule` 跳过）、两者并行，全量运行 `tests/tools/mutate.sh`：退出码非 0（1 有变体存活，2 工具或清单错误）或出现 `SKIPPED` 即失败（镜像工具齐全，`SKIPPED` 只可能是 `tests:` 正则没匹配到用例），失败时按类型打印存活变体的清单记录、基线失败用例的重跑输出或构建日志末尾，不上传 artifact；它是 CI 中耗时最长的 job，同一 PR 的新推送会取消正在运行的 CI（`cancel-in-progress`），只改文档的修订尽量攒到一起推送。逐提交测试仍只在本地执行。
 - `native-tests` 在 `ctest` 之后构建 `preview`，用 CI 镜像中的 Xvfb、xdotool、ImageMagick 以 `--headless` 在 480、720 下运行 `tests/tools/preview/` 的两个核对脚本与 `shots.sh`，失败时上传截图与日志（artifact `preview-shots`，保留 7 天）。`🐚 ShellCheck` job 在 runner 上直接运行（不用容器、不依赖 `build-image`），对 `git ls-files` 列出的 `*.sh` 与假 `wpa_cli` 执行 `shellcheck -x -P SCRIPTDIR`，要求 0 条（含 style 级）；新增或修改 shell 脚本先在本地跑一遍。
+- `📝 文档检查`（`doc-check`）用同一镜像（`needs: build-image`，`options: --user 0`），触发同 `native-tests`（`schedule` 跳过），每次完整运行，不按改动文件跳过：先 `tests/tools/docs/check-headings.py` 检查全部 spec 与 plan，再 `check-samples.sh` 运行检查器自身的样例，用法见下文「文档」一节。修改 `.cursor/Dockerfile` 的 PR 上它与其他容器 job 一同被跳过；只改 `.md` 的 dev push 因 `paths-ignore` 不触发 workflow，文档在 PR 上已检查。
 
 ### Lint（代码检查）
 C 代码没有独立的 linter，也没有告警关卡（无 `-Werror`）；shell 脚本由 CI 的 `🐚 ShellCheck` job 检查（见上文 GitHub Actions 一节）。`CMakeLists.txt` 的告警段 `add_compile_options()` 位于 `add_executable()` 之前（`add_compile_options()` 只作用于其后创建的 target），并用 `-std=gnu99`（`-std=c99` 会关掉 POSIX/GNU 扩展声明而编译失败），主程序以 `-Wall -Wextra …` 编译：glibc 121 条、uClibc 120 条告警为既存基线（新增的编译单元会重复报一次 `lib/lv_conf.h` 的 `-Wundef`），只记录不作门禁。另一处 `add_compile_options(-fPIC -Wall -O3 -g0)` 仍在 `add_executable()` 之后、未生效，主程序实际按 `-O0` 编译；LVGL 与 lv_drivers 子目录不受这两处影响，`C_FLAGS` 为空。
@@ -58,5 +69,6 @@ C 代码没有独立的 linter，也没有告警关卡（无 `-Werror`）；shel
 ### 文档（spec 与 plan）
 - `docs/superpowers/specs/`、`docs/superpowers/plans/` 的标题编号：`## 2. 背景`、`### 2.2 小节`、`#### 2.2.1 小节`，最多四级，引用写成 §2.2.1；代码块内以 `#` 开头的行不是标题。
 - plan 的 Task 标题写成 `### Task N：…`（全角冒号），Task 号即序号，不叠章节号；Task 号只用数字，从 0 或 1 起逐个加 1，精简 plan 删掉 Task 后，后面的 Task 重新编号；执行中途插入 Task 时按位置插入，后面的 Task 顺延并同步引用，不确定时用 grilling 询问；Task 放在单独的 Task 章（如 `## 3. Tasks`），Task 以外的小节照常编号，不与 Task 混在同一章。
-- 附录写成 `## 附录 A`，附录内小节写成 `### A.1`，与正文分开编号；设计决策 QA 条目用加粗的 `**Q1. …**`。
+- 附录写成 `## 附录 A`，附录内小节写成 `### A.1`，与正文分开编号；设计决策 QA 条目用加粗的 `**Q1. …**`，从 Q1 连续编号，删减后重新编号（早于此规则的 6 份历史 spec 豁免，清单见 `tests/tools/docs/check-headings.py` 的 `QA_EXEMPT`）。
+- 检查：在仓库根目录运行 `python3 tests/tools/docs/check-headings.py [文件…]`，不带参数时检查全部 spec 与 plan，有问题时逐行打印并退出 1；修改检查器时再运行 `bash tests/tools/docs/check-samples.sh`（检查器的回归样例，全部符合时末行为「样例 N 个，不符合 0 个」）。CI 的 `📝 文档检查` 运行这两个脚本。两者依赖 `python3-markdown-it`，本机缺失时 `sudo apt-get install -y python3-markdown-it`。
 - 历史文档按此补号、Task 连号的经过与两个特例见 [`docs/superpowers/specs/2026-10-14-lvgl-example-heading-numbers-design.md`](docs/superpowers/specs/2026-10-14-lvgl-example-heading-numbers-design.md) §3。
