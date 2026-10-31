@@ -4,71 +4,49 @@
 
 - 与本仓库交互时，请始终使用中文回复（代码、路径、命令除外）。
 
+## 优先级
+
+- 作者在对话中的当次指令优先于本文件，本文件优先于技能中的流程要求。superpowers 等技能的流程在本仓库只作可选参考，作者已明确同意不必为满足技能流程而停下或补做步骤；spec 与 plan 仍按 `docs/superpowers/AGENTS.md` 的格式写。
+- 因本文件或技能而停下、请求确认或偏离任务时，说明是哪个文件的哪一句。
+
+## 项目与构建
+
+- 面向 `Luckfox Pico Ultra`（含 Ultra W）ARM 开发板的嵌入式 GUI 例程：C + LVGL 8.3 + lv_drivers 8.1，CMake 构建，库依赖 vendored 于 `lib/`。
+- 只能交叉编译，产物是 32 位 ARM：不导出 `GLIBC_COMPILER` 或 `LUCKFOX_SDK_PATH` 时 `CMakeLists.txt` 提前 `return()`，不产生任何构建目标。
+- 板上（SDK 编的 Buildroot）只能运行 **uClibc** 产物；glibc 产物 ABI 不兼容（`libc.so.6` vs `libc.so.0`）。构建目录放仓库外（`.gitignore` 只忽略 `build/`、`build-tests/`、`install/`）。
+  - uClibc：无需完整 SDK，按 CI 做法稀疏检出工具链（约 233 MB）：`git clone --depth 1 --filter=blob:none --sparse -b dev https://github.com/yuangezhizao/luckfox-pico.git /tmp/luckfox-pico && git -C /tmp/luckfox-pico sparse-checkout set tools/linux/toolchain`，再 `env -u GLIBC_COMPILER LUCKFOX_SDK_PATH=/tmp/luckfox-pico cmake -S . -B /tmp/build-uclibc && make -C /tmp/build-uclibc -j`。
+  - glibc：`export GLIBC_COMPILER=/usr/bin/arm-linux-gnueabihf-` 后 `mkdir -p build && cd build && cmake .. && make -j && make install`，可部署目录写入 `install/luckfox_lvgl_demo/`（二进制 + 打包的 `lib/`）。工具链由 `.cursor/Dockerfile` 安装，其他环境 `sudo apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf`。
+- 产物不能在 x86 VM 上运行：除了架构不同，启动时还要打开 `/dev/dri/card0`、只支持正方形屏，并需要 `/dev/fb0` 与 evdev 触摸屏，否则 `exit()`。没有硬件时用 `tests/` 的 `screenshots`、`preview` 目标看界面；uClibc 产物的 qemu 冒烟见 `tests/README.md`。权威验证是物理 Luckfox Pico Ultra / Ultra W，CI 通过只证明交叉编译与 ABI 门禁。
+- C 代码没有 linter，告警只记录、不作门禁（无 `-Werror`）。
+
+## 测试与检查
+
+- 原生测试（主机 gcc + ASan/UBSan，headless）：`cmake -S tests -B build-tests && cmake --build build-tests -j && ctest --test-dir build-tests --output-on-failure -j`；分类、命名、32 位测试、改坏检验与 preview 脚本见 `tests/README.md`。
+- 新增或修改 shell 脚本先在本地跑 `shellcheck -x -P SCRIPTDIR <脚本>`，CI 要求 0 条（含 style 级）。
+- 改了 spec 或 plan 运行 `python3 tests/tools/docs/check-headings.py`，有问题时 CI 失败。
+- 按改动范围选检查：只改文档跑 `check-headings.py`；改 shell 脚本跑 ShellCheck；改 `custom/`、`generated/` 或用例跑 ctest，改界面时再跑 `tests/README.md` §7.1 的核对脚本；改 `CMakeLists.txt` 或 `lib/` 跑两条交叉编译。plan 另有要求时以 plan 为准。CI 只在指向 `dev` 的 PR 每次推送、以及 `dev` 上不只改 `.md` 的推送时运行全部检查与变体检验，没开 PR 的分支推送不触发。
+- 修改 `.cursor/Dockerfile` 的 PR 在合并前 `build-image` 必然失败、容器 job 被跳过，合并后 dev push 重建镜像才恢复。同一 PR 的新推送会取消正在运行的 CI（`🧬 变体检验` 最耗时），只改文档的修订尽量攒到一起推送。
+
+## 去向表
+
+| 要做的事 | 先读 |
+|---|---|
+| 改 Cloud Agent 环境：`.cursor/` 下的 Dockerfile、`install.sh`、`start.sh`、`environment.json` | `.cursor/AGENTS.md` |
+| 改 workflow、排查 CI 失败 | `.github/AGENTS.md` |
+| 写或改 `docs/superpowers/` 下的 spec、plan | `docs/superpowers/AGENTS.md` |
+| 写测试，做 native 渲染、preview 截图或 qemu 冒烟 | `tests/README.md` |
+| 改板型（WiFi）判定、`CMakeLists.txt` 的告警段 | 代码旁的注释 |
+| 新增给 agent 的约定 | spec [`2026-11-01-lvgl-example-agents-md-slim-design.md`](docs/superpowers/specs/2026-11-01-lvgl-example-agents-md-slim-design.md) §3.1 的放置原则；本文件不超过 8 KiB，CI 检查 |
+
 ## Cursor Cloud specific instructions
 
-> 说明：保留该英文章节标题作为工具约定锚点；下方内容使用中文。
+只适用于 Cursor Cloud Agent 的 VM；环境配置见 `.cursor/AGENTS.md`。
 
-### 项目简介
-这是一个交叉编译的嵌入式 GUI 应用（C + LVGL 8.3 + lv_drivers 8.1，使用 CMake 构建），面向 `Luckfox Pico Ultra` ARM 开发板。项目库依赖（LVGL/lv_drivers/libdrm/libcjson）已 vendored 于 `lib/`；交叉工具链与 native 渲染验证依赖（`libdrm-dev`/`libcjson-dev` 等）由 `.cursor/Dockerfile` 安装。现在通过 `.cursor/environment.json`（引用 `.cursor/Dockerfile`）以 Dockerfile 模式提供可复现环境。构建命令见 `README.md`。
-
-### Cloud Agent 环境（Dockerfile 模式 / 配置即代码）
-- **当前活动**：`.cursor/environment.json` → `.cursor/Dockerfile`（自建 `ubuntu:24.04`，apt 安装 ARM 交叉工具链、CMake、native/SDL 验证依赖、`qemu-user` 与 preview 脚本工具（`imagemagick`、`xdotool`、`xvfb`）、文档检查依赖 `python3-markdown-it`，另装通用 / 诊断 CLI 与 Tailscale，末尾 `USER ubuntu`）。
-- **备选**：`.cursor/Dockerfile.luckfox_pico`（Luckfox 官方镜像 `luckfoxtech/luckfox_pico:1.0`，该 FROM 无 `ubuntu` 账户，`USER` 前 `useradd` 创建）；切换只需把 `environment.json` 的 `build.dockerfile` 改为指向它。
-- 按官方 resolution order，repo 级 `.cursor/environment.json` 优先于 personal / team saved environment，故通常无需任何 Dashboard 操作。
-- grilling：`install`（`sudo -n -E bash .cursor/install.sh`）在创建 Environment Build 时把固定 commit `85f83d3` 的技能写入 `$HOME/.cursor/skills/grilling/SKILL.md`（不进 git），并 `chown` 给 `ubuntu`。新 Agent 须从捕获了该 install 的 Build 启动。
-- 默认用户 `ubuntu`（免密 sudo）；`start`（`sudo -n -E bash .cursor/start.sh`）每次 Agent Run 以 kernel 模式拉起 Tailscale 与 sshd，主机名 `cursor-agent-for-luckfox-pico-lvgl-example-<bcId 前 8 位>`，需要用户级 Secrets `TAILSCALE_AUTHKEY`、`SSH_AUTHORIZED_KEYS`（缺失时 `start` 失败，Agent 仍可编码，只是无远程接入）。
-- 要对锁定 digest 做 `dpkg-query` 时，按 Cursor 文档在当前 VM 临时安装 Docker，禁止写入 Dockerfile；遇 `/etc/fuse.conf` 的 conffile 提问用 `dpkg --force-confold --configure -a` 保留现有文件。
-
-### 提交与 GitHub 操作
 - **身份**：提交身份为仓库配置的 `Cursor Agent <cursoragent@cursor.com>`，带 SSH 签名。环境会注入 `GIT_AUTHOR_*`、`GIT_COMMITTER_*`，提交、rebase 前要加 `env -u GIT_AUTHOR_NAME -u GIT_AUTHOR_EMAIL -u GIT_COMMITTER_NAME -u GIT_COMMITTER_EMAIL`。
-- **`Co-authored-by` 尾注**：仓库 `.git/config` 的 `core.hooksPath` 指向 `~/.cursor/agent-hooks/<id>/`，其中的 `commit-msg` 会追加 `Co-authored-by: 远哥制造 <…>`。本仓提交不带该尾注。
+- **`Co-authored-by` 尾注**：`.git/config` 的 `core.hooksPath` 指向 `~/.cursor/agent-hooks/<id>/`，其中的钩子由 Cursor 在每次 Agent Run 启动时生成，`commit-msg` 与 `prepare-commit-msg` 会把发起本次 Run 的 Cursor 账户追加为 `Co-authored-by`（`prepare-commit-msg` 在 `--no-verify` 时也运行）。本仓提交不带该尾注。
   - 内容提交照常经过钩子，`pre-commit` 会做密钥扫描，不要用 `--no-verify`。
-  - 改提交说明（reword）或 autosquash 的 rebase 要加 `git -c core.hooksPath=/dev/null`。否则钩子会把尾注加回去，说明不变时哈希也不变。
+  - 只改说明的 reword、`--amend` 与 autosquash 的 rebase 要加 `git -c core.hooksPath=/dev/null`，否则钩子会把尾注加回去，说明不变时哈希也不变；改了内容的 `--amend` 仍要经过钩子。
   - `GIT_EDITOR` 由 shell 解释，参数中有 `(` 时要加引号。
 - **保留作者时间**：rebase（含 fixup、reword）和 `--amend` 都要保留 author time，committer time 可以变化。不要用 `--reset-author`、`--ignore-date`、`--date`，也不用 `--committer-date-is-author-date`。
-- **GitHub 账户**：推送可以使用 Cloud Agent 自带的 `cursor` 账户凭据。这个账户创建 PR、改 PR 正文、发评论都会返回 HTTP 403 `Resource not accessible by integration`，这些操作要请作者用 `gh auth login` 登录本人账户。环境刷新令牌时会改写 `~/.config/gh/hosts.yml`，登录随时可能失效，登录后要尽快完成 PR 操作。
+- **PR 与 GitHub 账户**：推送可以使用 Cloud Agent 自带的 `cursor` 账户凭据；创建、更新 PR 用 Cloud Agent 自带的 PR 管理工具。在本环境用 `gh`（`cursor` 账户）创建 PR、改 PR 正文、发评论会返回 HTTP 403 `Resource not accessible by integration`，需要 `gh` 写操作时请作者 `gh auth login` 登录本人账户；环境刷新令牌时会改写 `~/.config/gh/hosts.yml`，登录随时可能失效。
 - **打码**：`git remote -v`、push 报错可能显示带令牌的地址，输出前要先打码。
-
-### 构建（标准开发流程）
-这是一个仅支持交叉编译的项目：产出的二进制是 32 位 ARM。`CMakeLists.txt` 会提前调用 `return()`，除非你先导出下列变量之一，否则不会产生任何构建目标：
-- `GLIBC_COMPILER` -> Ubuntu/glibc 目标（可在本环境 / Cloud Agent 容器中使用），或
-- `LUCKFOX_SDK_PATH` -> Buildroot/uClibc 目标（板上实际运行的产物）。无需完整 SDK：按 CI 做法稀疏检出 `yuangezhizao/luckfox-pico@dev` 的 `tools/linux/toolchain`（约 233 MB）即可，`git clone --depth 1 --filter=blob:none --sparse -b dev https://github.com/yuangezhizao/luckfox-pico.git /tmp/luckfox-pico && git -C /tmp/luckfox-pico sparse-checkout set tools/linux/toolchain`，再 `env -u GLIBC_COMPILER LUCKFOX_SDK_PATH=/tmp/luckfox-pico cmake -S . -B /tmp/build-uclibc && make -C /tmp/build-uclibc -j`；构建目录放仓库外（`.gitignore` 只忽略 `build/`、`install/`）。
-
-走 glibc 路径（工具链由 `.cursor/Dockerfile` 配置即代码提供）：
-```
-export GLIBC_COMPILER=/usr/bin/arm-linux-gnueabihf-
-mkdir -p build && cd build && cmake .. && make -j && make install
-```
-`make install` 会把可部署目录写入 `install/luckfox_lvgl_demo/`（二进制 + 打包的 `lib/`）。`build/` 与 `install/` 均已被 gitignore。
-
-交叉工具链由 `.cursor/Dockerfile` 安装（不再依赖 snapshot）；如需本地补装可 `sudo apt-get install -y gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf`。
-
-### GitHub Actions（交叉编译门禁）
-- CI 编两条：glibc（只设 `GLIBC_COMPILER=/usr/bin/arm-linux-gnueabihf-`，`make install` 整包 `install/luckfox_lvgl_demo/`）与 uClibc（只设 `LUCKFOX_SDK_PATH` 指向 CI 内 `yuangezhizao/luckfox-pico` 检出根，只出可执行文件）。
-- 作者当前系统是 SDK 编的 Buildroot，板上使用 **uClibc** 产物；glibc 产物 ABI 不兼容（`libc.so.6` vs `libc.so.0`），不能在这块板上运行。
-- CI 成功只证明交叉编译与 ABI 门禁通过，不能代替真机点亮；权威验证仍是物理 Luckfox Pico Ultra / Luckfox Pico Ultra W。
-- uClibc gcc 不在 `.cursor/Dockerfile` 里；CI 从 `yuangezhizao/luckfox-pico@dev` sparse checkout `tools/linux/toolchain/`，不引入 submodule。
-- CI 镜像只在 `dev` 上构建并 attest；`pull_request` 只复用 dest-lock（signer/source=`dev`）通过的 digest，失败即退出，不覆盖 GHCR。镜像标签取 `.cursor/Dockerfile` 内容哈希，所以修改该文件的 PR 在合并前 `build-image` 必然失败（找不到 dev 签名镜像），合并后 dev push 重建镜像才恢复。不把 `container:` 换成 `luckfox-pico-ci`（其中无 `gcc-arm-linux-gnueabihf`，uClibc gcc 也不在镜像层）。镜像末尾 `USER ubuntu`，`build-demo`、`native-tests`、`mutation-tests` 与 `doc-check` 以 `options: --user 0` 运行（Actions 要求 job 容器为超级用户）。
-- `mutation-tests`（`🧬 变体检验`）与 `native-tests` 用同一镜像、触发相同（`schedule` 跳过）、两者并行，全量运行 `tests/tools/mutate.sh`：退出码非 0（1 有变体存活，2 工具或清单错误）或出现 `SKIPPED` 即失败（镜像工具齐全，`SKIPPED` 只可能是 `tests:` 正则没匹配到用例），失败时按类型打印存活变体的清单记录、基线失败用例的重跑输出或构建日志末尾，不上传 artifact；它是 CI 中耗时最长的 job，同一 PR 的新推送会取消正在运行的 CI（`cancel-in-progress`），只改文档的修订尽量攒到一起推送。逐提交测试仍只在本地执行。
-- `native-tests` 在 `ctest` 之后构建 `preview`，用 CI 镜像中的 Xvfb、xdotool、ImageMagick 以 `--headless` 在 480、720 下运行 `tests/tools/preview/` 的两个核对脚本与 `shots.sh`，失败时上传截图与日志（artifact `preview-shots`，保留 7 天）。`🐚 ShellCheck` job 在 runner 上直接运行（不用容器、不依赖 `build-image`），对 `git ls-files` 列出的 `*.sh` 与假 `wpa_cli` 执行 `shellcheck -x -P SCRIPTDIR`，要求 0 条（含 style 级）；新增或修改 shell 脚本先在本地跑一遍。
-- `📝 文档检查`（`doc-check`）用同一镜像（`needs: build-image`，`options: --user 0`），触发同 `native-tests`（`schedule` 跳过），每次完整运行，不按改动文件跳过：先 `tests/tools/docs/check-headings.py` 检查全部 spec 与 plan，再 `check-samples.sh` 运行检查器自身的样例，用法见下文「文档」一节。修改 `.cursor/Dockerfile` 的 PR 上它与其他容器 job 一同被跳过；只改 `.md` 的 dev push 因 `paths-ignore` 不触发 workflow，文档在 PR 上已检查。
-
-### Lint（代码检查）
-C 代码没有独立的 linter，也没有告警关卡（无 `-Werror`）；shell 脚本由 CI 的 `🐚 ShellCheck` job 检查（见上文 GitHub Actions 一节）。`CMakeLists.txt` 的告警段 `add_compile_options()` 位于 `add_executable()` 之前（`add_compile_options()` 只作用于其后创建的 target），并用 `-std=gnu99`（`-std=c99` 会关掉 POSIX/GNU 扩展声明而编译失败），主程序以 `-Wall -Wextra …` 编译：glibc 121 条、uClibc 120 条告警为既存基线（新增的编译单元会重复报一次 `lib/lv_conf.h` 的 `-Wundef`），只记录不作门禁。另一处 `add_compile_options(-fPIC -Wall -O3 -g0)` 仍在 `add_executable()` 之后、未生效，主程序实际按 `-O0` 编译；LVGL 与 lv_drivers 子目录不受这两处影响，`C_FLAGS` 为空。
-
-### 测试
-`tests/` 是独立的主机原生 CMake 工程（gcc + ASan/UBSan、headless），与交叉编译互不影响：`cmake -S tests -B build-tests && cmake --build build-tests -j && ctest --test-dir build-tests --output-on-failure -j`。32 位换算测试需 `qemu-user`（`qemu-arm`）与 `arm-linux-gnueabihf-gcc` 同时存在，缺任一时自动跳过，两者都由 `.cursor/Dockerfile` 与 `.cursor/Dockerfile.luckfox_pico` 提供；CI 的 `native-tests` job 以 `-DLUCKFOX_TESTS_ARM32=ON` 强制运行。常规 UI 测试不调用 `custom_init()`（它会拉起 `mpv` 并做硬件相关初始化；`mpv` 的启动与连接由 `cases/music/` 的用例以假 `mpv` 单独测试）。用例按页面放在 `tests/cases/<页面>/`，分类、命名、新增步骤与改坏检验见 `tests/README.md`。
-
-### 运行 / 验证 GUI（重要陷阱）
-构建出的二进制无法在本 x86 云端 VM 上运行——它是 32 位 ARM ELF，在没有 binfmt_misc/qemu 的环境里直接执行会得到 `Exec format error`，连 `main()` 都进不去。即便架构可执行，它也面向真实硬件：启动时 `luckfox_get_drm_info()` 打开 `/dev/dri/card0`，打开失败或 `drmModeGetResources()` 失败即 `exit()`（本 VM 无该设备节点）；且只支持正方形屏，已连接显示器的首个 mode 非正方形同样 `exit()`。它还需要 `/dev/fb0` 和一个 evdev 触摸屏。请部署到物理 Luckfox Pico Ultra 上运行。uClibc 产物可用 `qemu-user` 冒烟（已在 `.cursor/Dockerfile` 中）：在仓库根目录执行 `qemu-arm -L "$(<uClibc gcc> -print-sysroot)" -E LD_LIBRARY_PATH=$PWD/lib/uclibc/libdrm:$PWD/lib/uclibc/libcjson <产物>`（`LD_LIBRARY_PATH` 须为绝对路径，相对路径会报 `can't load library 'libdrm.so.2'`）能加载 uClibc 与 vendored 库，输出含 `cannot open /dev/dri/card0`、`exit=1`，只证明 ABI 与动态库可用，看不到界面。
-
-没有硬件时可用 `tests/` 的手动目标做 native 渲染：`cmake --build build-tests --target screenshots` 输出 480/720 主屏截图，`--target preview`（需 SDL2）后 `DISPLAY=:1 ./build-tests/preview` 开窗、鼠标当触摸。二者与测试共用 `tests/support/`：`generated/`、`custom/` 没有 `main()`，还 `extern` 引用仅在 `src/main.c` 定义的 5 个全局量，而 `src/main.c` 会拉入 DRM/fbdev/evdev 硬件驱动，所以由 `tests/support/app_env.c` 提供这 5 个定义与内存帧缓冲显示；编译单元与 include 路径的来历见 [`docs/superpowers/specs/2026-07-24-lvgl-example-cloudagent-env-design.md`](docs/superpowers/specs/2026-07-24-lvgl-example-cloudagent-env-design.md) §6.1。启动、点击、截图与核对用 `tests/tools/preview/` 的脚本（桌面与 `--headless` 共用，含切换 WiFi 状态的假 `wpa_cli`），用法与依赖见 `tests/README.md`「preview 脚本」。此为可选手段，权威验证仍以部署到物理 Luckfox Pico Ultra 为准。
-
-板型判据另有一坑：SDK `824b817f` 起 Luckfox Pico Ultra 与 Luckfox Pico Ultra W 共用设备树，`/proc/device-tree/model` 恒为 `Luckfox Pico Ultra`，不能据此区分是否带 WiFi；例程按 `/sys/bus/sdio/devices/*/uevent` 中的 `SDIO_ID=C8A1:C18D`（板载 AIC8800DC，与 SDK `insmod_wifi.sh` 加载驱动所用 ID 相同）判定，仅旧固件 `model` 为 `Luckfox Pico Ultra W` 时直接视为带 WiFi。背景见 [`docs/superpowers/specs/2026-09-25-lvgl-example-luckfox-pico-ultra-w-wifi-detect-design.md`](docs/superpowers/specs/2026-09-25-lvgl-example-luckfox-pico-ultra-w-wifi-detect-design.md) §2。
-
-### 文档（spec 与 plan）
-- `docs/superpowers/specs/`、`docs/superpowers/plans/` 的标题编号：`## 2. 背景`、`### 2.2 小节`、`#### 2.2.1 小节`，最多四级，引用写成 §2.2.1；代码块内以 `#` 开头的行不是标题。
-- plan 的 Task 标题写成 `### Task N：…`（全角冒号），Task 号即序号，不叠章节号；Task 号只用数字，从 0 或 1 起逐个加 1，精简 plan 删掉 Task 后，后面的 Task 重新编号；执行中途插入 Task 时按位置插入，后面的 Task 顺延并同步引用，不确定时用 grilling 询问；Task 放在单独的 Task 章（如 `## 3. Tasks`），Task 以外的小节照常编号，不与 Task 混在同一章。
-- 附录写成 `## 附录 A`，附录内小节写成 `### A.1`，与正文分开编号；设计决策 QA 条目用加粗的 `**Q1. …**`，从 Q1 连续编号，删减后重新编号（早于此规则的 6 份历史 spec 豁免，清单见 `tests/tools/docs/check-headings.py` 的 `QA_EXEMPT`）。
-- 检查：在仓库根目录运行 `python3 tests/tools/docs/check-headings.py [文件…]`，不带参数时检查全部 spec 与 plan，有问题时逐行打印并退出 1；修改检查器时再运行 `bash tests/tools/docs/check-samples.sh`（检查器的回归样例，全部符合时末行为「样例 N 个，不符合 0 个」）。CI 的 `📝 文档检查` 运行这两个脚本。两者依赖 `python3-markdown-it`，本机缺失时 `sudo apt-get install -y python3-markdown-it`。
-- 历史文档按此补号、Task 连号的经过与两个特例见 [`docs/superpowers/specs/2026-10-14-lvgl-example-heading-numbers-design.md`](docs/superpowers/specs/2026-10-14-lvgl-example-heading-numbers-design.md) §3。
