@@ -28,7 +28,7 @@ ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
 
 还没有测试的页面不建目录；本表即登记处。
 
-`support/` 是公共代码（不含用例，函数统一 `tst_` 前缀）：`check.h` 断言与用例分派，`app_env` 提供 `src/main.c` 的 5 个全局量与 headless 显示、脚本化触摸，`capture` 捕获输出，`fake_fs` 管理本进程临时目录。
+`support/` 是公共代码（不含用例，函数统一 `tst_` 前缀）：`check.h` 断言与用例分派，`app_env` 提供 `src/main.c` 的 5 个全局量与 headless 显示、脚本化触摸，`capture` 捕获输出，`fake_fs` 管理本进程临时目录。`generated/`、`custom/` 没有 `main()`，还 `extern` 引用仅在 `src/main.c` 定义的 5 个全局量，而 `src/main.c` 会拉入 DRM/fbdev/evdev 硬件驱动，所以测试、`screenshots` 与 `preview` 不编译它，由 `app_env.c` 提供这 5 个定义与内存帧缓冲显示；编译单元与 include 路径的来历见 [`docs/superpowers/specs/2026-07-24-lvgl-example-cloudagent-env-design.md`](../docs/superpowers/specs/2026-07-24-lvgl-example-cloudagent-env-design.md) §6.1。
 
 ## 3. 命名
 
@@ -77,6 +77,8 @@ ctest --test-dir build-tests --output-on-failure -j"$(nproc)"
 | `custom_init()`（mpv 等） | 不调用 | 调用 |
 
 截图与预览只用于对齐布局和复现交互，权威验证仍是真机。
+
+顶层工程的产物不能代替这两个目标：它是 32 位 ARM ELF，在没有 binfmt_misc/qemu 的环境里直接执行得到 `Exec format error`；即便架构可执行，启动时 `luckfox_get_drm_info()` 打开 `/dev/dri/card0`，打开失败或 `drmModeGetResources()` 失败即 `exit()`，已连接显示器的首个 mode 非正方形同样 `exit()`，还需要 `/dev/fb0` 和一个 evdev 触摸屏。uClibc 产物可用 `qemu-user` 冒烟：在仓库根目录执行 `qemu-arm -L "$(<uClibc gcc> -print-sysroot)" -E LD_LIBRARY_PATH=$PWD/lib/uclibc/libdrm:$PWD/lib/uclibc/libcjson <产物>`（`LD_LIBRARY_PATH` 须为绝对路径，相对路径会报 `can't load library 'libdrm.so.2'`），输出含 `cannot open /dev/dri/card0`、`exit=1`，只证明 ABI 与动态库可用，看不到界面。
 
 ### 7.1 preview 脚本
 

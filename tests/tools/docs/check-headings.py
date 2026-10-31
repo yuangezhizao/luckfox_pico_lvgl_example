@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """检查 spec 与 plan 的标题编号（spec §2.1 的规则）。
-规则见 AGENTS.md「文档（spec 与 plan）」一节；本文件中的「spec §n」「spec Qn」指 PR #11 spec
+规则见 docs/superpowers/AGENTS.md；本文件中的「spec §n」「spec Qn」指 PR #11 spec
 docs/superpowers/specs/2026-10-14-lvgl-example-heading-numbers-design.md。
 用法（仓库根目录）：check-headings.py [文件…]，默认检查 docs/superpowers/specs/*.md 与 plans/*.md；有问题时逐行打印并退出 1。
 依赖 markdown-it-py（Ubuntu 24.04：apt install python3-markdown-it）：标题、代码块、Setext 写法、表格与行内代码都由 CommonMark 解析器识别（GFM 表格扩展），
