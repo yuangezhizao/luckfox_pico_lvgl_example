@@ -349,6 +349,7 @@ int luckfox_get_system_info()
     return 0;
 };
 
+/* SDK 824b817f 起 Ultra 与 Ultra W 共用设备树，model 恒为 "Luckfox Pico Ultra"，只能按板载 AIC8800DC 的 SDIO ID 判断是否带 WiFi；旧固件的 model 仍为 "Luckfox Pico Ultra W"。背景见 docs/superpowers/specs/2026-09-25-lvgl-example-luckfox-pico-ultra-w-wifi-detect-design.md §2。 */
 void luckfox_get_wifi_enable_info()
 {
     FILE *file;
