@@ -20,7 +20,7 @@
 - `native-tests`（`🧪 原生测试`）以 `-DLUCKFOX_TESTS_ARM32=ON` 强制运行 32 位测试；在 `ctest` 之后构建 `preview`，用 CI 镜像中的 Xvfb、xdotool、ImageMagick 以 `--headless` 在 480、720 下运行 `tests/tools/preview/` 的两个核对脚本与 `shots.sh`，失败时上传截图与日志（artifact `preview-shots`，保留 7 天）。
 - `mutation-tests`（`🧬 变体检验`）与 `native-tests` 用同一镜像、触发相同（`schedule` 跳过）、两者并行，全量运行 `tests/tools/mutate.sh`：退出码非 0（1 有变体存活，2 工具或清单错误）或出现 `SKIPPED` 即失败（镜像工具齐全，`SKIPPED` 只可能是 `tests:` 正则没匹配到用例），失败时按类型打印存活变体的清单记录、基线失败用例的重跑输出或构建日志末尾，不上传 artifact。它是 CI 中耗时最长的 job，同一 PR 的新推送会取消正在运行的 CI（`cancel-in-progress`）。逐提交测试仍只在本地执行。
 - `🐚 ShellCheck` 在 runner 上直接运行（不用容器、不依赖 `build-image`），对 `git ls-files` 列出的 `*.sh` 与假 `wpa_cli` 执行 `shellcheck -x -P SCRIPTDIR`，要求 0 条（含 style 级）。
-- `📝 文档检查`（`doc-check`）用同一镜像（`needs: build-image`，`options: --user 0`），触发同 `native-tests`（`schedule` 跳过），每次完整运行，不按改动文件跳过：先 `tests/tools/docs/check-headings.py` 检查全部 spec 与 plan，再 `check-samples.sh` 运行检查器自身的样例（用法见 `docs/superpowers/AGENTS.md`）。修改 `.cursor/Dockerfile` 的 PR 上它与其他容器 job 一同被跳过；只改 `.md` 的 dev push 因 `paths-ignore` 不触发 workflow，文档在 PR 上已检查。
+- `📝 文档检查`（`doc-check`）用同一镜像（`needs: build-image`，`options: --user 0`），触发同 `native-tests`（`schedule` 跳过），每次完整运行，不按改动文件跳过：先检查根 `AGENTS.md` 不超过 8,192 字节，再 `tests/tools/docs/check-headings.py` 检查全部 spec 与 plan，最后 `check-samples.sh` 运行检查器自身的样例（用法见 `docs/superpowers/AGENTS.md`）。体积超限时先按 spec [`2026-11-01-lvgl-example-agents-md-slim-design.md`](../docs/superpowers/specs/2026-11-01-lvgl-example-agents-md-slim-design.md) §3.1 把内容移到子目录说明或代码注释，再考虑调整预算。修改 `.cursor/Dockerfile` 的 PR 上它与其他容器 job 一同被跳过；只改 `.md` 的 dev push 因 `paths-ignore` 不触发 workflow，文档在 PR 上已检查。
 
 ## 编译告警
 
