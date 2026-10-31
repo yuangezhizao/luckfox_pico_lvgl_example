@@ -386,7 +386,7 @@ jobs:
   doc-check:
     name: 📝 文档检查
     needs: build-image
-    # 按 AGENTS.md「文档」一节检查全部 spec 与 plan 的编号，并运行检查器自身的样例；每次都完整运行，不按改动文件跳过。
+    # 检查根 AGENTS.md 的体积；按 docs/superpowers/AGENTS.md 检查全部 spec 与 plan 的编号，并运行检查器自身的样例；每次都完整运行，不按改动文件跳过。
     # python3-markdown-it 由 CI 镜像提供（.cursor/Dockerfile「文档检查」组），改 Dockerfile 的 PR 上与其他容器 job 一同被跳过
     if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04
@@ -406,6 +406,19 @@ jobs:
         uses: actions/checkout@v7
         with:
           persist-credentials: false
+
+      - name: 📏 检查根 AGENTS.md 的体积
+        shell: bash
+        run: |
+          set -euo pipefail
+          # 根 AGENTS.md 在每个会话中整份加载，预算 8 KiB（docs/superpowers/specs/2026-11-01-lvgl-example-agents-md-slim-design.md §3.5）
+          limit=8192
+          size=$(wc -c < AGENTS.md)
+          echo "AGENTS.md: ${size} / ${limit} 字节"
+          if [ "$size" -gt "$limit" ]; then
+            echo "::error file=AGENTS.md::根 AGENTS.md ${size} 字节，超过 ${limit} 字节。按 docs/superpowers/specs/2026-11-01-lvgl-example-agents-md-slim-design.md §3.1 把内容移到子目录 AGENTS.md、tests/README.md 或代码注释"
+            exit 1
+          fi
 
       - name: 📝 检查编号并运行样例
         shell: bash

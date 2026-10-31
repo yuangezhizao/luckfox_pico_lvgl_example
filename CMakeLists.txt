@@ -72,6 +72,8 @@ file(GLOB SRC ${CMAKE_SOURCE_DIR}/src/*.c
 )
 
 # warnning
+# add_compile_options() 只作用于其后创建的 target，所以本段必须在 add_executable() 之前；LVGL、lv_drivers 在此之前 add_subdirectory()，不受影响。
+# -std=gnu99 不能换成 -std=c99：后者关掉 POSIX/GNU 扩展声明，编译失败。告警只记录、不作门禁（无 -Werror）。
 add_compile_options(
     -Wall -Wshadow -Wundef -Wmissing-prototypes -Wno-discarded-qualifiers -Wall -Wextra -Wno-unused-function -Wno-error=strict-prototypes -Wpointer-arith 
     -fno-strict-aliasing -Wno-error=cpp -Wuninitialized -Wmaybe-uninitialized -Wno-unused-parameter -Wno-missing-field-initializers -Wtype-limits -Wsizeof-pointer-memaccess 
@@ -86,6 +88,7 @@ add_executable(${PROJECT_NAME}
             ${SRC}
     )
 # debug
+# 位于 add_executable() 之后，对主程序不生效：主程序实际按 -O0 编译。
 add_compile_options(-fPIC -Wall -O3 -g0)
 
 if(SYSTEM_UBUNTU)
