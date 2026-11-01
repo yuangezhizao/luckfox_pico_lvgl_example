@@ -4,7 +4,7 @@
 
 **Goal:** 把 `check-headings.py`、`check-samples.sh` 入库到 `tests/tools/docs/`，新增 QA 编号检查，CI 新增 `📝 文档检查` job；依赖先在 runner 上临时 apt 安装，验证后挪进两份 Dockerfile；`AGENTS.md` 写明用法与提交、GitHub 操作的约定；历史 plan 中删除脚本副本；合并前按 Codex 审查与全面复查修复检查器对不渲染元素（`<script>`、`<style>`、`<template>`）与 QA 标题的误报及几处漏报。
 
-**Architecture:** 先推送 spec 与 plan、开草稿 PR（Task 1）；脚本原样入库并处理出处与 SC2016（Task 2）；按 TDD 加 QA 编号检查（Task 3）；CI job 的 A 阶段，含一次故意失败（Task 4）；`AGENTS.md` 的提交与 GitHub 操作（Task 5）；历史 plan（Task 6）；改为 D 阶段并在本机镜像中验证（Task 7）；整理提交、精简 plan、PR 正文，合并前与作者确认，处理 Codex 审查（Task 8）；合并后核对 dev CI（Task 9）。
+**Architecture:** 先推送 spec 与 plan、开草稿 PR（Task 1）；脚本原样入库并处理出处与 SC2016（Task 2）；按 TDD 加 QA 编号检查（Task 3）；CI job 的 A 阶段，含一次故意失败（Task 4）；`AGENTS.md` 的提交与 GitHub 操作（Task 5）；历史 plan（Task 6）；改为 D 阶段并在本机镜像中验证（Task 7）；整理提交、精简 plan、PR 正文，合并前与作者确认，处理 Codex 审查（Task 8）。
 
 **Tech Stack:** Python 3（markdown-it-py 3.0.0 / 1.1.0）、bash、ShellCheck 0.9.0、GitHub Actions、Docker、`gh`。
 
@@ -118,10 +118,6 @@
 - [x] Codex 第 14、15 条（P2）：带格式的图片替代文本、QA 条目前的空链接，都能复现，都是漏报；分别在 PR #11 原版与加入 QA 检查的提交 `ab49584` 上同样漏报，写法极少见。按收尾标准不在本 PR 修，回复依据并记入 spec §8 第 3、4 项。
 - [x] Codex 第 16 条（P2）：`<!-- </script><script> -->` 结束后又重新打开 `<script>`，其后的「Task 99」仍被检查，复现属实。行内路径改为与 HTML 块共用 `HtmlText` 解析，「原始 HTML 标题」的行内检查也改用它；新增 `ok-41`、`bad-hs9`、`bad-hs10`（结束标签之后注释中的 `<h2>` 在浏览器中可见，应报错），修复前 `ok-41` 与 `bad-hs10` 不符合；修复后 113/0。以 fixup 并入提交 7。
 - [x] Codex 第 17 条（P2）：`## </script> 见 Task 99` 中结束标签之后的可见文字没有检查，复现属实；PR #11 原版会检查，是第 3 条修复引入的回归。隐藏区域中的标题仍跳过结构检查，可见文字照常进入引用检查；新增 `bad-hs11`，修复前不符合，修复后 114/0。以 fixup 并入提交 7。
-
-### Task 9：合并后核对 dev CI
-
-- [ ] 作者合并后跟进 dev 的 CI：`build-image` 重建镜像，`📝 文档检查` 等全部 job 通过；把 run 编号与结果评论到 PR。
 
 ## 5. 验证证据
 

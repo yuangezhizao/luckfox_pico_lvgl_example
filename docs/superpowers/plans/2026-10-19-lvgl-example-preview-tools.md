@@ -4,7 +4,7 @@
 
 **Goal:** 把 `preview` 的启动、操作与核对脚本放进 `tests/tools/preview/`，桌面与无桌面共用；用法写进 `tests/README.md`；CI 新增 ShellCheck job，并在 `native-tests` 中以无桌面方式运行核对脚本；脚本依赖先在 CI 中临时 apt 安装，验证后挪进两份 Dockerfile。
 
-**Architecture:** 先推送 spec 与 plan、开草稿 PR（Task 1）；脚本与文档（Task 2）；本机在桌面、Xvfb、Xtigervnc 下验证（Task 3）；CI 的 ShellCheck job 与临时 apt 的核对步骤，含一次故意失败（Task 4）；历史文档的状态行（Task 5）；本地全量 `ctest`（Task 6）；挪进 Dockerfile 并在本机镜像中验证（Task 7）；截图交付（Task 8）；整理提交、精简 plan、PR 正文（Task 9）；合并前自查，修复后先拿掉 Dockerfile 提交确认 CI 通过，再放回，最后改写历史去掉临时 apt 步骤（Task 10）；合并后核对 dev CI（Task 11）。
+**Architecture:** 先推送 spec 与 plan、开草稿 PR（Task 1）；脚本与文档（Task 2）；本机在桌面、Xvfb、Xtigervnc 下验证（Task 3）；CI 的 ShellCheck job 与临时 apt 的核对步骤，含一次故意失败（Task 4）；历史文档的状态行（Task 5）；本地全量 `ctest`（Task 6）；挪进 Dockerfile 并在本机镜像中验证（Task 7）；截图交付（Task 8）；整理提交、精简 plan、PR 正文（Task 9）；合并前自查，修复后先拿掉 Dockerfile 提交确认 CI 通过，再放回，最后改写历史去掉临时 apt 步骤（Task 10）。
 
 **Tech Stack:** bash、xdotool、ImageMagick、Xvfb / Xtigervnc、SDL2、CMake/CTest、ShellCheck 0.9.0、actionlint 1.7.12、GitHub Actions、Docker、`gh`。
 
@@ -109,10 +109,6 @@
 - [x] Codex 第二轮审查（`start.sh`）：P1 桌面上已有同名窗口时，退回逻辑在新窗口出现前就选中旧窗口；P2 写完会话文件后认不出主屏时直接退出，`preview` 与自起的 Xvfb 残留。修复前都已复现（附录 A.3 ⑧），属实。修复：启动前记下已有的同名窗口，退回时只考虑新出现的；成功启动前的任何退出由 EXIT trap 统一清理，原来两处手工清理随之去掉（spec §3.2）；`tests/README.md`「排查」写明这两点；并入 `hammer(tests)`。修复中一度在全新显示上没有同名窗口时触发 `set -e`，由 P2 的测试发现并改正。附录 A.3 ④⑤⑦⑧ 重跑、桌面与 `--headless` 各 480、720 回归、本机镜像中 `run-img.sh` 均通过；已回复 Codex 并标记已解决（§4）。
 - [x] 合并前准备：spec 状态行缩短为 PR #1–#4 的写法；Task 9、10 标题补 ✅；不再做完整的 A/B/C 审查（合并前自查已做过一轮，之后的代码改动均已在 CI、本机与镜像中验证，Codex 也已审查）。
 - [x] 作者指出附录不必记录所有脚本：只保留支撑 spec 与 §4 中事实、数字的实测命令和测试脚本，删去整理提交（原 A.8）、合并前自查（原 A.9）、文档检查（原 A.3）、PR #13 spec 锚点核对、本地 ShellCheck（已在 `tests/README.md`）、读取 CI 日志与拼图交付的命令，附录重新编号为 A.1–A.6。
-
-### Task 11：合并后核对 dev CI
-
-- [ ] 作者合并后，dev push 的 CI 重建镜像，6 个 job 通过，preview 核对步骤使用镜像中的工具；结果回复在 PR 中。
 
 ## 4. 验证证据
 

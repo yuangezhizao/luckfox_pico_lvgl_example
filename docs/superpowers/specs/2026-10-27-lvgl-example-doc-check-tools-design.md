@@ -201,9 +201,8 @@ plan 中没有 QA 条目。PR #12–#15 用 `qref.py`（最新版在 PR #15 plan
 3. **A 阶段 CI**：推送后全部 job 通过，`📝 文档检查` 通过，`🧬 变体检验` 为 `0 skipped`；以 run 编号记入 plan。另推一个改坏标题的临时提交（不进最终历史），确认 `📝 文档检查` 失败，结果记入 plan。（执行者决定）
 4. **D 阶段本机镜像验证**：本机临时安装 Docker，构建两份镜像；按 `AGENTS.md` 用 `dpkg-query` 确认 FROM 中没有 `python3-markdown-it`；在两份镜像中运行两个脚本。不在本地运行变体检验，也不运行 `ctest`：本 PR 不改 C 代码与用例，Dockerfile 只新增一个 Python 包。
 5. **D 阶段 CI**：`build-image` 按预期失败，容器 job 被跳过；`🐚 ShellCheck` 照常通过。
-6. **合并后**：跟进 dev 的 CI（镜像重建、`📝 文档检查` 等全部 job），把结果评论到 PR。
-7. **文档**：本 spec 与 plan 用入库后的 `check-headings.py` 检查为 0；中文排版用 `lint_copy_rules.py` 检查。
-8. **合并前的 Codex 审查**：每条先复现，再按 TDD 修复，修复前新增的样例要先失败；本机 markdown-it-py 3.0.0 与 1.1.0、两份本机镜像中重跑两个脚本，并逐个提交运行。PR 上的 `📝 文档检查` 因 Dockerfile 改动被跳过，合并后由 dev 的 CI 运行。（执行者决定）
+6. **文档**：本 spec 与 plan 用入库后的 `check-headings.py` 检查为 0；中文排版用 `lint_copy_rules.py` 检查。
+7. **合并前的 Codex 审查**：每条先复现，再按 TDD 修复，修复前新增的样例要先失败；本机 markdown-it-py 3.0.0 与 1.1.0、两份本机镜像中重跑两个脚本，并逐个提交运行。PR 上的 `📝 文档检查` 因 Dockerfile 改动被跳过，合并后由 dev 的 CI 运行。（执行者决定）
 
 ## 5. 提交与 PR
 

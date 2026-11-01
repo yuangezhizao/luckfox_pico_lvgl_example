@@ -146,8 +146,7 @@ ShellCheck 0.9.0：上述 4 个 PR #10 脚本共 13 条 note（SC2086 11 条、S
 
 - 以临时 apt 方式推送的提交（Dockerfile 与 dev 相同），CI 全部通过，`🧬 变体检验` 为 `0 skipped`，preview 核对步骤通过；
 - 本机用 Docker 构建两份镜像，在 `.cursor/Dockerfile` 的镜像中跑全量 `ctest`，并以无桌面方式运行全部 `preview` 脚本；另按 PR #9 plan 附录 A.4 的挂载方式在容器中使用宿主 `:1` 运行一次；`.cursor/Dockerfile.luckfox_pico` 的镜像核对三个工具可用，并以无桌面方式运行两个核对脚本；
-- ShellCheck job 不依赖 `build-image`，Dockerfile 提交上照常通过；
-- 合并后检查 dev push 的 CI，记入 plan。
+- ShellCheck job 不依赖 `build-image`，Dockerfile 提交上照常通过。
 
 Environment Build 在合并后重建才含这三个包，之前启动的 Agent 仍要手动安装，`tests/README.md` 的安装命令保留，写给旧环境与 Cloud Agent 以外的环境。
 
@@ -180,7 +179,6 @@ Environment Build 在合并后重建才含这三个包，之前启动的 Agent �
 7. **镜像**：§3.5 第 2 阶段的本机 Docker 验证。
 8. **截图**（Q12）：桌面、无桌面、Docker 镜像各一张拼图，存到 `/cursor/stores/self/preview-tools-20261019/`，同目录 `SHA256SUMS`，交付前先在 `/tmp` 核对哈希；同时复制到 `/opt/cursor/artifacts/`。作者拖进 PR 评论；plan 只记数值、文件名与 SHA256。
 9. **文档**：PR #11 plan 附录 A.1 的 `check-headings.py`、附录 A.5 的 `check-samples.sh`；QA 编号与引用按 PR #13 plan 附录 A.2 ⑦ 的方法核对。
-10. **合并后**：检查 dev push 的 CI（镜像重建、preview 核对使用镜像中的工具）。
 
 ## 5. 提交与 PR
 
