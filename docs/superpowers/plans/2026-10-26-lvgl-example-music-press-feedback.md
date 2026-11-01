@@ -4,7 +4,7 @@
 
 **Goal:** 音乐页的上一首、下一首、播放按钮按下时叠 30% 黑色，播放模式、返回按钮按下时叠 50% 白色（播放模式在第 1 轮真机复测后由黑色改为白色，spec §5.1）；暂停时按下播放键不换图（第 2 轮真机复测后，spec Q14）；只改 `custom/`，主机测试按渲染出的像素断言。
 
-**Architecture:** 先推送 spec 与 plan、开草稿 PR（Task 1）；按 TDD 先写像素测试与变体，确认失败后在 `custom_musicplayer.c` 实现（Task 2）；本地全量 `ctest`、`mutate.sh`、两条交叉编译与 `qemu-arm` 冒烟（Task 3）；preview 回归与按下截图（Task 4）；真机复测（Task 5）；PR #10 的收尾（Task 6）；整理提交、精简 plan、PR 正文，合并前与作者确认（Task 7）；合并后核对 dev CI（Task 8）。
+**Architecture:** 先推送 spec 与 plan、开草稿 PR（Task 1）；按 TDD 先写像素测试与变体，确认失败后在 `custom_musicplayer.c` 实现（Task 2）；本地全量 `ctest`、`mutate.sh`、两条交叉编译与 `qemu-arm` 冒烟（Task 3）；preview 回归与按下截图（Task 4）；真机复测（Task 5）；PR #10 的收尾（Task 6）；整理提交、精简 plan、PR 正文，合并前与作者确认（Task 7）。
 
 **Tech Stack:** C（gnu99）、LVGL 8.3、CMake/CTest、ASan/UBSan、`tests/tools/mutate.sh`、xdotool、ImageMagick、Xvfb、arm-linux-gnueabihf 与 uClibc 交叉工具链、`qemu-arm`、GitHub Actions、`gh`。
 
@@ -97,10 +97,6 @@
 - [x] 作者要求通读 spec 与 plan、更新过时之处，并把以后可复用的脚本记入附录：spec 补 §9 后续事项（触摸区、变体检验提速、文档检查脚本入库）；plan 补附录 A.1 的工具安装、A.2 ⑪ 的 CI 用时、A.4 的辅助脚本与重建 `/tmp/pr15` 的命令，附录中 8 个脚本抽出后与实际用过的文件逐字节相同。
 - [x] 合并前审查：按 spec §6 不做 A、B、C 三角色审查。代码改动只有 `custom/custom_musicplayer.c` 的 28 行，按 TDD 实现，14 个变体全部 `KILLED`，三轮真机复测通过，CI 全绿；文档中的脚本已抽出并逐字节核对，⑪ 的命令原样复跑过。作者同意，合并前自查最终的代码 diff 即可。
 - [x] 与作者确认后把 PR 改为 ready，不合并。
-
-### Task 8：合并后核对 dev CI
-
-- [ ] 作者合并后，dev push 的 CI 全部通过；结果评论到 PR 中。
 
 ## 5. 验证证据
 

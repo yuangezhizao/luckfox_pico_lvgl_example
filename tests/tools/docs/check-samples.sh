@@ -2,7 +2,7 @@
 # shellcheck disable=SC2016
 # 上一行对整个文件生效：样例中的反引号是 Markdown 行内代码，有意写在单引号中、按字面传给 printf，不需要展开。
 # check-headings.py 的改坏与正常样例（PR #11 spec Q16–Q34 中 Codex 指出过的写法）：坏样例应退出 1，正常样例应退出 0。
-# PR #11 spec：docs/superpowers/specs/2026-10-14-lvgl-example-heading-numbers-design.md；规则见 AGENTS.md「文档（spec 与 plan）」一节。
+# PR #11 spec：docs/superpowers/specs/2026-10-14-lvgl-example-heading-numbers-design.md；规则见 docs/superpowers/AGENTS.md。
 # 用法：bash check-samples.sh [check-headings.py 路径，默认与本脚本同目录]；全部符合时最后一行为「样例 N 个，不符合 0 个」。
 # mk 样例改写下面 S0、P724、P1001、P1010 四份历史文档并断言被替换的原文存在；改动这些原文时要同步调整样例。
 set -u

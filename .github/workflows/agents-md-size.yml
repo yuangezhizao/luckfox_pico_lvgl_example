@@ -1,0 +1,41 @@
+name: 根 AGENTS.md 体积
+
+# 不放进 build-luckfox-lvgl-demo.yml：那里 push 的 paths-ignore '**.md' 会让只改 AGENTS.md 的 dev 推送整个不触发，
+# doc-check 又依赖 build-image，改 .cursor/Dockerfile 的 PR 上会被跳过；这里两种情况都照常运行
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - AGENTS.md
+  pull_request:
+    branches:
+      - dev
+    paths:
+      - AGENTS.md
+
+jobs:
+  agents-md-size:
+    name: 📏 检查根 AGENTS.md 的体积
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: 📤 检出本仓
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: 📏 检查根 AGENTS.md 的体积
+        shell: bash
+        run: |
+          set -euo pipefail
+          # 根 AGENTS.md 在每个会话中整份加载，预算 8 KiB（docs/superpowers/specs/2026-11-01-lvgl-example-agents-md-slim-design.md §3.5）
+          limit=8192
+          size=$(wc -c < AGENTS.md)
+          echo "AGENTS.md: ${size} / ${limit} 字节"
+          if [ "$size" -gt "$limit" ]; then
+            echo "::error file=AGENTS.md::根 AGENTS.md ${size} 字节，超过 ${limit} 字节。按 docs/superpowers/specs/2026-11-01-lvgl-example-agents-md-slim-design.md §3.1 把内容移到子目录 AGENTS.md、tests/README.md 或代码注释"
+            exit 1
+          fi

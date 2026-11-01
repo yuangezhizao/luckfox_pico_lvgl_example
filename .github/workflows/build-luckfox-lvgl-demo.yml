@@ -386,7 +386,7 @@ jobs:
   doc-check:
     name: 📝 文档检查
     needs: build-image
-    # 按 AGENTS.md「文档」一节检查全部 spec 与 plan 的编号，并运行检查器自身的样例；每次都完整运行，不按改动文件跳过。
+    # 按 docs/superpowers/AGENTS.md 检查全部 spec 与 plan 的编号，并运行检查器自身的样例；每次都完整运行，不按改动文件跳过。
     # python3-markdown-it 由 CI 镜像提供（.cursor/Dockerfile「文档检查」组），改 Dockerfile 的 PR 上与其他容器 job 一同被跳过
     if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04
